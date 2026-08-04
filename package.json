@@ -1,0 +1,18 @@
+{
+  "name": "persona-iq",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PersonaIQ - AI-powered Presence Engine",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "clean": "turbo clean"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

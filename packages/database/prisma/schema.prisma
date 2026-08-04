@@ -1,0 +1,332 @@
+generator client {
+  provider = "prisma-client-python"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum JourneyStatus {
+  DRAFT
+  ACTIVE
+  PROCESSING
+  COMPLETED
+  ARCHIVED
+}
+
+enum UploadStatus {
+  UPLOADED
+  VALIDATING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum RecommendationStatus {
+  TODO
+  DONE
+  SKIPPED
+}
+
+enum ExportFormat {
+  PDF
+  PNG
+  JPEG
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum RecommendationCategory {
+  Appearance
+  Style
+  Preparation
+  Skin
+  Accessories
+  Behavior
+  Timing
+  Documents
+}
+
+// ---------------------------------------------------------
+// CORE ENTITIES
+// ---------------------------------------------------------
+
+model User {
+  id                  String    @id @default(uuid())
+  clerkId             String    @unique
+  email               String    @unique
+  firstName           String?
+  lastName            String?
+  avatarUrl           String?
+  occupation          String?
+  country             String?
+  timezone            String?
+  onboardingCompleted Boolean   @default(false)
+  
+  role                UserRole  @default(USER)
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  // Relations
+  journeys        Journey[]
+  exports         Export[]
+  preference      UserPreference?
+  analyticsEvents AnalyticsEvent[]
+}
+
+model UserPreference {
+  id                   String  @id @default(uuid())
+  userId               String  @unique
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  preferredTheme       Theme   @default(SYSTEM)
+  preferredLanguage    String  @default("en")
+  defaultEventType     String?
+  notificationSettings Json?   // Stored as JSONB
+  privacySettings      Json?   // Stored as JSONB
+  defaultDressCode     String?
+}
+
+model Journey {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title           String
+  status          JourneyStatus @default(DRAFT)
+  eventType       String?
+  industry        String?
+  eventDate       DateTime?
+  eventTime       String?
+  location        String?
+  dressCode       String?
+  importance      String?
+  
+  currentStep     Int           @default(1)
+  presenceIndex   Int?
+  confidenceScore Int?
+  
+  completedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  event             Event?
+  selfieUploads     SelfieUpload[]
+  outfitUploads     OutfitUpload[]
+  skinAnalysis      SkinAnalysis?
+  outfitComparisons OutfitComparison[]
+  presencePlan      PresencePlan?
+  exports           Export[]
+  aiLogs            AIRequestLog[]
+  analyticsEvents   AnalyticsEvent[]
+
+  @@index([userId, status, createdAt])
+  @@index([eventDate])
+}
+
+model Event {
+  id         String   @id @default(uuid())
+  journeyId  String   @unique
+  journey    Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  
+  name       String
+  category   String?
+  industry   String?
+  location   String?
+  date       DateTime?
+  time       String?
+  dressCode  String?
+  importance String?
+  notes      String?
+}
+
+model SelfieUpload {
+  id               String       @id @default(uuid())
+  journeyId        String
+  journey          Journey      @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  
+  storageUrl       String
+  thumbnailUrl     String?
+  imageWidth       Int?
+  imageHeight      Int?
+  fileSize         Int?
+  mimeType         String?
+  processingStatus UploadStatus @default(UPLOADED)
+  
+  uploadedAt       DateTime     @default(now())
+}
+
+model OutfitUpload {
+  id           String    @id @default(uuid())
+  journeyId    String
+  journey      Journey   @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  
+  storageUrl   String
+  name         String?
+  category     String?
+  displayOrder Int       @default(0)
+  
+  uploadedAt   DateTime  @default(now())
+  deletedAt    DateTime?
+
+  comparisons  OutfitComparison[]
+}
+
+model SkinAnalysis {
+  id              String   @id @default(uuid())
+  journeyId       String   @unique
+  journey         Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  
+  overallScore    Int?
+  hydration       String?
+  oilBalance      String?
+  redness         String?
+  pores           String?
+  texture         String?
+  darkCircles     String?
+  brightness      String?
+  
+  providerVersion String?
+  confidence      Int?
+  rawResponse     Json?    // Stored as JSONB
+  
+  processedAt     DateTime @default(now())
+
+  @@index([journeyId])
+}
+
+model OutfitComparison {
+  id              String       @id @default(uuid())
+  journeyId       String
+  journey         Journey      @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  
+  outfitId        String
+  outfit          OutfitUpload @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  
+  vtoImageUrl     String?
+  ranking         Int?
+  overallScore    Int?
+  eventMatch      Int?
+  professionalism Int?
+  confidence      Int?
+  
+  providerVersion String?
+  generatedAt     DateTime     @default(now())
+
+  @@index([journeyId])
+}
+
+model PresencePlan {
+  id                  String   @id @default(uuid())
+  journeyId           String   @unique
+  journey             Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  
+  presenceIndex       Int
+  overallConfidence   Int
+  recommendedOutfitId String?
+  summary             String?
+  reasoning           String?
+  version             Int      @default(1)
+  
+  generatedAt         DateTime @default(now())
+
+  recommendations     Recommendation[]
+
+  @@index([journeyId])
+}
+
+model Recommendation {
+  id               String               @id @default(uuid())
+  presencePlanId   String
+  presencePlan     PresencePlan         @relation(fields: [presencePlanId], references: [id], onDelete: Cascade)
+  
+  priority         Int
+  title            String
+  description      String
+  reason           String?
+  impact           String?
+  effort           String?
+  confidence       Int?
+  estimatedMinutes Int?
+  
+  category         RecommendationCategory
+  status           RecommendationStatus @default(TODO)
+
+  checklists       PreparationChecklist[]
+
+  @@index([presencePlanId, priority])
+}
+
+model PreparationChecklist {
+  id               String         @id @default(uuid())
+  recommendationId String
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  
+  label            String
+  completed        Boolean        @default(false)
+  completedAt      DateTime?
+  displayOrder     Int            @default(0)
+}
+
+model Export {
+  id            String       @id @default(uuid())
+  journeyId     String
+  journey       Journey      @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  
+  format        ExportFormat
+  storageUrl    String
+  downloadCount Int          @default(0)
+  
+  generatedAt   DateTime     @default(now())
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  journeyId String?
+  journey   Journey? @relation(fields: [journeyId], references: [id], onDelete: SetNull)
+  
+  event     String
+  metadata  Json?    // Stored as JSONB
+  timestamp DateTime @default(now())
+
+  @@index([timestamp, event])
+}
+
+model AIRequestLog {
+  id           String   @id @default(uuid())
+  journeyId    String?
+  journey      Journey? @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  
+  provider     String
+  model        String
+  latency      Int?
+  status       String
+  tokenUsage   Int?
+  errorMessage String?
+  
+  createdAt    DateTime @default(now())
+
+  @@index([provider, status, createdAt])
+}

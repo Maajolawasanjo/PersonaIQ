@@ -1,0 +1,31 @@
+# PersonaIQ Antigravity Agent Rules
+
+You are assisting with the PersonaIQ platform. Follow these strict architectural guidelines at all times.
+
+## 1. Domain-Driven Design (DDD)
+- Group logic by business domain (e.g., `features/journeys`, `features/presence`), not by technical layer.
+- Never place business logic inside API controllers/routers. Controllers are only for routing, auth checks, validation, and invoking services.
+
+## 2. Frontend Architecture (Next.js 15)
+- **App Router & Server Components First**: Everything is a Server Component unless interaction explicitly requires a Client Component (`"use client"`).
+- **State Management**: 
+  - Server State: `TanStack Query`
+  - Client UI State: `Zustand`
+  - Form State: `React Hook Form` + `Zod`
+- Never store API responses or business data in Zustand.
+- Use `shadcn/ui` components located in `components/ui`. Consume design tokens (e.g., `spacing-6`, `color-primary`) rather than hard-coded values.
+
+## 3. Backend Architecture (FastAPI)
+- **Thin Controllers**: API routers do no heavy lifting. 
+- **One Screen -> One Endpoint -> One DTO**: Keep responses predictably aligned to the frontend screens.
+- **Provider Isolation**: External services (Gemini, YouCam) must be isolated behind adapters in `providers/`. Never leak their SDKs into business logic.
+
+## 4. AI & Intelligence (Persona Engine™)
+- **Never trust raw AI output**. AI provider results must be normalized by adapters before hitting the Persona Engine.
+- AI operations are asynchronous polling patterns (POST -> returns jobId -> GET status).
+- AI logic, prompts, and scoring engines live in `packages/ai-core`.
+
+## 5. Security First
+- Never trust client-side data.
+- Enforce JWT authentication via Clerk before any business logic executes.
+- Ensure strict ownership checks on all DB queries and object storage references.
