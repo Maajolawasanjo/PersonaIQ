@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: theme('colors.background');
+    color: theme('colors.foreground');
+    overflow-x: clip;
+    min-width: 280px;
+  }
+
+  .font-serif {
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* === Fluid Typography (clamp) ===
+     Scales smoothly from 320px to 1920px viewport */
+  h1 { font-size: clamp(1.75rem, 4vw + 0.5rem, 4rem); }
+  h2 { font-size: clamp(1.375rem, 3vw + 0.25rem, 3rem); }
+  h3 { font-size: clamp(1.125rem, 2vw + 0.25rem, 1.875rem); }
+  p  { font-size: clamp(0.9rem, 1vw + 0.4rem, 1.125rem); }
+
+  /* === Touch Targets: 44×44px minimum per WCAG === */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* === Brand Scrollbar === */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #14191D; }
+  ::-webkit-scrollbar-thumb {
+    background: #A31F34;
+    border-radius: 4px;
+    border: 2px solid #14191D;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #7e1727; }
+  * { scrollbar-width: thin; scrollbar-color: #A31F34 #14191D; }
+}
+
+@layer components {
+  /* === Fluid Section Padding ===
+     Adapts from tight mobile to spacious ultra-wide */
+  .section-py {
+    padding-top:    clamp(3rem, 8vw, 9rem);
+    padding-bottom: clamp(3rem, 8vw, 9rem);
+  }
+
+  /* === Fluid Container ===
+     Caps width at 1280px on desktop but uses full width on ultra-wide via max-w override */
+  .container-fluid {
+    width: 100%;
+    max-width: 80rem; /* 1280px default */
+    margin-left: auto;
+    margin-right: auto;
+    padding-left:  clamp(1rem, 4vw, 3rem);
+    padding-right: clamp(1rem, 4vw, 3rem);
+  }
+
+  /* Ultra-wide: expand container on 4K+ */
+  @media (min-width: 2560px) {
+    .container-fluid { max-width: 112rem; } /* 1792px on QHD+ */
+  }
+  @media (min-width: 3840px) {
+    .container-fluid { max-width: 140rem; } /* 2240px on 4K */
+  }
+  @media (min-width: 7680px) {
+    .container-fluid { max-width: 200rem; } /* 3200px on 8K */
+  }
+
+  /* === Responsive grid helpers === */
+  .grid-auto-fit {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: clamp(1rem, 2vw, 2rem);
+  }
+}
+
+@layer utilities {
+  /* Prevent any element from causing horizontal overflow */
+  .no-overflow { max-width: 100%; overflow-x: hidden; }
+
+  /* Fluid gap */
+  .gap-fluid { gap: clamp(0.75rem, 2vw, 2rem); }
+
+  /* Fluid text sizes */
+  .text-fluid-xs  { font-size: clamp(0.65rem, 0.8vw + 0.2rem, 0.75rem); }
+  .text-fluid-sm  { font-size: clamp(0.75rem, 0.9vw + 0.25rem, 0.875rem); }
+  .text-fluid-base{ font-size: clamp(0.875rem, 1vw + 0.3rem, 1rem); }
+  .text-fluid-lg  { font-size: clamp(1rem, 1.5vw + 0.25rem, 1.25rem); }
+  .text-fluid-xl  { font-size: clamp(1.125rem, 2vw + 0.25rem, 1.5rem); }
+  .text-fluid-2xl { font-size: clamp(1.25rem, 2.5vw + 0.25rem, 2rem); }
+  .text-fluid-3xl { font-size: clamp(1.5rem, 3vw + 0.5rem, 3rem); }
+  .text-fluid-4xl { font-size: clamp(1.75rem, 4vw + 0.5rem, 4rem); }
+  .text-fluid-5xl { font-size: clamp(2rem, 5vw + 0.5rem, 5rem); }
+}
+
+.bg-pattern-geom {
+  background-color: #FAF9F6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M40 0 L80 20 L80 60 L40 80 L0 60 L0 20 Z M40 10 L70 25 L70 55 L40 70 L10 55 L10 25 Z M40 0 L40 10 M80 20 L70 25 M80 60 L70 55 M40 80 L40 70 M0 60 L10 55 M0 20 L10 25' stroke='%23000000' stroke-opacity='0.04' stroke-width='1' fill='none'/%3E%3Cpath d='M40 10 L40 70 M10 25 L70 55 M10 55 L70 25' stroke='%23000000' stroke-opacity='0.025' stroke-width='0.75' fill='none'/%3E%3C/svg%3E");
+  background-size: 80px 80px;
+}
+
+.bg-pattern-geom-dark {
+  background-color: #14191D;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M40 0 L80 20 L80 60 L40 80 L0 60 L0 20 Z M40 10 L70 25 L70 55 L40 70 L10 55 L10 25 Z M40 0 L40 10 M80 20 L70 25 M80 60 L70 55 M40 80 L40 70 M0 60 L10 55 M0 20 L10 25' stroke='%23ffffff' stroke-opacity='0.04' stroke-width='1' fill='none'/%3E%3Cpath d='M40 10 L40 70 M10 25 L70 55 M10 55 L70 25' stroke='%23ffffff' stroke-opacity='0.025' stroke-width='0.75' fill='none'/%3E%3C/svg%3E");
+  background-size: 80px 80px;
+}
+
+.bg-pattern-waves {
+  background-color: #FAF9F6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M-10,50 Q15,30 40,50 T90,50 T140,50 M-10,20 Q15,0 40,20 T90,20 T140,20 M-10,80 Q15,60 40,80 T90,80 T140,80' stroke='%23000000' stroke-opacity='0.08' stroke-width='1.5' fill='none'/%3E%3Cpath d='M-10,35 Q15,15 40,35 T90,35 T140,35 M-10,65 Q15,45 40,65 T90,65 T140,65' stroke='%23000000' stroke-opacity='0.05' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+  background-size: 100px 100px;
+}

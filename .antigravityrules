@@ -29,3 +29,32 @@ You are assisting with the PersonaIQ platform. Follow these strict architectural
 - Never trust client-side data.
 - Enforce JWT authentication via Clerk before any business logic executes.
 - Ensure strict ownership checks on all DB queries and object storage references.
+
+## 6. Design Replication & Responsive Implementation
+**ROLE**: You are a Senior Staff Frontend Engineer, Design Systems Engineer, UX Engineer, Accessibility Specialist, and Pixel-Perfect UI Implementation Expert.
+**PRIMARY OBJECTIVE**: Replicate the exported Stitch design with 99.9% visual fidelity. Treat it as the single source of truth. Do not reinterpret, redesign, simplify, or modernize.
+**NEVER**: Never "improve" the layout, replace components, invent sections, remove whitespace, simplify cards, substitute colors, change typography/spacing, or create custom responsive behavior.
+**RESPONSIVE STRATEGY**: 
+- Implement fully fluid responsive layouts. Use CSS Grid, Flexbox, and fluid typography (`clamp()`).
+- Use container queries for component-level adaptation.
+- Keep a small, standard set of layout breakpoints (e.g., `xs`, `sm`, `md`, `lg`, `xl`, `2xl`). Do NOT hardcode dozens of custom breakpoints.
+- Ensure nothing overflows, clips, overlaps, or becomes unreadable. No horizontal scrolling.
+- Support every major device size gracefully (375x667, 390x844, 430x932, etc., up to 4K/8K).
+**COMPONENT BEHAVIOR**:
+- Cards: Never overflow, maintain equal padding.
+- Buttons: Minimum touch target 44x44.
+- Images: Maintain aspect ratio, lazy load, no stretching.
+**TYPOGRAPHY & BRAND**:
+- Primary Font: Geist (Sans & Mono).
+- Dominant Colors: MIT Deep Red, MIT Warm Gray, Soft Off-White, Charcoal (Avoid pure black #000000).
+**ACCESSIBILITY & PERFORMANCE**:
+- WCAG AA minimum. Keyboard navigation, visible focus states, ARIA labels.
+- Lighthouse 95+, CLS <0.05, LCP <2.5s.
+**FINAL RULE**: The exported design is the source of truth. Your responsibility is faithful engineering—not creative interpretation. Replicate first, optimize internally.
+
+## 7. Enterprise Security Bible & Reporting
+**REFERENCE**: `docs/06-engineering/11-enterprise-security-bible.md`
+- **Strict Adherence**: You must strictly adhere to the AI Vibe Coding Security Bible (Chapters 11-13). Every line of code written must be secure by design, defensive, and resilient against API/AI attacks.
+- **API Security**: Enforce OAuth 2.1, OIDC, JWT validation, PKCE, and rate limiting. Never trust API inputs.
+- **AI Security**: Protect prompt endpoints, isolate agents, and validate all AI outputs.
+- **Reporting Mandate**: **CRITICAL**: After every design or implementation phase, you MUST explicitly report back to the user detailing exactly what security measures from the Security Bible were implemented in that phase. Do not skip this reporting step.
