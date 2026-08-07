@@ -45,6 +45,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+import time
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class ServerTimingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start_time = time.perf_counter()
+        response = await call_next(request)
+        process_time_ms = (time.perf_counter() - start_time) * 1000
+        response.headers["X-Response-Time-ms"] = f"{process_time_ms:.2f}"
+        response.headers["Server-Timing"] = f"total;dur={process_time_ms:.2f}"
+        return response
+
+app.add_middleware(ServerTimingMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
 # Custom Exception Handlers
