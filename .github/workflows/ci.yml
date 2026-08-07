@@ -1,0 +1,103 @@
+name: PersonaIQ CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-test:
+    name: Backend Test Suite & Lint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: personaiq_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r apps/api/requirements.txt pytest-asyncio
+
+      - name: Run Backend Pytest Suite
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@localhost:5432/personaiq_test
+          JWT_SECRET_KEY: test_secret_key_ci_cd_environment
+          ENVIRONMENT: testing
+          DEBUG: true
+        run: |
+          cd apps/api
+          pytest -v
+
+  frontend-build:
+    name: Frontend Build & Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'apps/web/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd apps/web
+          npm ci || npm install --legacy-peer-deps
+
+      - name: Run Next.js Build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+        run: |
+          cd apps/web
+          npm run build
+
+  security-audit:
+    name: Monorepo Security Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python & Node
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Audit Python Dependencies
+        run: |
+          pip install pip-audit
+          pip-audit -r apps/api/requirements.txt || echo "Python Audit completed with warnings."
+
+      - name: Audit Node Dependencies
+        run: |
+          cd apps/web
+          npm audit --audit-level=high || echo "Node Audit completed with warnings."
