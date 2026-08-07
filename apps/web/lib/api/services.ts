@@ -55,11 +55,31 @@ export const authApi = {
 };
 
 export const userApi = {
-  getProfile: (): Promise<UserProfile> => apiClient.get<UserProfile>('/user/profile'),
+  getProfile: (): Promise<UserProfile> => apiClient.get<UserProfile>('/profile'),
 
-  updateProfile: (data: { full_name?: string; avatar_url?: string }): Promise<UserProfile> =>
-    apiClient.put<UserProfile>('/user/profile', data),
+  updateProfile: (data: {
+    first_name?: string;
+    last_name?: string;
+    occupation?: string;
+    country?: string;
+    timezone?: string;
+  }): Promise<UserProfile> => apiClient.patch<UserProfile>('/profile', data),
+
+  updatePreferences: (data: {
+    preferred_theme?: string;
+    default_event_type?: string;
+    email_notifications?: boolean;
+  }): Promise<UserProfile> => apiClient.patch<UserProfile>('/profile/preferences', data),
+
+  changePassword: (data: {
+    current_password: string;
+    new_password: string;
+  }): Promise<{ success: boolean }> => apiClient.post<{ success: boolean }>('/profile/change-password', data),
+
+  deleteAccount: (): Promise<{ deleted: boolean }> =>
+    apiClient.delete<{ deleted: boolean }>('/profile/account'),
 };
+
 
 export const journeyApi = {
   createJourney: (title: string): Promise<Journey> =>

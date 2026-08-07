@@ -307,6 +307,43 @@ class AuthService:
 
         return UserDTO.model_validate(user)
 
+    async def update_user_preference(self, user_id: UUID, pref_data: dict) -> UserDTO:
+        user = await self.repo.get_by_id(user_id)
+        if not user:
+            raise AppException(code=ErrorCode.USER_001, message="User not found.", status_code=404)
+
+        await self.repo.update_user_preference(user_id, pref_data)
+        updated_user = await self.repo.get_by_id(user_id)
+        return UserDTO.model_validate(updated_user)
+
+    async def change_password(self, user_id: UUID, current_pass: str, new_pass: str) -> None:
+        user = await self.repo.get_by_id(user_id)
+        if not user:
+            raise AppException(code=ErrorCode.USER_001, message="User not found.", status_code=404)
+
+        if not verify_password(current_pass, user.hashed_password):
+            raise AppException(code=ErrorCode.AUTH_001, message="Current password is incorrect.", status_code=400)
+
+        user.hashed_password = hash_password(new_pass)
+        await self.repo.db.flush()
+        await self.repo.revoke_all_user_tokens(user_id)
+
+    async def delete_account(self, user_id: UUID) -> None:
+        user = await self.repo.get_by_id(user_id)
+        if not user:
+            raise AppException(code=ErrorCode.USER_001, message="User not found.", status_code=404)
+
+        email = user.email
+        first_name = user.first_name
+
+        await self.repo.hard_delete_user_data(user_id)
+
+        from app.services.email_service import EmailService
+        email_service = EmailService()
+        email_service.dispatch(
+            email_service.send_account_deleted_email(email, first_name or "User", settings.EMAIL_SUPPORT_URL)
+        )
+
     async def _generate_auth_tokens(self, user) -> AuthTokenDTO:
         access_t = create_access_token(subject=str(user.id))
         refresh_t = create_refresh_token(subject=str(user.id))

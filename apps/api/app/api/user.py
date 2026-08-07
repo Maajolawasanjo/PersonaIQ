@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.dto.common import ResponseMeta, StandardResponse
-from app.dto.user import OnboardingRequest, UpdateProfileRequest, UserDTO
+from app.dto.user import OnboardingRequest, UpdateProfileRequest, UserDTO, UpdatePreferenceRequest, ChangePasswordRequest
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.services.auth_service import AuthService
@@ -202,3 +202,83 @@ async def confirm_email_change(
         data=UserDTO.model_validate(current_user),
         meta=meta,
     )
+
+
+@router.patch(
+    "/preferences",
+    response_model=StandardResponse[UserDTO],
+    status_code=status.HTTP_200_OK,
+    summary="Update User Preferences (Theme, Notifications, Event Type)",
+)
+async def update_preferences(
+    request_data: UpdatePreferenceRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "req_update_preferences")
+    service = AuthService(db)
+    pref_data = request_data.model_dump(exclude_unset=True)
+    updated_user = await service.update_user_preference(current_user.id, pref_data)
+
+    meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
+    return StandardResponse(
+        success=True,
+        message="User preferences updated successfully.",
+        data=updated_user,
+        meta=meta,
+    )
+
+
+@router.post(
+    "/change-password",
+    response_model=StandardResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Change Authenticated User Password",
+)
+async def change_password(
+    request_data: ChangePasswordRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "req_change_password")
+    service = AuthService(db)
+    await service.change_password(
+        user_id=current_user.id,
+        current_pass=request_data.current_password,
+        new_pass=request_data.new_password,
+    )
+
+    meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
+    return StandardResponse(
+        success=True,
+        message="Password changed successfully. Please log in again.",
+        data={},
+        meta=meta,
+    )
+
+
+@router.delete(
+    "/account",
+    response_model=StandardResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Permanently Delete User Account & Purge Data",
+)
+async def delete_account(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "req_delete_account")
+    service = AuthService(db)
+    await service.delete_account(current_user.id)
+
+    meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
+    return StandardResponse(
+        success=True,
+        message="Account permanently deleted.",
+        data={"deleted": True},
+        meta=meta,
+    )
+

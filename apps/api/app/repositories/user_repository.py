@@ -69,6 +69,22 @@ class UserRepository(BaseRepository[User]):
         user.locked_until = None
         await self.db.flush()
 
+    async def update_user_preference(self, user_id: UUID, pref_data: dict) -> UserPreference:
+        from app.models.user import UserPreference
+        result = await self.db.execute(
+            select(UserPreference).where(UserPreference.user_id == user_id)
+        )
+        pref = result.scalars().first()
+        if not pref:
+            pref = UserPreference(user_id=user_id, **pref_data)
+            self.db.add(pref)
+        else:
+            for k, v in pref_data.items():
+                if v is not None:
+                    setattr(pref, k, v)
+        await self.db.flush()
+        return pref
+
     async def hard_delete_user_data(self, user_id: UUID) -> None:
         """Completely purges all data associated with a user for privacy & GDPR compliance."""
         from sqlalchemy import delete as sql_delete
@@ -81,4 +97,5 @@ class UserRepository(BaseRepository[User]):
         # Delete User Record
         await self.db.execute(sql_delete(User).where(User.id == user_id))
         await self.db.flush()
+
 

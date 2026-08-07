@@ -71,30 +71,43 @@ class ApiClient {
       headers['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+      });
 
-    if (response.status === 401 && !isRetry && endpoint !== '/auth/refresh') {
-      const refreshed = await this.refreshTokens();
-      if (refreshed) {
-        return this.request<T>(endpoint, options, true);
+      if (response.status === 401 && !isRetry && endpoint !== '/auth/refresh') {
+        const refreshed = await this.refreshTokens();
+        if (refreshed) {
+          return this.request<T>(endpoint, options, true);
+        }
       }
+
+      const resData: StandardResponse<T> = await response.json().catch(() => ({
+        success: false,
+        message: 'Failed to parse server response.',
+        data: null as any,
+        meta: { request_id: 'error', timestamp: new Date().toISOString() },
+      }));
+
+      if (!response.ok || !resData.success) {
+        if (response.status === 401) {
+          throw new Error('Your session has expired. Please log in again.');
+        }
+        if (response.status === 423) {
+          throw new Error(resData.message || 'Account locked temporarily due to security policy.');
+        }
+        throw new Error(resData.message || `Request failed with status ${response.status}`);
+      }
+
+      return resData.data;
+    } catch (err: any) {
+      if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+        throw new Error("We couldn't connect to PersonaIQ. Please check your internet connection and try again.");
+      }
+      throw err;
     }
-
-    const resData: StandardResponse<T> = await response.json().catch(() => ({
-      success: false,
-      message: 'Failed to parse JSON response',
-      data: null as any,
-      meta: { request_id: 'error', timestamp: new Date().toISOString() },
-    }));
-
-    if (!response.ok || !resData.success) {
-      throw new Error(resData.message || `API Request failed with status ${response.status}`);
-    }
-
-    return resData.data;
   }
 
   public get<T>(endpoint: string): Promise<T> {

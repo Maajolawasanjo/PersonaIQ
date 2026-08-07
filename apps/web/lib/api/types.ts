@@ -34,16 +34,29 @@ export interface AuthTokens {
   email?: string;
 }
 
+export interface UserPreference {
+  preferred_theme: string;
+  default_event_type?: string;
+  email_notifications: boolean;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
-  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
   avatar_url?: string;
-  role: string;
+  occupation?: string;
+  country?: string;
+  timezone?: string;
   is_active: boolean;
+  is_verified: boolean;
+  onboarding_completed: boolean;
+  preference?: UserPreference;
   created_at: string;
-  updated_at: string;
 }
+
 
 export interface EventContext {
   id: string;

@@ -54,3 +54,15 @@ class OnboardingRequest(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=100)
     occupation: Optional[str] = Field(None, max_length=100)
     default_event_type: Optional[str] = Field(None, max_length=50)
+
+
+class UpdatePreferenceRequest(BaseModel):
+    preferred_theme: Optional[str] = Field(None, max_length=20)
+    default_event_type: Optional[str] = Field(None, max_length=50)
+    email_notifications: Optional[bool] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8, max_length=100)
+
