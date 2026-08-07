@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, dashboard, health, journey, upload, user
+from app.api import auth, compare, dashboard, export, health, journey, plans, presence_dna, share, upload, user, wardrobe
 from app.core.config import settings
 from app.core.errors import AppException
 from app.core.logging import logger, setup_logging
@@ -59,6 +59,12 @@ app.include_router(user.router, prefix=settings.API_V1_STR)
 app.include_router(journey.router, prefix=settings.API_V1_STR)
 app.include_router(upload.router, prefix=settings.API_V1_STR)
 app.include_router(dashboard.router, prefix=settings.API_V1_STR)
+app.include_router(wardrobe.router, prefix=settings.API_V1_STR)
+app.include_router(plans.router, prefix=settings.API_V1_STR)
+app.include_router(export.router, prefix=settings.API_V1_STR)
+app.include_router(share.router, prefix=settings.API_V1_STR)
+app.include_router(presence_dna.router, prefix=settings.API_V1_STR)
+app.include_router(compare.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/", include_in_schema=False)

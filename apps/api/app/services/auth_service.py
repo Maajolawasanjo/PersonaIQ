@@ -51,9 +51,13 @@ class AuthService:
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.flush()
 
-        # Send Verification Email
-        email_service = EmailService()
-        await email_service.send_email_verification_email(user.email, otp)
+        # Send verification email — non-fatal: account creation succeeds even if SMTP is down
+        try:
+            email_service = EmailService()
+            await email_service.send_email_verification_email(user.email, otp)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"[sign_up] Failed to send verification email to {user.email}: {e}")
 
         return await self._generate_auth_tokens(user)
 
@@ -87,21 +91,30 @@ class AuthService:
         user.otp_expires_at = None
         await self.repo.db.flush()
 
-        # Send corresponding email
+        # Issue JWT tokens FIRST — emails are dispatched non-blocking after
         from app.services.email_service import EmailService
         email_service = EmailService()
+        tokens = await self._generate_auth_tokens(user)
+
+        user_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
         if not was_verified:
-            await email_service.send_welcome_email(user.email, f"{user.first_name or ''} {user.last_name or ''}".strip())
+            # First-time verification: send welcome (fire-and-forget, never blocks)
+            email_service.dispatch(
+                email_service.send_welcome_email(user.email, user_name)
+            )
         else:
-            await email_service.send_login_alert_email(
-                user.email,
-                f"{user.first_name or ''} {user.last_name or ''}".strip(),
-                "Web Browser",
-                "Detected Location",
-                datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            # Subsequent OTP (2FA completion): send login alert AFTER JWT is issued
+            email_service.dispatch(
+                email_service.send_login_alert_email(
+                    user.email,
+                    user_name,
+                    "Web Browser",
+                    "Detected Location",
+                    datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                )
             )
 
-        return await self._generate_auth_tokens(user)
+        return tokens
 
 
     async def resend_otp(self, email: str) -> None:
@@ -121,8 +134,13 @@ class AuthService:
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.flush()
 
-        email_service = EmailService()
-        await email_service.send_email_verification_email(user.email, otp)
+        # Non-fatal: resend failure should not error the endpoint
+        try:
+            email_service = EmailService()
+            await email_service.send_email_verification_email(user.email, otp)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"[resend_otp] Failed to resend OTP to {user.email}: {e}")
 
     async def request_password_reset(self, email: str) -> None:
         user = await self.repo.get_by_email(email)
@@ -170,10 +188,18 @@ class AuthService:
         user.reset_expires_at = None
         await self.repo.db.flush()
 
-        # Send password changed notification
+        # Security: revoke ALL existing refresh tokens so stolen sessions die immediately
+        await self.repo.revoke_all_user_tokens(user.id)
+
+        # Send password-changed notification (fire-and-forget — DB is already committed)
         from app.services.email_service import EmailService
         email_service = EmailService()
-        await email_service.send_password_changed_email(user.email, f"{user.first_name or ''} {user.last_name or ''}".strip())
+        email_service.dispatch(
+            email_service.send_password_changed_email(
+                user.email,
+                f"{user.first_name or ''} {user.last_name or ''}".strip()
+            )
+        )
 
     async def sign_in(self, request: SignInRequest) -> AuthTokenDTO:
         user = await self.repo.get_by_email(request.email)
@@ -219,7 +245,7 @@ class AuthService:
         await self.repo.db.flush()
 
         email_service = EmailService()
-        await email_service.send_email_verification_email(user.email, otp)
+        await email_service.send_two_factor_code_email(user.email, otp)
 
         return AuthTokenDTO(
             requires_2fa=True,

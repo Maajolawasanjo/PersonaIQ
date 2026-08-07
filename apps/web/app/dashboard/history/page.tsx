@@ -11,7 +11,14 @@ import {
   Search, 
   Sliders, 
   Shirt,
-  ArrowRight
+  ArrowRight,
+  CheckSquare,
+  FileText,
+  Download,
+  Share2,
+  Copy,
+  Trash2,
+  Archive
 } from 'lucide-react';
 
 export default function JourneyArchivePage() {
@@ -19,49 +26,59 @@ export default function JourneyArchivePage() {
   const [search, setSearch] = useState<string>('');
   const [isEmptyArchive, setIsEmptyArchive] = useState<boolean>(false);
 
-  const journeys = [
+  const [journeys, setJourneys] = useState([
     {
       id: 'j1',
-      date: 'OCT 24, 2023',
+      date: 'OCT 24, 2026',
       title: 'Venture Capital Pitch',
       target: 'Tech Investors',
       score: 94,
       isLatest: true,
       outfitName: 'Navy Unstructured Blazer & Grey Trousers',
-      outfitDesc: 'AI noted this combination projected authoritative calm without appearing overly rigid, perfect for...',
+      outfitDesc: 'AI noted this combination projected authoritative calm without appearing overly rigid.',
       image: '/images/brown-peaked-lapel-suit.jpg',
       category: 'Interview',
       archived: false,
     },
     {
       id: 'j2',
-      date: 'SEP 12, 2023',
+      date: 'SEP 12, 2026',
       title: 'Series B Board Meeting',
       target: 'Existing Board',
       score: 88,
       isLatest: false,
       outfitName: 'Charcoal Suit & Blue Oxford',
-      outfitDesc: 'A conservative but sharp choice. The system suggested loosening the tie slightly for a more...',
+      outfitDesc: 'A conservative but sharp choice. The system suggested loosening tie slightly.',
       image: '/images/african-senator-suit.jpg',
       category: 'Presentation',
       archived: false,
     },
     {
       id: 'j3',
-      date: 'AUG 05, 2023',
+      date: 'AUG 05, 2026',
       title: 'Academic Symposium Keynote',
       target: 'Peers & Researchers',
       score: 91,
       isLatest: false,
-      outfitName: '',
-      outfitDesc: '',
-      image: '',
+      outfitName: 'Traditional African Senator Wear',
+      outfitDesc: 'High distinction native attire aligned with cultural authority.',
+      image: '/images/african-senator-suit.jpg',
       category: 'Networking',
       archived: true,
     },
-  ];
+  ]);
 
   const categories = ['All', 'Interview', 'Presentation', 'Networking'];
+
+  const handleDelete = (id: string) => {
+    setJourneys((prev) => prev.filter((j) => j.id !== id));
+  };
+
+  const handleArchive = (id: string) => {
+    setJourneys((prev) =>
+      prev.map((j) => (j.id === id ? { ...j, archived: !j.archived } : j))
+    );
+  };
 
   const filtered = journeys.filter((j) => {
     const matchesFilter = filter === 'All' || j.category === filter;
@@ -88,7 +105,7 @@ export default function JourneyArchivePage() {
         {/* Toggle Empty vs Populated State */}
         <div className="flex items-center space-x-2 shrink-0 flex-wrap gap-2">
           <Link
-            href="/journey/compare"
+            href="/journey/compare-looks"
             className="h-9 px-4 bg-gray-950 hover:bg-gray-800 text-white font-bold text-[12px] rounded-[8px] flex items-center space-x-1.5 transition-colors"
           >
             <ArrowLeftRight className="w-3.5 h-3.5" />
@@ -118,12 +135,10 @@ export default function JourneyArchivePage() {
       {isEmptyArchive ? (
         <div className="bg-white border border-gray-200 rounded-[24px] p-10 text-center flex flex-col items-center justify-center space-y-6 min-h-[400px] shadow-xs">
           
-          {/* Centered Node Icon Graphic */}
           <div className="w-20 h-20 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
             <ArrowLeftRight className="w-8 h-8 text-gray-400" />
           </div>
 
-          {/* Title & Subtitle */}
           <div className="space-y-2 max-w-md">
             <h2 className="text-[32px] font-bold text-gray-950 font-sans leading-tight">
               No Journey History
@@ -133,7 +148,6 @@ export default function JourneyArchivePage() {
             </p>
           </div>
 
-          {/* Primary CTA */}
           <Link
             href="/journey/start"
             className="h-11 px-7 bg-red-600 hover:bg-red-700 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm flex items-center justify-center space-x-2 transition-all"
@@ -142,14 +156,13 @@ export default function JourneyArchivePage() {
             <ArrowRight className="w-4 h-4" />
           </Link>
 
-          {/* Information Card: About The Archive */}
           <div className="bg-gray-50/80 border border-gray-150 rounded-[16px] p-5 text-left max-w-lg w-full space-y-1.5 mt-4">
             <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1">
               <Info className="w-3.5 h-3.5 text-gray-550" />
               <span>ABOUT THE ARCHIVE</span>
             </span>
             <p className="text-[12px] text-gray-600 font-normal leading-relaxed">
-              Historical data enables longitudinal tracking of your intelligence models. Once generated, your journey maps will be securely stored here, allowing for comparative analysis against MIT-inspired heuristic benchmarks.
+              Historical data enables longitudinal tracking of your intelligence models. Once generated, your journey maps will be securely stored here.
             </p>
           </div>
 
@@ -184,13 +197,6 @@ export default function JourneyArchivePage() {
                   {cat}
                 </button>
               ))}
-              <button
-                type="button"
-                className="px-4 py-1.5 rounded-full text-[12px] font-mono font-bold bg-white border border-gray-250 text-gray-700 hover:bg-gray-100 flex items-center space-x-1"
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>More Filters</span>
-              </button>
             </div>
           </div>
 
@@ -246,13 +252,6 @@ export default function JourneyArchivePage() {
                           <p className="text-[12px] text-gray-600 font-normal leading-relaxed">
                             {j.outfitDesc}
                           </p>
-                          <Link
-                            href={`/dashboard/history/${j.id}`}
-                            className="text-[12px] font-mono font-bold text-red-600 hover:text-red-700 inline-flex items-center space-x-1 pt-1"
-                          >
-                            <span>View Full Analysis</span>
-                            <ArrowRight className="w-3 h-3 ml-0.5" />
-                          </Link>
                         </div>
                       </div>
                     </div>
@@ -263,30 +262,78 @@ export default function JourneyArchivePage() {
                         <span>ARCHIVED DATA</span>
                       </span>
                       <p className="text-[12px] text-gray-500 font-normal italic">
-                        Outfit imagery archived for privacy policy compliance (older than 90 days). Metric data retained.
+                        Outfit imagery archived. Primary index metrics retained.
                       </p>
-                      <Link
-                        href={`/dashboard/history/${j.id}`}
-                        className="text-[12px] font-mono font-bold text-red-600 hover:text-red-700 inline-flex items-center space-x-1 pt-1"
-                      >
-                        <span>View Metric Summary</span>
-                        <ArrowRight className="w-3 h-3 ml-0.5" />
-                      </Link>
                     </div>
                   )}
+
+                  {/* Priority 3 Action Buttons Toolbar */}
+                  <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/journey/${j.id}`}
+                      className="h-8 px-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Open Plan Hub</span>
+                    </Link>
+
+                    <Link
+                      href="/journey/checklist"
+                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" />
+                      <span>Checklist</span>
+                    </Link>
+
+                    <Link
+                      href="/journey/compare-looks"
+                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
+                    >
+                      <ArrowLeftRight className="w-3.5 h-3.5" />
+                      <span>Compare Looks</span>
+                    </Link>
+
+                    <Link
+                      href="/journey/export"
+                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Export</span>
+                    </Link>
+
+                    <Link
+                      href="/journey/share"
+                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share</span>
+                    </Link>
+
+                    <div className="ml-auto flex items-center space-x-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleArchive(j.id)}
+                        className="h-8 px-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold text-[11.5px] rounded-[8px] border border-gray-200 flex items-center space-x-1"
+                        title="Archive/Unarchive"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(j.id)}
+                        className="h-8 px-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11.5px] rounded-[8px] border border-red-200 flex items-center space-x-1"
+                        title="Delete Journey"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="pt-4 flex justify-center">
-            <button
-              type="button"
-              className="h-10 px-6 bg-white hover:bg-gray-50 text-gray-700 font-bold text-[13px] rounded-[8px] border border-gray-300 transition-colors shadow-2xs"
-            >
-              Load Older Journeys
-            </button>
-          </div>
         </div>
       )}
 

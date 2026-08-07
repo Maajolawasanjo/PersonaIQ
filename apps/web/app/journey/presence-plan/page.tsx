@@ -2,7 +2,20 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Check, Save, FileText, Sparkles } from 'lucide-react';
+import { 
+  Check, 
+  Save, 
+  FileText, 
+  Sparkles, 
+  CheckSquare, 
+  Zap, 
+  HelpCircle, 
+  Share2, 
+  Shirt, 
+  Play, 
+  ArrowRight,
+  Download
+} from 'lucide-react';
 
 export default function BestPresencePlanPage() {
   const [checklist, setChecklist] = useState([
@@ -25,7 +38,7 @@ export default function BestPresencePlanPage() {
   const doneCount = checklist.filter((item) => item.done).length;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn py-2 bg-white p-6 sm:p-8 rounded-[24px] shadow-sm border border-gray-150">
+    <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn py-2 bg-white p-6 sm:p-8 rounded-[24px] shadow-sm border border-gray-150">
       
       {/* Top Header & Right Metrics Row */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start border-b border-gray-100 pb-6">
@@ -42,7 +55,7 @@ export default function BestPresencePlanPage() {
             Best Presence Plan™
           </h1>
           <p className="text-[14px] text-gray-600 font-medium">
-            Your optimal preparation strategy for today&apos;s executive review.
+            Your command center and optimal preparation strategy for today&apos;s executive review.
           </p>
         </div>
 
@@ -176,19 +189,132 @@ export default function BestPresencePlanPage() {
                 <Save className="w-4 h-4 text-white" />
                 <span>Save Presence Plan</span>
               </Link>
-              <button
-                type="button"
+              <Link
+                href="/journey/export"
                 className="w-full h-10 bg-white hover:bg-gray-50 text-gray-700 font-bold text-[12.5px] rounded-[10px] border border-gray-200 transition-colors flex items-center justify-center space-x-2"
               >
                 <FileText className="w-4 h-4 text-gray-500" />
                 <span>Export PDF</span>
-              </button>
+              </Link>
             </div>
 
           </div>
 
         </div>
 
+      </div>
+
+      {/* Command Center Quick Actions & Exploration Hub (Priority 1) */}
+      <div className="pt-6 border-t border-gray-150 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-[20px] font-bold text-gray-950 font-sans">
+              Quick Actions & Exploration Hub
+            </h3>
+            <p className="text-[13px] text-gray-500 font-normal">
+              Access every tool, diagnostic detail, and shareable asset for this Presence Plan.
+            </p>
+          </div>
+          <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-full">
+            7 ACTIONS AVAILABLE
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <Link
+            href="/journey/checklist"
+            className="p-4 bg-white border border-gray-200 hover:border-red-600/40 rounded-[16px] shadow-2xs hover:shadow-xs transition-all flex items-center space-x-3 group"
+          >
+            <div className="w-9 h-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <CheckSquare className="w-4.5 h-4.5 text-red-600" />
+            </div>
+            <div>
+              <span className="text-[13px] font-bold text-gray-950 block leading-tight">View Preparation Checklist</span>
+              <span className="text-[11px] text-gray-500 font-normal">Step-by-step tasks</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/journey/presence-boosts"
+            className="p-4 bg-white border border-gray-200 hover:border-gray-300 rounded-[16px] shadow-2xs hover:shadow-xs transition-all flex items-center space-x-3 group"
+          >
+            <div className="w-9 h-9 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Zap className="w-4.5 h-4.5 text-amber-600" />
+            </div>
+            <div>
+              <span className="text-[13px] font-bold text-gray-950 block leading-tight">Presence Boosters</span>
+              <span className="text-[11px] text-gray-500 font-normal">Quick micro-adjustments</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/journey/explanation"
+            className="p-4 bg-white border border-gray-200 hover:border-gray-300 rounded-[16px] shadow-2xs hover:shadow-xs transition-all flex items-center space-x-3 group"
+          >
+            <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <HelpCircle className="w-4.5 h-4.5 text-blue-600" />
+            </div>
+            <div>
+              <span className="text-[13px] font-bold text-gray-950 block leading-tight">AI Explanation</span>
+              <span className="text-[11px] text-gray-500 font-normal">Deep metric breakdown</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/journey/export"
+            className="p-4 bg-white border border-gray-200 hover:border-gray-300 rounded-[16px] shadow-2xs hover:shadow-xs transition-all flex items-center space-x-3 group"
+          >
+            <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Download className="w-4.5 h-4.5 text-emerald-600" />
+            </div>
+            <div>
+              <span className="text-[13px] font-bold text-gray-950 block leading-tight">Export PDF</span>
+              <span className="text-[11px] text-gray-500 font-normal">Download briefing document</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/journey/share"
+            className="p-4 bg-white border border-gray-200 hover:border-gray-300 rounded-[16px] shadow-2xs hover:shadow-xs transition-all flex items-center space-x-3 group"
+          >
+            <div className="w-9 h-9 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Share2 className="w-4.5 h-4.5 text-purple-600" />
+            </div>
+            <div>
+              <span className="text-[13px] font-bold text-gray-950 block leading-tight">Share Result</span>
+              <span className="text-[11px] text-gray-500 font-normal">Generate share link</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/wardrobe"
+            className="p-4 bg-white border border-gray-200 hover:border-gray-300 rounded-[16px] shadow-2xs hover:shadow-xs transition-all flex items-center space-x-3 group"
+          >
+            <div className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Shirt className="w-4.5 h-4.5 text-gray-700" />
+            </div>
+            <div>
+              <span className="text-[13px] font-bold text-gray-950 block leading-tight">Save to Wardrobe</span>
+              <span className="text-[11px] text-gray-500 font-normal">Add outfit to digital closet</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/journey/start"
+            className="p-4 bg-white border border-gray-200 hover:border-red-600/40 rounded-[16px] shadow-2xs hover:shadow-xs transition-all flex items-center space-x-3 group sm:col-span-2 lg:col-span-2"
+          >
+            <div className="w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Play className="w-4.5 h-4.5 text-white" />
+            </div>
+            <div className="flex-1 flex items-center justify-between">
+              <div>
+                <span className="text-[13.5px] font-bold text-gray-950 block leading-tight">Start Another Analysis</span>
+                <span className="text-[11.5px] text-gray-500 font-normal">Begin a new event context journey</span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+        </div>
       </div>
 
     </div>

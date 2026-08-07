@@ -29,12 +29,24 @@ class PresenceService:
                 status_code=404,
             )
 
+        from app.services.email_service import EmailService
+        email_service = EmailService()
+        user = journey.user
+        user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() if user else "there"
+        event_title = journey.event.name if journey.event and journey.event.name else journey.title or "Your Analysis"
+
         # 1. Fetch Uploaded Assets
         selfie = await self.upload_repo.get_selfie(journey_id)
         outfits = await self.upload_repo.get_outfits(journey_id)
 
         selfie_url = selfie.storage_url if selfie else "/media/uploads/default_selfie.jpg"
         outfit_urls = [o.storage_url for o in outfits] if outfits else ["/media/uploads/default_outfit.jpg"]
+
+        # Fire analysis-started AFTER assets confirmed — non-blocking
+        # Assets are fetched but AI hasn't started; this is the correct commit point
+        email_service.dispatch(
+            email_service.send_analysis_started_email(user.email, user_name, event_title)
+        )
 
         # 2. Invoke AI Providers via Gateway
         event_ctx = {
@@ -81,6 +93,18 @@ class PresenceService:
             recommendations_data=llm_result.recommendations,
             checklist_data=llm_result.checklist,
             correlation_id=correlation_id,
+        )
+
+        # Fire analysis-ready AFTER plan is persisted — non-blocking
+        dashboard_url = f"https://personaiq.com/dashboard/journeys/{journey_id}/plan"
+        email_service.dispatch(
+            email_service.send_analysis_ready_email(
+                user.email,
+                user_name,
+                event_title,
+                int(score_result.overall_presence_index),
+                dashboard_url,
+            )
         )
 
         return PresencePlanDTO.model_validate(plan)

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, Shield, Heart, Sparkles, X, Activity, Eye, Volume2, Shirt } from 'lucide-react';
+import { wardrobeApi } from '@/lib/api/services';
 
 const OUTFIT_CATEGORIES = ['All', 'Favorites', 'Formal', 'Business Casual', 'Keynote', 'Boardroom', 'Casual'];
 

@@ -27,6 +27,8 @@ export default function DashboardHomePage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const [resumeStep, setResumeStep] = useState<string>('/journey/capture-look');
+
   useEffect(() => {
     async function loadDashboard() {
       try {
@@ -34,9 +36,14 @@ export default function DashboardHomePage() {
         setOverview(data);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
-      } finally {
-        setIsLoading(false);
       }
+      if (typeof window !== 'undefined') {
+        const savedDraft = localStorage.getItem('personaiq_active_draft_step');
+        if (savedDraft) {
+          setResumeStep(savedDraft);
+        }
+      }
+      setIsLoading(false);
     }
     loadDashboard();
   }, []);
@@ -197,45 +204,65 @@ export default function DashboardHomePage() {
 
             {/* Right Column: Quick Actions + Recent Activity */}
             <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <Link
                   href="/journey/start"
-                  className="bg-white border border-gray-200 rounded-[16px] p-4 text-center space-y-2.5 hover:border-red-600/40 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[105px] group"
+                  className="bg-white border border-gray-200 rounded-[16px] p-3.5 text-center space-y-2 hover:border-red-600/40 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[98px] group"
                 >
-                  <div className="w-9 h-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
                     <Play className="w-4 h-4 text-red-600" />
                   </div>
-                  <span className="text-[13px] font-bold text-gray-950 block leading-tight">Start New Journey</span>
+                  <span className="text-[12.5px] font-bold text-gray-950 block leading-tight">Start New</span>
                 </Link>
 
                 <Link
-                  href="/journey/start"
-                  className="bg-white border border-gray-200 rounded-[16px] p-4 text-center space-y-2.5 hover:border-gray-300 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[105px] group"
+                  href={resumeStep}
+                  className="bg-white border border-gray-200 rounded-[16px] p-3.5 text-center space-y-2 hover:border-gray-300 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[98px] group"
                 >
-                  <div className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
                     <Activity className="w-4 h-4 text-gray-750" />
                   </div>
-                  <span className="text-[13px] font-bold text-gray-950 block leading-tight">Resume Journey</span>
+                  <span className="text-[12.5px] font-bold text-gray-950 block leading-tight">Resume Draft</span>
                 </Link>
 
                 <Link
                   href="/dashboard/history"
-                  className="bg-white border border-gray-200 rounded-[16px] p-4 text-center space-y-2.5 hover:border-gray-300 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[105px] group"
+                  className="bg-white border border-gray-200 rounded-[16px] p-3.5 text-center space-y-2 hover:border-gray-300 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[98px] group"
                 >
-                  <div className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
                     <History className="w-4 h-4 text-gray-750" />
                   </div>
-                  <span className="text-[13px] font-bold text-gray-950 block leading-tight">History</span>
+                  <span className="text-[12.5px] font-bold text-gray-950 block leading-tight">History</span>
+                </Link>
+
+                <Link
+                  href="/dashboard/plans"
+                  className="bg-white border border-gray-200 rounded-[16px] p-3.5 text-center space-y-2 hover:border-gray-300 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[98px] group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                    <FileText className="w-4 h-4 text-gray-750" />
+                  </div>
+                  <span className="text-[12.5px] font-bold text-gray-950 block leading-tight">Plans</span>
+                </Link>
+
+                <Link
+                  href="/dashboard/progress"
+                  className="bg-white border border-gray-200 rounded-[16px] p-3.5 text-center space-y-2 hover:border-gray-300 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[98px] group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                    <TrendingUp className="w-4 h-4 text-gray-750" />
+                  </div>
+                  <span className="text-[12.5px] font-bold text-gray-950 block leading-tight">Progress</span>
                 </Link>
 
                 <Link
                   href="/dashboard/presence-dna"
-                  className="bg-white border border-gray-200 rounded-[16px] p-4 text-center space-y-2.5 hover:border-gray-300 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[105px] group"
+                  className="bg-white border border-gray-200 rounded-[16px] p-3.5 text-center space-y-2 hover:border-gray-300 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[98px] group"
                 >
-                  <div className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
                     <Dna className="w-4 h-4 text-gray-750" />
                   </div>
-                  <span className="text-[13px] font-bold text-gray-950 block leading-tight">PresenceDNA</span>
+                  <span className="text-[12.5px] font-bold text-gray-950 block leading-tight">PresenceDNA</span>
                 </Link>
               </div>
 

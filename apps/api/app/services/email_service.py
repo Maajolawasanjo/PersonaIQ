@@ -75,6 +75,34 @@ class EmailService:
 
         return await asyncio.to_thread(self._send_sync, to_email, subject, html_content)
 
+    def dispatch(self, coro) -> None:
+        """Fire-and-forget: schedules an email coroutine as a background asyncio task.
+
+        Email delivery failures are caught and logged. They never propagate to the
+        caller or roll back any database transaction. Use this for all non-critical
+        notification emails (welcome, login-alert, analysis-ready, etc.).
+
+        Usage:
+            email_service.dispatch(
+                email_service.send_welcome_email(user.email, user_name)
+            )
+        """
+        async def _run():
+            try:
+                await coro
+            except Exception as e:
+                logger.error(f"[EmailService.dispatch] Background email task failed: {e}", exc_info=True)
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.ensure_future(_run())
+            else:
+                loop.run_until_complete(_run())
+        except RuntimeError:
+            # No event loop in current thread — log and skip gracefully
+            logger.warning("[EmailService.dispatch] No running event loop. Email skipped.")
+
     # 1. Welcome Email
     async def send_welcome_email(self, to_email: str, user_name: str) -> bool:
         subject = "Welcome to PersonaIQ | Executive Presence Engine"
@@ -124,7 +152,16 @@ class EmailService:
 
     # Alias to keep compatibility with existing code
     async def send_2fa_code_email(self, to_email: str, code: str) -> bool:
-        return await self.send_email_verification_email(to_email, code)
+        return await self.send_two_factor_code_email(to_email, code)
+
+    # 2b. Two-Factor Authentication Code (dedicated template)
+    async def send_two_factor_code_email(self, to_email: str, code: str) -> bool:
+        subject = f"PersonaIQ Sign-In Code: {code}"
+        support_url = "https://personaiq.com/support"
+        fallback_html = f"<p>Your PersonaIQ 2FA code is <strong>{code}</strong>. It expires in 10 minutes. Do not share it.</p>"
+        context = {"code": code, "support_url": support_url}
+        html = self._load_template("two-factor-code.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
 
     # 3. Verify New Email Address
     async def send_verify_new_email(self, to_email: str, code: str, new_email: str) -> bool:
@@ -502,4 +539,184 @@ class EmailService:
             "message_summary": message_summary
         }
         html = self._load_template("support-confirmation.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 16. Account Deleted
+    async def send_account_deleted_email(self, to_email: str, user_name: str, support_url: str) -> bool:
+        subject = "Your PersonaIQ Account Has Been Deleted"
+        fallback_html = f"<p>Hello {user_name}, your account has been permanently deleted. Contact support if this was a mistake.</p>"
+        context = {"user_name": user_name, "support_url": support_url}
+        html = self._load_template("account-deleted.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 17. Subscription Upgraded
+    async def send_subscription_upgraded_email(
+        self, to_email: str, user_name: str, old_plan: str, new_plan: str,
+        billing_cycle: str, amount: str, next_renewal_date: str, dashboard_url: str
+    ) -> bool:
+        subject = f"You've Upgraded to {new_plan} — PersonaIQ"
+        fallback_html = f"<p>Hello {user_name}, your plan has been upgraded from {old_plan} to {new_plan}.</p>"
+        context = {
+            "user_name": user_name,
+            "old_plan": old_plan,
+            "new_plan": new_plan,
+            "billing_cycle": billing_cycle,
+            "amount": amount,
+            "next_renewal_date": next_renewal_date,
+            "dashboard_url": dashboard_url,
+        }
+        html = self._load_template("subscription-upgraded.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 18. Subscription Downgraded
+    async def send_subscription_downgraded_email(
+        self, to_email: str, user_name: str, old_plan: str, new_plan: str,
+        effective_date: str, amount: str, billing_cycle: str, upgrade_url: str
+    ) -> bool:
+        subject = f"Your PersonaIQ Plan Has Been Changed to {new_plan}"
+        fallback_html = f"<p>Hello {user_name}, your plan has been downgraded from {old_plan} to {new_plan}, effective {effective_date}.</p>"
+        context = {
+            "user_name": user_name,
+            "old_plan": old_plan,
+            "new_plan": new_plan,
+            "effective_date": effective_date,
+            "amount": amount,
+            "billing_cycle": billing_cycle,
+            "upgrade_url": upgrade_url,
+        }
+        html = self._load_template("subscription-downgraded.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 19. Trial Started
+    async def send_trial_started_email(
+        self, to_email: str, user_name: str, plan_name: str, trial_days: int,
+        trial_end_date: str, dashboard_url: str
+    ) -> bool:
+        subject = f"Your {trial_days}-Day Free Trial of PersonaIQ Has Started"
+        fallback_html = f"<p>Hello {user_name}, your {trial_days}-day trial of {plan_name} is now active. It ends on {trial_end_date}.</p>"
+        context = {
+            "user_name": user_name,
+            "plan_name": plan_name,
+            "trial_days": trial_days,
+            "trial_end_date": trial_end_date,
+            "dashboard_url": dashboard_url,
+        }
+        html = self._load_template("trial-started.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 20. Invoice Upcoming
+    async def send_invoice_upcoming_email(
+        self, to_email: str, user_name: str, plan_name: str, amount: str,
+        charge_date: str, payment_method: str, billing_url: str
+    ) -> bool:
+        subject = f"Upcoming Invoice: {amount} on {charge_date} — PersonaIQ"
+        fallback_html = f"<p>Hello {user_name}, your next invoice of {amount} for {plan_name} will be charged on {charge_date}.</p>"
+        context = {
+            "user_name": user_name,
+            "plan_name": plan_name,
+            "amount": amount,
+            "charge_date": charge_date,
+            "payment_method": payment_method,
+            "billing_url": billing_url,
+        }
+        html = self._load_template("invoice-upcoming.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 21. Payment Method Updated
+    async def send_payment_method_updated_email(
+        self, to_email: str, user_name: str, card_brand: str,
+        card_last4: str, updated_at: str, support_url: str
+    ) -> bool:
+        subject = "Payment Method Updated — PersonaIQ"
+        fallback_html = f"<p>Hello {user_name}, your payment method has been updated to {card_brand} ending in {card_last4}.</p>"
+        context = {
+            "user_name": user_name,
+            "card_brand": card_brand,
+            "card_last4": card_last4,
+            "updated_at": updated_at,
+            "support_url": support_url,
+        }
+        html = self._load_template("payment-method-updated.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 22. Data Export Ready
+    async def send_data_export_ready_email(
+        self, to_email: str, user_name: str, requested_at: str,
+        expires_at: str, download_url: str
+    ) -> bool:
+        subject = "Your PersonaIQ Data Export Is Ready"
+        fallback_html = f"<p>Hello {user_name}, your data export is ready. Download it before {expires_at}.</p>"
+        context = {
+            "user_name": user_name,
+            "requested_at": requested_at,
+            "expires_at": expires_at,
+            "download_url": download_url,
+        }
+        html = self._load_template("data-export-ready.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 23. Reactivation (Win-back)
+    async def send_reactivation_email(self, to_email: str, user_name: str, reactivate_url: str) -> bool:
+        subject = "We Miss You — Come Back to PersonaIQ"
+        fallback_html = f"<p>Hello {user_name}, we'd love to have you back. Reactivate your account here: {reactivate_url}</p>"
+        context = {"user_name": user_name, "reactivate_url": reactivate_url}
+        html = self._load_template("reactivation.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 24. Inactivity Nudge
+    async def send_inactivity_nudge_email(
+        self, to_email: str, user_name: str, days_inactive: int,
+        last_analysis_name: str, pending_journeys: int,
+        dashboard_url: str, unsubscribe_url: str
+    ) -> bool:
+        subject = f"It's Been {days_inactive} Days — Your PersonaIQ Journey Awaits"
+        fallback_html = f"<p>Hello {user_name}, you haven't visited PersonaIQ in {days_inactive} days. Come back and continue!</p>"
+        context = {
+            "user_name": user_name,
+            "days_inactive": days_inactive,
+            "last_analysis_name": last_analysis_name,
+            "pending_journeys": pending_journeys,
+            "dashboard_url": dashboard_url,
+            "unsubscribe_url": unsubscribe_url,
+        }
+        html = self._load_template("inactivity-nudge.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 25. Referral Invite
+    async def send_referral_invite_email(
+        self, to_email: str, referrer_name: str, referral_code: str,
+        referral_reward: str, referral_url: str
+    ) -> bool:
+        subject = f"{referrer_name} Invited You to PersonaIQ"
+        fallback_html = f"<p>{referrer_name} has invited you to PersonaIQ. Use code {referral_code} for {referral_reward} off.</p>"
+        context = {
+            "referrer_name": referrer_name,
+            "referral_code": referral_code,
+            "referral_reward": referral_reward,
+            "referral_url": referral_url,
+        }
+        html = self._load_template("referral-invite.html", context, fallback_html)
+        return await self.send_email(to_email, subject, html)
+
+    # 26. Feedback Request
+    async def send_feedback_request_email(
+        self, to_email: str, user_name: str, analysis_name: str,
+        rating_url_1: str, rating_url_2: str, rating_url_3: str,
+        rating_url_4: str, rating_url_5: str,
+        feedback_url: str, unsubscribe_url: str
+    ) -> bool:
+        subject = f"How Was Your PersonaIQ Analysis? — {analysis_name}"
+        fallback_html = f"<p>Hello {user_name}, we'd love your feedback on your {analysis_name} analysis.</p>"
+        context = {
+            "user_name": user_name,
+            "analysis_name": analysis_name,
+            "rating_url_1": rating_url_1,
+            "rating_url_2": rating_url_2,
+            "rating_url_3": rating_url_3,
+            "rating_url_4": rating_url_4,
+            "rating_url_5": rating_url_5,
+            "feedback_url": feedback_url,
+            "unsubscribe_url": unsubscribe_url,
+        }
+        html = self._load_template("feedback-request.html", context, fallback_html)
         return await self.send_email(to_email, subject, html)

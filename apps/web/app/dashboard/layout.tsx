@@ -61,22 +61,37 @@ const IconSearch = () => (
   </svg>
 );
 
-// ─── 7 Primary Nav Items ──────────────────────────────────────────────────────
+const IconPlans = () => (
+  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+  </svg>
+);
+const IconProgress = () => (
+  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+  </svg>
+);
+
+// ─── Primary Nav Items ──────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { label: 'Dashboard',    href: '/dashboard',              icon: <IconDashboard /> },
   { label: 'New Analysis', href: '/journey/start',          icon: <IconAnalysis /> },
   { label: 'History',      href: '/dashboard/history',      icon: <IconHistory /> },
+  { label: 'Plans',        href: '/dashboard/plans',        icon: <IconPlans /> },
+  { label: 'Progress',     href: '/dashboard/progress',     icon: <IconProgress /> },
   { label: 'Wardrobe',     href: '/wardrobe',               icon: <IconWardrobe /> },
   { label: 'Insights',     href: '/dashboard/presence-dna', icon: <IconInsights /> },
   { label: 'Profile',      href: '/dashboard/profile',      icon: <IconProfile /> },
   { label: 'Settings',     href: '/dashboard/settings',     icon: <IconSettings /> },
 ];
 
-// ─── Mobile bottom nav (same 7, compact labels) ───────────────────────────────
+// ─── Mobile bottom nav ────────────────────────────────────────────────────────
 const MOBILE_NAV = [
   { label: 'Home',     href: '/dashboard',              icon: <IconDashboard /> },
   { label: 'Analysis', href: '/journey/start',          icon: <IconAnalysis /> },
   { label: 'History',  href: '/dashboard/history',      icon: <IconHistory /> },
+  { label: 'Plans',    href: '/dashboard/plans',        icon: <IconPlans /> },
+  { label: 'Progress', href: '/dashboard/progress',     icon: <IconProgress /> },
   { label: 'Wardrobe', href: '/wardrobe',               icon: <IconWardrobe /> },
   { label: 'Insights', href: '/dashboard/presence-dna', icon: <IconInsights /> },
   { label: 'Profile',  href: '/dashboard/profile',      icon: <IconProfile /> },

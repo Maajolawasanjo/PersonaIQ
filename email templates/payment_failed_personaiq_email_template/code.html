@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Payment Failed - PersonaIQ</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface": "#251818",
+                      "surface-container-highest": "#f5dddb",
+                      "on-primary-container": "#ff7574",
+                      "tertiary-fixed-dim": "#a2c9ff",
+                      "outline-variant": "#e0bfbd",
+                      "on-secondary-fixed": "#131d24",
+                      "on-secondary": "#ffffff",
+                      "on-secondary-fixed-variant": "#3e4850",
+                      "on-tertiary-fixed-variant": "#1b4877",
+                      "surface-container-lowest": "#ffffff",
+                      "inverse-primary": "#ffb3b0",
+                      "error": "#ba1a1a",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-container": "#7ba2d7",
+                      "background": "#fff8f7",
+                      "primary-fixed": "#ffdad8",
+                      "tertiary-fixed": "#d3e4ff",
+                      "surface-container-low": "#fff0ef",
+                      "primary-container": "#750013",
+                      "secondary-fixed-dim": "#bec8d1",
+                      "inverse-surface": "#3b2d2c",
+                      "surface-tint": "#ad3035",
+                      "on-surface-variant": "#584140",
+                      "secondary-fixed": "#dae4ed",
+                      "on-tertiary-fixed": "#001c38",
+                      "surface-dim": "#ecd5d3",
+                      "surface-container": "#ffe9e7",
+                      "on-background": "#251818",
+                      "surface-container-high": "#fbe3e1",
+                      "error-container": "#ffdad6",
+                      "on-error-container": "#93000a",
+                      "on-secondary-container": "#5a646c",
+                      "primary": "#4d0009",
+                      "tertiary": "#002242",
+                      "surface-bright": "#fff8f7",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-container": "#003866",
+                      "secondary-container": "#d7e1eb",
+                      "surface": "#fff8f7",
+                      "on-primary-fixed": "#410006",
+                      "inverse-on-surface": "#ffedeb",
+                      "on-error": "#ffffff",
+                      "on-primary-fixed-variant": "#8c1621",
+                      "surface-variant": "#f5dddb",
+                      "outline": "#8c716f",
+                      "primary-fixed-dim": "#ffb3b0",
+                      "secondary": "#566068"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-lg": "32px",
+                      "container-max": "600px",
+                      "stack-md": "16px",
+                      "stack-sm": "8px",
+                      "gutter": "12px",
+                      "edge-margin": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Geist"
+                      ],
+                      "body-md": [
+                              "Geist"
+                      ],
+                      "headline-md": [
+                              "Geist"
+                      ],
+                      "label-caps": [
+                              "Geist"
+                      ],
+                      "headline-lg": [
+                              "Geist"
+                      ],
+                      "body-sm": [
+                              "Geist"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #F9F9F9;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #F9F9F9;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<div class="email-container pt-stack-lg pb-stack-lg px-edge-margin">
+<!-- Header -->
+<header class="flex justify-center items-center py-stack-lg w-full max-w-container-max mx-auto px-edge-margin bg-surface dark:bg-surface">
+<div class="font-headline-lg text-headline-lg font-bold text-primary dark:text-primary-fixed">
+                PersonaIQ
+            </div>
+</header>
+<!-- Main Content (Alert Card) -->
+<main class="mt-stack-lg">
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant/20 shadow-sm overflow-hidden">
+<!-- Alert Accent Bar -->
+<div class="w-full h-1" style="background-color: #FF1323;"></div>
+<div class="p-edge-margin sm:p-stack-lg relative">
+<!-- Alert Background Tint -->
+<div aria-hidden="true" class="absolute inset-0 bg-error/5 pointer-events-none"></div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<span aria-hidden="true" class="material-symbols-outlined text-error text-4xl mb-stack-md">error</span>
+<h1 class="font-headline-md text-headline-md text-on-surface mb-stack-md">
+                            Action Required: Payment Failed
+                        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg max-w-md mx-auto">
+                            We were unable to process your recent subscription payment. To maintain uninterrupted access to your Presence Journey history and Premium Insights, please update your billing information.
+                        </p>
+<!-- Primary CTA -->
+<a class="inline-flex items-center justify-center px-6 py-3 rounded bg-primary text-on-primary font-label-caps text-label-caps uppercase hover:opacity-90 transition-opacity w-full sm:w-auto shadow-[0_4px_14px_rgba(77,0,9,0.1)] mb-stack-md" href="#">
+                            Update Billing
+                        </a>
+<!-- Secondary Link -->
+<a class="font-body-sm text-body-sm text-secondary hover:text-primary transition-colors underline" href="#">
+                            Contact Support
+                        </a>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="flex flex-col items-center space-y-stack-md w-full max-w-container-max mx-auto px-edge-margin mt-stack-lg pb-stack-lg border-t border-outline-variant pt-stack-lg bg-surface dark:bg-surface">
+<div class="font-label-caps text-label-caps text-secondary dark:text-secondary-fixed mb-stack-sm">
+                PersonaIQ
+            </div>
+<div class="flex flex-wrap justify-center gap-gutter">
+<a class="font-body-sm text-body-sm dark:text-body-sm text-secondary dark:text-secondary-fixed underline hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Unsubscribe</a>
+<a class="font-body-sm text-body-sm dark:text-body-sm text-secondary dark:text-secondary-fixed underline hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Support</a>
+<a class="font-body-sm text-body-sm dark:text-body-sm text-secondary dark:text-secondary-fixed underline hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-sm text-body-sm dark:text-body-sm text-secondary dark:text-secondary-fixed underline hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Terms of Service</a>
+</div>
+<p class="font-body-sm text-body-sm dark:text-body-sm text-secondary dark:text-secondary-fixed mt-stack-md">
+                © 2024 PersonaIQ. All rights reserved.
+            </p>
+</footer>
+</div>
+</body></html>

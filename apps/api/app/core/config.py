@@ -66,5 +66,11 @@ class Settings(BaseSettings):
     EMAILS_FROM_EMAIL: str = ""
     EMAILS_FROM_NAME: str = "PersonaIQ Executive"
 
+    # Email: Dev/Test settings
+    # Set this to your own inbox to receive real test emails via POST /auth/test-email
+    EMAIL_TEST_RECIPIENT: str = ""
+    # Used in account-deleted and two-factor-code templates
+    EMAIL_SUPPORT_URL: str = "https://personaiq.com/support"
+
 
 settings = Settings()

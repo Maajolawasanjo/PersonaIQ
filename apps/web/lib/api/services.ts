@@ -118,3 +118,39 @@ export const dashboardApi = {
   getOverview: (): Promise<DashboardOverview> =>
     apiClient.get<DashboardOverview>('/dashboard'),
 };
+
+export const wardrobeApi = {
+  listItems: (category?: string): Promise<any> =>
+    apiClient.get<any>(`/wardrobe${category ? `?category=${category}` : ''}`),
+  createItem: (data: { name: string; category: string; color?: string; formality?: string }): Promise<any> =>
+    apiClient.post<any>('/wardrobe', data),
+};
+
+export const plansApi = {
+  listPlans: (): Promise<any> => apiClient.get<any>('/plans'),
+  getChecklist: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/checklist`),
+  getBoosters: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/boosts`),
+  getExplanation: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/explanation`),
+};
+
+export const exportApi = {
+  exportPdf: (journeyId: string): Promise<any> => apiClient.post<any>('/export/pdf', { journey_id: journeyId, format: 'pdf' }),
+  exportEmail: (journeyId: string): Promise<any> => apiClient.post<any>('/export/email', { journey_id: journeyId, format: 'email' }),
+};
+
+export const shareApi = {
+  createShareToken: (journeyId: string, isPublic = true): Promise<any> =>
+    apiClient.post<any>('/share', { journey_id: journeyId, is_public: isPublic }),
+  getSharedJourney: (token: string): Promise<any> => apiClient.get<any>(`/share/${token}`),
+};
+
+export const presenceDnaApi = {
+  getDna: (): Promise<any> => apiClient.get<any>('/presence-dna'),
+  createGoal: (data: { title: string; target_metric: string; target_value: number; deadline?: string }): Promise<any> =>
+    apiClient.post<any>('/presence-dna/goals', data),
+};
+
+export const compareApi = {
+  compareJourneys: (journeyIds: string[]): Promise<any> =>
+    apiClient.post<any>('/compare', { journey_ids: journeyIds }),
+};

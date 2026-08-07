@@ -4,6 +4,9 @@ from app.models.journey import Journey, Event, JourneyEventLog
 from app.models.upload import SelfieUpload, OutfitUpload
 from app.models.analysis import SkinAnalysis, OutfitComparison
 from app.models.presence import PresencePlan, Recommendation, PreparationChecklist
+from app.models.wardrobe import WardrobeItem, WardrobeOutfit
+from app.models.presence_dna import PresenceDNA, PresenceGoal
+from app.models.share import SharedJourneyToken
 
 __all__ = [
     "BaseModel",
@@ -21,4 +24,9 @@ __all__ = [
     "PresencePlan",
     "Recommendation",
     "PreparationChecklist",
+    "WardrobeItem",
+    "WardrobeOutfit",
+    "PresenceDNA",
+    "PresenceGoal",
+    "SharedJourneyToken",
 ]
