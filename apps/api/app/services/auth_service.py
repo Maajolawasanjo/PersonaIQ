@@ -43,10 +43,10 @@ class AuthService:
         )
 
         # Generate and save OTP for verification
-        import random
+        import secrets
         from app.services.email_service import EmailService
 
-        otp = f"{random.randint(100000, 999999)}"
+        otp = f"{secrets.randbelow(900000) + 100000}"
         user.otp_code = otp
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.flush()
@@ -126,10 +126,10 @@ class AuthService:
                 status_code=404,
             )
 
-        import random
+        import secrets
         from app.services.email_service import EmailService
 
-        otp = f"{random.randint(100000, 999999)}"
+        otp = f"{secrets.randbelow(900000) + 100000}"
         user.otp_code = otp
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.flush()
@@ -236,10 +236,10 @@ class AuthService:
         # If user has 2FA enabled, we would send a code here and NOT return tokens yet.
         # But for MVP we automatically sign in. Let's make sure they receive a login alert though!
         # Generate 2FA code and send verification email
-        import random
+        import secrets
         from app.services.email_service import EmailService
 
-        otp = f"{random.randint(100000, 999999)}"
+        otp = f"{secrets.randbelow(900000) + 100000}"
         user.otp_code = otp
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.flush()

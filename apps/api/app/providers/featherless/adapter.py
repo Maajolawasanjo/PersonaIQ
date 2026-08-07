@@ -26,12 +26,37 @@ class FeatherlessAdapter:
         """Performs provider health check."""
         return self._is_initialized
 
+    def _sanitize_input(self, text: str) -> str:
+        """Sanitizes user input strings to prevent AI prompt injection / jailbreak attacks."""
+        if not text:
+            return ""
+        # Remove known prompt injection directives
+        bad_patterns = [
+            "ignore previous instructions",
+            "system prompt",
+            "you are now",
+            "developer mode",
+            "override instructions",
+        ]
+        sanitized = text
+        for pattern in bad_patterns:
+            if pattern in sanitized.lower():
+                import re
+                sanitized = re.sub(re.escape(pattern), "[REDACTED]", sanitized, flags=re.IGNORECASE)
+        return sanitized
+
     async def execute(self, action: str, **kwargs: Any) -> Any:
         """Executes Featherless AI recommendations task."""
         if action == "generate_recommendations":
             event_context = kwargs.get("event_context", {})
             presence_score = kwargs.get("presence_score", 85)
             skin_metrics = kwargs.get("skin_metrics", {})
+
+            # Sanitize event context values to prevent prompt injection
+            clean_context = {
+                k: self._sanitize_input(str(v)) if isinstance(v, str) else v
+                for k, v in event_context.items()
+            }
 
             system_prompt = (
                 "You are the PersonaIQ Executive Presence AI Engine. "
@@ -42,7 +67,7 @@ class FeatherlessAdapter:
                 "}"
             )
             user_prompt = (
-                f"Event Context: {json.dumps(event_context)}\n"
+                f"Event Context: {json.dumps(clean_context)}\n"
                 f"Presence Index Score: {presence_score}/100\n"
                 f"Skin Metrics: {json.dumps(skin_metrics)}\n"
                 "Generate 3 customized recommendations and 3 checklist items."

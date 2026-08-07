@@ -1,10 +1,14 @@
+import logging
 import os
+import tempfile
 import uuid
 from pathlib import Path
 from fastapi import UploadFile
 import httpx
 from app.core.config import settings
 from app.core.errors import AppException, ErrorCode
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -16,7 +20,9 @@ WEBP_MAGIC = b"RIFF"
 
 
 class StorageService:
-    def __init__(self, upload_dir: str = "/tmp/personaiq_uploads"):
+    def __init__(self, upload_dir: str | None = None):
+        if not upload_dir:
+            upload_dir = os.path.join(tempfile.gettempdir(), "personaiq_uploads")
         self.upload_dir = Path(upload_dir)
         self.upload_dir.mkdir(parents=True, exist_ok=True)
         self.supabase_url = settings.SUPABASE_URL
@@ -77,8 +83,8 @@ class StorageService:
                     if res.status_code in (200, 201):
                         public_url = f"{self.supabase_url}/storage/v1/object/public/personaiq-uploads/{storage_path}"
                         return public_url, file_size, mime_type
-            except Exception:
-                pass  # Fallback to local storage on network/permission error or test environment
+            except Exception as exc:
+                logger.warning(f"[StorageService] Supabase upload failed, using local storage fallback: {exc}")
 
         # 5. Local Storage Fallback
         dest_dir = self.upload_dir / folder / str(user_id)

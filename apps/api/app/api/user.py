@@ -104,7 +104,7 @@ async def request_email_change(
     db: AsyncSession = Depends(get_db),
 ):
     """Generates a 6-digit OTP and sends verify-new-email.html to the new address."""
-    import random
+    import secrets
     from datetime import timedelta, timezone
     from app.core.errors import AppException, ErrorCode
     from app.repositories.user_repository import UserRepository
@@ -121,7 +121,7 @@ async def request_email_change(
             status_code=400,
         )
 
-    otp = f"{random.randint(100000, 999999)}"
+    otp = f"{secrets.randbelow(900000) + 100000}"
     current_user.pending_email = str(request_data.new_email)
     current_user.otp_code = otp
     current_user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)

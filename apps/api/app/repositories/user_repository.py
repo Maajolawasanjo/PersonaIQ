@@ -68,3 +68,17 @@ class UserRepository(BaseRepository[User]):
         user.failed_login_attempts = 0
         user.locked_until = None
         await self.db.flush()
+
+    async def hard_delete_user_data(self, user_id: UUID) -> None:
+        """Completely purges all data associated with a user for privacy & GDPR compliance."""
+        from sqlalchemy import delete as sql_delete
+        from app.models.user import RefreshToken, UserPreference
+
+        # Delete Refresh Tokens
+        await self.db.execute(sql_delete(RefreshToken).where(RefreshToken.user_id == user_id))
+        # Delete User Preferences
+        await self.db.execute(sql_delete(UserPreference).where(UserPreference.user_id == user_id))
+        # Delete User Record
+        await self.db.execute(sql_delete(User).where(User.id == user_id))
+        await self.db.flush()
+
