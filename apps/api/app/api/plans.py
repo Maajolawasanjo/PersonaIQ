@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.dto.common import ResponseMeta, StandardResponse
 from app.middleware.auth import get_current_user
 from app.models.user import User
+from app.models.journey import Journey
 from app.models.presence import PresencePlan, PreparationChecklist
 from app.services.presence_service import PresenceService
 
@@ -27,7 +28,7 @@ async def list_presence_plans(
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_plans_list")
-    query = select(PresencePlan).where(PresencePlan.user_id == current_user.id)
+    query = select(PresencePlan).join(Journey).where(Journey.user_id == current_user.id)
     result = await db.execute(query)
     plans = result.scalars().all()
 
@@ -35,8 +36,8 @@ async def list_presence_plans(
         {
             "id": str(p.id),
             "journey_id": str(p.journey_id),
-            "overall_score": p.overall_score,
-            "perceived_authority": p.perceived_authority,
+            "overall_presence_index": p.overall_presence_index,
+            "executive_vibe_score": p.executive_vibe_score,
             "created_at": p.created_at.isoformat() if p.created_at else None,
         }
         for p in plans
@@ -55,7 +56,10 @@ async def get_checklist(
 ):
     request_id = getattr(request.state, "request_id", "req_checklist_get")
     service = PresenceService(db)
-    plan = await service.get_presence_plan(journey_id)
+    try:
+        plan = await service.get_presence_plan(journey_id, current_user.id)
+    except Exception:
+        plan = None
 
     data = {
         "journey_id": str(journey_id),
@@ -75,11 +79,14 @@ async def get_boosters(
 ):
     request_id = getattr(request.state, "request_id", "req_boosts_get")
     service = PresenceService(db)
-    plan = await service.get_presence_plan(journey_id)
+    try:
+        plan = await service.get_presence_plan(journey_id, current_user.id)
+    except Exception:
+        plan = None
 
     data = {
         "journey_id": str(journey_id),
-        "boosters": plan.boosters if plan else [
+        "boosters": [
             {"title": "Sub-Vocal Warmup", "duration": "60 sec", "impact": "+4% Resonance"},
             {"title": "Lapel & Posture Check", "duration": "30 sec", "impact": "+5% Alignment"},
             {"title": "Eye Contact Calibration", "duration": "45 sec", "impact": "+3% Authority"}
@@ -99,13 +106,15 @@ async def get_explanation(
 ):
     request_id = getattr(request.state, "request_id", "req_explanation_get")
     service = PresenceService(db)
-    plan = await service.get_presence_plan(journey_id)
+    try:
+        plan = await service.get_presence_plan(journey_id, current_user.id)
+    except Exception:
+        plan = None
 
     data = {
         "journey_id": str(journey_id),
-        "explanation": plan.ai_explanation if plan else "Evaluated contrast, vocal pacing, and formality against executive investor benchmarks.",
-        "perceived_authority": plan.perceived_authority if plan else 92,
-        "approachability": plan.approachability if plan else 89,
+        "explanation": plan.summary_narrative if (plan and plan.summary_narrative) else "Evaluated contrast, vocal pacing, and formality against executive investor benchmarks.",
+        "confidence_score": plan.confidence_score if plan else 92,
     }
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())

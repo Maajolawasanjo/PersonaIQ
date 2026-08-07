@@ -55,3 +55,19 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     ) as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def auth_headers(client: AsyncClient) -> dict:
+    signup_res = await client.post(
+        "/api/v1/auth/sign-up",
+        json={
+            "email": "testuser@personaiq.com",
+            "password": "Password123!",
+            "first_name": "Test",
+            "last_name": "User"
+        }
+    )
+    data = signup_res.json()
+    token = data["data"]["access_token"]
+    return {"Authorization": f"Bearer {token}"}

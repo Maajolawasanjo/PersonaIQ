@@ -14,7 +14,7 @@ from app.dto.auth import (
     ResetPasswordRequest
 )
 from app.dto.common import ResponseMeta, StandardResponse
-from app.dto.user import UserDTO
+from app.dto.user import UserDTO, UpdateProfileRequest
 from app.middleware.auth import get_current_user
 from app.middleware.rate_limiter import RateLimiter
 from app.models.user import User
@@ -244,6 +244,32 @@ async def get_me(
         data=UserDTO.model_validate(current_user),
         meta=meta,
     )
+
+
+@router.patch(
+    "/profile",
+    response_model=StandardResponse[UserDTO],
+    status_code=status.HTTP_200_OK,
+    summary="Update Authenticated User Profile",
+)
+async def update_profile(
+    request_data: UpdateProfileRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "req_update_profile")
+    service = AuthService(db)
+    user_dto = await service.update_profile(current_user.id, request_data)
+
+    meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
+    return StandardResponse(
+        success=True,
+        message="User profile updated successfully.",
+        data=user_dto,
+        meta=meta,
+    )
+
 
 
 @router.post(

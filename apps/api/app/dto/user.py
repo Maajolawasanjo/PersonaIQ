@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class UserPreferenceDTO(BaseModel):
@@ -28,6 +28,17 @@ class UserDTO(BaseModel):
     onboarding_completed: bool = False
     created_at: datetime
     preference: Optional[UserPreferenceDTO] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def prevent_async_lazy_load(cls, data: Any) -> Any:
+        if hasattr(data, "__dict__"):
+            # If ORM instance dictionary does not contain loaded 'preference', omit it
+            if "preference" not in data.__dict__:
+                dict_copy = {k: v for k, v in data.__dict__.items() if not k.startswith("_")}
+                dict_copy["preference"] = None
+                return dict_copy
+        return data
 
 
 class UpdateProfileRequest(BaseModel):
