@@ -60,9 +60,7 @@ class YouCamAdapter:
             # Fallback if raw_response is already SkinAnalysisResult
             if isinstance(raw_response, SkinAnalysisResult):
                 return raw_response
-            return YouCamDataMapper.to_skin_analysis_dto(
-                YouCamTaskStatusResponse(task_id="mock", task_status="success")
-            )
+            raise ValueError("Invalid raw_response format for skin_analysis normalization.")
         elif action == "vto_compare":
             outfit_urls = raw_response.get("outfit_urls", [])
             event_context = raw_response.get("event_context", {})

@@ -87,7 +87,15 @@ def upgrade() -> None:
         view_count INTEGER DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
-    """)
+
+    op.execute("""
+    CREATE INDEX IF NOT EXISTS idx_wardrobe_items_user_id ON wardrobe_items(user_id);
+    CREATE INDEX IF NOT EXISTS idx_wardrobe_outfits_user_id ON wardrobe_outfits(user_id);
+    CREATE INDEX IF NOT EXISTS idx_presence_goals_user_id ON presence_goals(user_id);
+    CREATE INDEX IF NOT EXISTS idx_presence_dna_user_id ON presence_dna(user_id);
+    CREATE INDEX IF NOT EXISTS idx_shared_journey_tokens_token ON shared_journey_tokens(token);
+    CREATE INDEX IF NOT EXISTS idx_shared_journey_tokens_journey_id ON shared_journey_tokens(journey_id);
+    """);
 
 def downgrade() -> None:
     op.drop_table('shared_journey_tokens', if_exists=True)
