@@ -52,16 +52,16 @@ export default function MarketingLayout({
         <div className="w-full px-6 sm:px-8 lg:px-12 h-20 flex items-center justify-between">
           {/* Logo (Far Left) */}
           <div className="flex-1 flex justify-start">
-            <Link href="/" className="flex items-center space-x-3 group">
+            <Link href="/" className="flex items-center space-x-3.5 group">
               <Image
                 src="/icon.png"
                 alt="PersonaIQ Logo"
-                width={26}
-                height={26}
-                style={{ width: 26, height: 26 }}
-                className="rounded-[5px] shrink-0 group-hover:scale-105 transition-transform duration-300"
+                width={34}
+                height={34}
+                style={{ width: 34, height: 34 }}
+                className="rounded-[7px] shrink-0 group-hover:scale-105 transition-transform duration-300"
               />
-              <span className="font-bold tracking-tight text-[21px] text-white transition-colors">
+              <span className="font-bold tracking-tight text-[24px] text-white transition-colors">
                 Persona<span className="text-primary">IQ</span>
               </span>
             </Link>
@@ -90,15 +90,15 @@ export default function MarketingLayout({
 
           {/* Action CTAs (Far Right) */}
           <div className="flex-1 flex items-center justify-end space-x-4">
-            <div className="hidden lg:flex items-center space-x-5">
+            <div className="hidden lg:flex items-center space-x-6">
               <Link
                 href="/login"
-                className="text-[14.5px] xl:text-[15.5px] font-semibold text-gray-400 hover:text-white transition-colors"
+                className="h-10 text-[14.5px] xl:text-[15.5px] font-semibold text-gray-400 hover:text-white transition-colors flex items-center justify-center"
               >
                 Sign In
               </Link>
-              <Link href="/signup">
-                <Button className="h-10 px-5 bg-primary hover:bg-primary/90 text-white font-semibold text-[14px] rounded-md transition-all active:scale-[0.98]">
+              <Link href="/signup" className="flex items-center justify-center">
+                <Button className="h-10 px-5.5 bg-primary hover:bg-primary/90 text-white font-semibold text-[14px] rounded-md transition-all active:scale-[0.98] flex items-center justify-center">
                   Get Started
                 </Button>
               </Link>
