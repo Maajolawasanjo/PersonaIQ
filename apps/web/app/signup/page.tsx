@@ -53,7 +53,7 @@ export default function SignUpPage() {
     try {
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
       await signUp(formattedEmail, password, fullName);
-      window.location.href = '/dashboard';
+      window.location.href = `/verify-email?email=${encodeURIComponent(formattedEmail)}`;
     } catch (err: any) {
       setErrorMessage(err.message || 'Registration failed. Please try again.');
     } finally {

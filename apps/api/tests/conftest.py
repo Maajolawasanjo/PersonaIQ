@@ -1,4 +1,6 @@
 import sys
+import os
+os.environ["ENVIRONMENT"] = "testing"
 from pathlib import Path
 from typing import AsyncGenerator
 import pytest_asyncio

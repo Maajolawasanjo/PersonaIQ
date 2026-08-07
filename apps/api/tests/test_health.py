@@ -19,4 +19,4 @@ async def test_health_endpoint():
         assert "request_id" in payload["meta"]
         assert "timestamp" in payload["meta"]
         assert payload["data"]["app_name"] == "PersonaIQ Backend API"
-        assert payload["data"]["environment"] == "development"
+        assert payload["data"]["environment"] in ("development", "testing")

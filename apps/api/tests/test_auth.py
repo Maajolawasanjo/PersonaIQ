@@ -1,5 +1,6 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
@@ -41,7 +42,7 @@ async def test_duplicate_email_signup_fails(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_sign_in_success(client: AsyncClient):
+async def test_sign_in_success(client: AsyncClient, db_session: AsyncSession):
     signup_payload = {
         "email": "signin@personaiq.ai",
         "password": "Password123!",
@@ -59,7 +60,26 @@ async def test_sign_in_success(client: AsyncClient):
 
     data = response.json()
     assert data["success"] is True
-    assert "access_token" in data["data"]
+    assert data["data"]["requires_2fa"] is True
+
+    # Retrieve OTP from Database
+    from sqlalchemy import select
+    from app.models.user import User
+    query = select(User).where(User.email == "signin@personaiq.ai")
+    result = await db_session.execute(query)
+    user = result.scalar_one()
+    assert user.otp_code is not None
+
+    # Verify 2FA OTP
+    verify_payload = {
+        "email": "signin@personaiq.ai",
+        "code": user.otp_code,
+    }
+    verify_res = await client.post("/api/v1/auth/verify-otp", json=verify_payload)
+    assert verify_res.status_code == 200
+    verify_data = verify_res.json()
+    assert "access_token" in verify_data["data"]
+
 
 
 @pytest.mark.asyncio
@@ -129,3 +149,86 @@ async def test_complete_onboarding(client: AsyncClient):
     assert ob_data["data"]["onboarding_completed"] is True
     assert ob_data["data"]["first_name"] == "UpdatedFirst"
     assert ob_data["data"]["occupation"] == "Senior Architect"
+
+
+@pytest.mark.asyncio
+async def test_otp_verification_flow(client: AsyncClient, db_session: AsyncSession):
+    # 1. Sign up
+    signup_payload = {
+        "email": "otp_test@personaiq.ai",
+        "password": "Password123!",
+        "first_name": "OTP",
+        "last_name": "Tester",
+    }
+    signup_res = await client.post("/api/v1/auth/sign-up", json=signup_payload)
+    assert signup_res.status_code == 201
+
+    # 2. Retrieve OTP from Database
+    from sqlalchemy import select
+    from app.models.user import User
+    query = select(User).where(User.email == "otp_test@personaiq.ai")
+    result = await db_session.execute(query)
+    user = result.scalar_one()
+    assert user.otp_code is not None
+    assert user.is_verified is False
+
+    # 3. Verify OTP
+    verify_payload = {
+        "email": "otp_test@personaiq.ai",
+        "code": user.otp_code,
+    }
+    verify_res = await client.post("/api/v1/auth/verify-otp", json=verify_payload)
+    assert verify_res.status_code == 200
+    verify_data = verify_res.json()
+    assert verify_data["success"] is True
+    assert verify_data["data"]["user"]["email"] == "otp_test@personaiq.ai"
+
+    # 4. Confirm verified status in Database
+    db_session.expire_all()
+    query = select(User).where(User.email == "otp_test@personaiq.ai")
+    result = await db_session.execute(query)
+    user_after = result.scalar_one()
+    assert user_after.is_verified is True
+    assert user_after.otp_code is None
+
+
+@pytest.mark.asyncio
+async def test_password_reset_flow(client: AsyncClient, db_session: AsyncSession):
+    # 1. Sign up
+    signup_payload = {
+        "email": "reset_test@personaiq.ai",
+        "password": "OldPassword123!",
+        "first_name": "Reset",
+        "last_name": "Tester",
+    }
+    await client.post("/api/v1/auth/sign-up", json=signup_payload)
+
+    # 2. Request password reset
+    forgot_payload = {"email": "reset_test@personaiq.ai"}
+    forgot_res = await client.post("/api/v1/auth/forgot-password", json=forgot_payload)
+    assert forgot_res.status_code == 200
+
+    # 3. Retrieve reset token from DB
+    from sqlalchemy import select
+    from app.models.user import User
+    query = select(User).where(User.email == "reset_test@personaiq.ai")
+    result = await db_session.execute(query)
+    user = result.scalar_one()
+    assert user.reset_token is not None
+
+    # 4. Reset password
+    reset_payload = {
+        "token": user.reset_token,
+        "new_password": "NewPassword123!",
+    }
+    reset_res = await client.post("/api/v1/auth/reset-password", json=reset_payload)
+    assert reset_res.status_code == 200
+
+    # 5. Verify sign in with new password works
+    signin_payload = {
+        "email": "reset_test@personaiq.ai",
+        "password": "NewPassword123!",
+    }
+    signin_res = await client.post("/api/v1/auth/sign-in", json=signin_payload)
+    assert signin_res.status_code == 200
+

@@ -13,6 +13,10 @@ class RateLimiter:
         self.requests = defaultdict(list)
 
     async def __call__(self, request: Request):
+        from app.core.config import settings
+        if settings.ENVIRONMENT == "testing":
+            return
+
         client_ip = request.client.host if request.client else "unknown"
         now = time.time()
 

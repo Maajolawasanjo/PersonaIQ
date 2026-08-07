@@ -35,7 +35,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await signIn(formattedEmail, password);
+      const res = await signIn(formattedEmail, password);
+      if (res && res.requires_2fa) {
+        window.location.href = `/2fa?email=${encodeURIComponent(formattedEmail)}`;
+        return;
+      }
       window.location.href = '/dashboard';
     } catch (err: any) {
       setErrorMessage(err.message || 'Invalid email or password.');

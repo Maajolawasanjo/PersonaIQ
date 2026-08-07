@@ -3,19 +3,22 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { AuthLayout } from '../../components/auth/AuthLayout';
+import { useAuth } from '../../providers/auth-provider';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const { forgotPassword, isLoading } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
+    setErrorMsg('');
+    try {
+      await forgotPassword(email);
       window.location.href = `/email-sent?type=password-reset&email=${encodeURIComponent(email)}`;
-    }, 1000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'An error occurred. Please try again.');
+    }
   };
 
   return (
@@ -36,6 +39,13 @@ export default function ForgotPasswordPage() {
             We will email you a secure link to reset your password.
           </p>
         </div>
+
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 text-red-800 text-[13px] font-medium p-3.5 rounded-[10px] flex items-center space-x-2">
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-red-600 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
           <div className="space-y-1.5">

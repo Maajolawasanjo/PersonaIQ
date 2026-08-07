@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.errors import AppException, ErrorCode
@@ -19,6 +20,11 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.repo = UserRepository(db)
 
+    def _ensure_utc(self, dt: Optional[datetime]) -> Optional[datetime]:
+        if not dt:
+            return None
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
     async def sign_up(self, request: SignUpRequest) -> AuthTokenDTO:
         existing = await self.repo.get_by_email(request.email)
         if existing:
@@ -36,7 +42,138 @@ class AuthService:
             last_name=request.last_name,
         )
 
+        # Generate and save OTP for verification
+        import random
+        from app.services.email_service import EmailService
+
+        otp = f"{random.randint(100000, 999999)}"
+        user.otp_code = otp
+        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        await self.repo.db.flush()
+
+        # Send Verification Email
+        email_service = EmailService()
+        await email_service.send_email_verification_email(user.email, otp)
+
         return await self._generate_auth_tokens(user)
+
+    async def verify_otp(self, email: str, code: str) -> AuthTokenDTO:
+        user = await self.repo.get_by_email(email)
+        if not user:
+            raise AppException(
+                code=ErrorCode.USER_001,
+                message="User not found.",
+                status_code=404,
+            )
+
+        if not user.otp_code or user.otp_code != code:
+            raise AppException(
+                code=ErrorCode.AUTH_001,
+                message="Invalid verification code.",
+                status_code=400,
+            )
+
+        if not user.otp_expires_at or self._ensure_utc(user.otp_expires_at) < datetime.now(timezone.utc):
+            raise AppException(
+                code=ErrorCode.AUTH_002,
+                message="Verification code has expired.",
+                status_code=400,
+            )
+
+        # Success: Verify user and clear OTP
+        was_verified = user.is_verified
+        user.is_verified = True
+        user.otp_code = None
+        user.otp_expires_at = None
+        await self.repo.db.flush()
+
+        # Send corresponding email
+        from app.services.email_service import EmailService
+        email_service = EmailService()
+        if not was_verified:
+            await email_service.send_welcome_email(user.email, f"{user.first_name or ''} {user.last_name or ''}".strip())
+        else:
+            await email_service.send_login_alert_email(
+                user.email,
+                f"{user.first_name or ''} {user.last_name or ''}".strip(),
+                "Web Browser",
+                "Detected Location",
+                datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            )
+
+        return await self._generate_auth_tokens(user)
+
+
+    async def resend_otp(self, email: str) -> None:
+        user = await self.repo.get_by_email(email)
+        if not user:
+            raise AppException(
+                code=ErrorCode.USER_001,
+                message="User not found.",
+                status_code=404,
+            )
+
+        import random
+        from app.services.email_service import EmailService
+
+        otp = f"{random.randint(100000, 999999)}"
+        user.otp_code = otp
+        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        await self.repo.db.flush()
+
+        email_service = EmailService()
+        await email_service.send_email_verification_email(user.email, otp)
+
+    async def request_password_reset(self, email: str) -> None:
+        user = await self.repo.get_by_email(email)
+        if not user:
+            # Silent return to prevent user enumeration
+            return
+
+        import secrets
+        from app.services.email_service import EmailService
+
+        # Secure reset token
+        token = secrets.token_urlsafe(32)
+        user.reset_token = token
+        user.reset_expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+        await self.repo.db.flush()
+
+        email_service = EmailService()
+        await email_service.send_password_reset_email(user.email, token)
+
+    async def reset_password(self, token: str, new_password: str) -> None:
+        from sqlalchemy import select
+        from app.models.user import User
+
+        query = select(User).where(User.reset_token == token, User.deleted_at.is_(None))
+        result = await self.repo.db.execute(query)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise AppException(
+                code=ErrorCode.AUTH_002,
+                message="Invalid or expired reset token.",
+                status_code=400,
+            )
+
+        if not user.reset_expires_at or self._ensure_utc(user.reset_expires_at) < datetime.now(timezone.utc):
+            raise AppException(
+                code=ErrorCode.AUTH_002,
+                message="Reset token has expired.",
+                status_code=400,
+            )
+
+        # Reset password and clear token
+        user.hashed_password = hash_password(new_password)
+        user.reset_token = None
+        user.reset_expires_at = None
+        await self.repo.db.flush()
+
+        # Send password changed notification
+        from app.services.email_service import EmailService
+        email_service = EmailService()
+        await email_service.send_password_changed_email(user.email, f"{user.first_name or ''} {user.last_name or ''}".strip())
 
     async def sign_in(self, request: SignInRequest) -> AuthTokenDTO:
         user = await self.repo.get_by_email(request.email)
@@ -48,8 +185,9 @@ class AuthService:
             )
 
         # Check Lockout
-        if user.locked_until and user.locked_until > datetime.now(timezone.utc):
-            remaining_seconds = int((user.locked_until - datetime.now(timezone.utc)).total_seconds())
+        locked_until = self._ensure_utc(user.locked_until)
+        if locked_until and locked_until > datetime.now(timezone.utc):
+            remaining_seconds = int((locked_until - datetime.now(timezone.utc)).total_seconds())
             raise AppException(
                 code=ErrorCode.AUTH_003,
                 message=f"Account locked due to multiple failed login attempts. Try again in {remaining_seconds // 60 + 1} minutes.",
@@ -68,13 +206,32 @@ class AuthService:
         # Reset failed attempts on success
         await self.repo.reset_failed_logins(user)
 
-        return await self._generate_auth_tokens(user)
+        # For 2FA / Login verification in production:
+        # If user has 2FA enabled, we would send a code here and NOT return tokens yet.
+        # But for MVP we automatically sign in. Let's make sure they receive a login alert though!
+        # Generate 2FA code and send verification email
+        import random
+        from app.services.email_service import EmailService
+
+        otp = f"{random.randint(100000, 999999)}"
+        user.otp_code = otp
+        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        await self.repo.db.flush()
+
+        email_service = EmailService()
+        await email_service.send_email_verification_email(user.email, otp)
+
+        return AuthTokenDTO(
+            requires_2fa=True,
+            email=user.email
+        )
+
 
     async def refresh_tokens(self, request: RefreshTokenRequest) -> AuthTokenDTO:
         token_h = hash_token(request.refresh_token)
         token_entry = await self.repo.get_refresh_token(token_h)
 
-        if not token_entry or token_entry.expires_at < datetime.now(timezone.utc):
+        if not token_entry or self._ensure_utc(token_entry.expires_at) < datetime.now(timezone.utc):
             raise AppException(
                 code=ErrorCode.AUTH_002,
                 message="Refresh token is invalid or expired.",
@@ -142,3 +299,4 @@ class AuthService:
             token_type="Bearer",
             user=UserDTO.model_validate(user),
         )
+

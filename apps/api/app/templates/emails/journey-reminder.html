@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Presence Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f6f8; padding: 30px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="620" style="width: 620px; max-width: 620px; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;">
+          <tr>
+            <td style="padding: 35px 35px 25px 35px; border-bottom: 1px solid #edf2f7; background-color: #ffffff;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="left">
+                    <span style="font-size: 20px; font-weight: 700; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase;">
+                      PERSONA<span style="color: #dc2626;">IQ</span>
+                    </span>
+                  </td>
+                  <td align="right">
+                    <span style="font-size: 12px; font-weight: 600; color: #dc2626; letter-spacing: 0.5px; text-transform: uppercase;">
+                      Event Reminder
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 35px; background-color: #ffffff;">
+              <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #0f172a; line-height: 1.3;">
+                Your Event is in {days_remaining}
+              </h1>
+              <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.5; color: #334155;">
+                Hello {user_name},
+              </p>
+              <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.5; color: #334155;">
+                This is a quick reminder that your event, <strong>{event_title}</strong>, takes place in {days_remaining}. Don't forget to review your final preparation checklist and apparel choices on your dashboard to optimize your professional impact.
+              </p>
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 28px;">
+                <tr>
+                  <td align="center">
+                    <a href="{dashboard_url}" target="_blank" style="display: inline-block; padding: 14px 36px; background-color: #dc2626; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; border-radius: 6px; text-align: center;">
+                      View Preparation Checklist
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #64748b; text-align: center;">
+                Direct URL: <a href="{dashboard_url}" style="color: #dc2626; text-decoration: underline;">{dashboard_url}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 25px 35px; background-color: #f8fafc; border-top: 1px solid #edf2f7; text-align: center;">
+              <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600; color: #475569;">
+                PersonaIQ Technologies Inc. &bull; Presence Intelligence
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

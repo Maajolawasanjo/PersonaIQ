@@ -1,33 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '../../components/auth/AuthLayout';
 import { PasswordField } from '../../components/auth/PasswordField';
 import { PasswordStrengthMeter, validatePasswordRules } from '../../components/auth/PasswordStrengthMeter';
+import { useAuth } from '../../providers/auth-provider';
 
 export default function ResetPasswordPage() {
+  const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const { resetPassword, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tokenParam = params.get('token');
+      if (tokenParam) setToken(tokenParam);
+    }
+  }, []);
 
   const passwordRules = validatePasswordRules(password);
   const passwordsMatch = Boolean(confirmPassword && password === confirmPassword);
   const isFormValid = passwordRules.isValid && passwordsMatch;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
+    setErrorMsg('');
 
-    setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await resetPassword(token, password);
       setIsSuccess(true);
       setTimeout(() => {
         window.location.href = '/login';
       }, 2000);
-    }, 1200);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to reset password. The link may have expired or is invalid.');
+    }
   };
 
   return (
@@ -48,6 +60,13 @@ export default function ResetPasswordPage() {
             Create a strong, unique password for your account.
           </p>
         </div>
+
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 text-red-800 text-[13px] font-medium p-3.5 rounded-[10px] flex items-center space-x-2">
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-red-600 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
         {isSuccess ? (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[14px] font-medium p-4 rounded-[12px] space-y-2 animate-fadeIn">
@@ -104,7 +123,7 @@ export default function ResetPasswordPage() {
 
             <button
               type="submit"
-              disabled={isLoading || !isFormValid}
+              disabled={isLoading || !isFormValid || !token}
               className="w-full h-12 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold text-[15px] rounded-[10px] shadow-sm hover:shadow transition-all flex items-center justify-center space-x-2 mt-4 active:scale-[0.99]"
             >
               {isLoading ? (

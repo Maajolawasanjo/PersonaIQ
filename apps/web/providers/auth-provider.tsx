@@ -9,8 +9,12 @@ interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (email: string, pass: string) => Promise<void>;
-  signUp: (email: string, pass: string, fullName: string) => Promise<void>;
+  signIn: (email: string, pass: string) => Promise<any>;
+  signUp: (email: string, pass: string, fullName: string) => Promise<any>;
+  verifyOtp: (email: string, code: string) => Promise<any>;
+  resendOtp: (email: string) => Promise<any>;
+  forgotPassword: (email: string) => Promise<any>;
+  resetPassword: (token: string, pass: string) => Promise<any>;
   logout: () => Promise<void>;
 }
 
@@ -42,9 +46,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const tokens = await authApi.signIn(email, pass);
-      apiClient.setTokens(tokens.access_token, tokens.refresh_token);
-      const profile = await authApi.getMe();
-      setUser(profile);
+      if (tokens.requires_2fa) {
+        return tokens;
+      }
+      if (tokens.access_token && tokens.refresh_token) {
+        apiClient.setTokens(tokens.access_token, tokens.refresh_token);
+        const profile = await authApi.getMe();
+        setUser(profile);
+      }
+      return tokens;
     } finally {
       setIsLoading(false);
     }
@@ -54,12 +64,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const tokens = await authApi.signUp(email, pass, fullName);
-      apiClient.setTokens(tokens.access_token, tokens.refresh_token);
-      const profile = await authApi.getMe();
-      setUser(profile);
+      if (tokens.access_token && tokens.refresh_token) {
+        apiClient.setTokens(tokens.access_token, tokens.refresh_token);
+        const profile = await authApi.getMe();
+        setUser(profile);
+      }
+      return tokens;
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const verifyOtp = async (email: string, code: string) => {
+    setIsLoading(true);
+    try {
+      const tokens = await authApi.verifyOtp(email, code);
+      if (tokens.access_token && tokens.refresh_token) {
+        apiClient.setTokens(tokens.access_token, tokens.refresh_token);
+        const profile = await authApi.getMe();
+        setUser(profile);
+      }
+      return tokens;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendOtp = async (email: string) => {
+    return await authApi.resendOtp(email);
+  };
+
+  const forgotPassword = async (email: string) => {
+    return await authApi.forgotPassword(email);
+  };
+
+  const resetPassword = async (token: string, pass: string) => {
+    return await authApi.resetPassword(token, pass);
   };
 
   const logout = async () => {
@@ -86,6 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         signIn,
         signUp,
+        verifyOtp,
+        resendOtp,
+        forgotPassword,
+        resetPassword,
         logout,
       }}
     >

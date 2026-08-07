@@ -24,6 +24,28 @@ export const authApi = {
       password,
     }),
 
+  verifyOtp: (email: string, code: string): Promise<AuthTokens> =>
+    apiClient.post<AuthTokens>('/auth/verify-otp', {
+      email,
+      code,
+    }),
+
+  resendOtp: (email: string): Promise<{ success: boolean }> =>
+    apiClient.post<{ success: boolean }>('/auth/resend-otp', {
+      email,
+    }),
+
+  forgotPassword: (email: string): Promise<{ success: boolean }> =>
+    apiClient.post<{ success: boolean }>('/auth/forgot-password', {
+      email,
+    }),
+
+  resetPassword: (token: string, newPassword: string): Promise<{ success: boolean }> =>
+    apiClient.post<{ success: boolean }>('/auth/reset-password', {
+      token,
+      new_password: newPassword,
+    }),
+
   logout: (refreshToken: string): Promise<{ logged_out: boolean }> =>
     apiClient.post<{ logged_out: boolean }>('/auth/logout', {
       refresh_token: refreshToken,
