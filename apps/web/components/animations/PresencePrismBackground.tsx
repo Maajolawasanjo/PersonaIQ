@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 
 interface FloatingShape {
+  id: number;
   type: 'icosahedron' | 'cube' | 'octahedron';
   x: number;
   y: number;
@@ -47,12 +48,12 @@ export default function PresencePrismBackground() {
     let mouseY = 0;
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      mouseX = (e.clientX - rect.left - width / 2) * 0.02;
-      mouseY = (e.clientY - rect.top - height / 2) * 0.02;
+      mouseX = (e.clientX - rect.left - width / 2) * 0.03;
+      mouseY = (e.clientY - rect.top - height / 2) * 0.03;
     };
     window.addEventListener('mousemove', handleMouseMove);
 
-    // 1. Icosahedron
+    // 1. Icosahedron Geometry
     const phi = (1 + Math.sqrt(5)) / 2;
     const icoVerts: [number, number, number][] = [
       [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
@@ -69,7 +70,7 @@ export default function PresencePrismBackground() {
       [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
     ];
 
-    // 2. Cube
+    // 2. Cube Geometry
     const cubeVerts: [number, number, number][] = [
       [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
       [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
@@ -86,7 +87,7 @@ export default function PresencePrismBackground() {
       [1, 2, 6], [1, 6, 5]
     ];
 
-    // 3. Octahedron
+    // 3. Octahedron Geometry
     const octaVerts: [number, number, number][] = [
       [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]
     ];
@@ -95,49 +96,49 @@ export default function PresencePrismBackground() {
       [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]
     ];
 
-    // Initialize 10 floating shapes spread across the entire width and height of hero canvas
+    // Initialize 24 floating shapes uniformly distributed across the entire hero canvas space
     const initShapes = (): FloatingShape[] => {
       const items: FloatingShape[] = [];
-      const types: ('icosahedron' | 'cube' | 'octahedron')[] = ['cube', 'icosahedron', 'octahedron', 'cube', 'icosahedron', 'cube', 'octahedron', 'icosahedron', 'cube', 'octahedron'];
-      
-      const grid = [
-        { xRatio: 0.12, yRatio: 0.20, scale: 95 },  // Top Left
-        { xRatio: 0.85, yRatio: 0.18, scale: 110 }, // Top Right
-        { xRatio: 0.25, yRatio: 0.78, scale: 130 }, // Bottom Left
-        { xRatio: 0.80, yRatio: 0.82, scale: 100 }, // Bottom Right
-        { xRatio: 0.50, yRatio: 0.25, scale: 140 }, // Center Top
-        { xRatio: 0.08, yRatio: 0.55, scale: 80 },  // Far Left
-        { xRatio: 0.92, yRatio: 0.50, scale: 85 },  // Far Right
-        { xRatio: 0.38, yRatio: 0.85, scale: 75 },  // Center Bottom Left
-        { xRatio: 0.65, yRatio: 0.75, scale: 120 }, // Center Bottom Right
-        { xRatio: 0.30, yRatio: 0.35, scale: 65 },  // Inner Mid Left
-      ];
+      const count = 24;
+      const types: ('icosahedron' | 'cube' | 'octahedron')[] = ['cube', 'icosahedron', 'octahedron'];
 
-      grid.forEach((g, i) => {
+      for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 0.2 + Math.random() * 0.25; // Gentle, smooth drifting speed
-        const t = types[i % types.length];
+        const speed = 0.25 + Math.random() * 0.35; // Smooth ambient drift
+        const shapeType = types[i % types.length];
+
+        // Determine scale: mix of prominent large structures, medium prisms, and tiny accent cubes
+        let scale = 60 + Math.random() * 90;
+        if (i % 5 === 0) scale = 140 + Math.random() * 60; // Large hero shapes
+        if (i % 7 === 0) scale = 35 + Math.random() * 25;  // Small accent shapes
+
+        // Uniform distribution across 100% of hero width and height
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+
+        const isCrimson = i % 2 === 0;
 
         items.push({
-          type: t,
-          x: width * g.xRatio,
-          y: height * g.yRatio,
-          z: (Math.random() - 0.5) * 60,
+          id: i,
+          type: shapeType,
+          x,
+          y,
+          z: (Math.random() - 0.5) * 80,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          scale: g.scale,
+          scale,
           rotX: Math.random() * Math.PI,
           rotY: Math.random() * Math.PI,
           rotZ: Math.random() * Math.PI,
-          speedX: (Math.random() - 0.5) * 0.003,
-          speedY: (Math.random() - 0.5) * 0.003,
-          speedZ: (Math.random() - 0.5) * 0.002,
-          strokeColor: i % 2 === 0 ? 'rgba(163, 31, 52, 0.35)' : 'rgba(120, 135, 150, 0.3)',
-          fillColor: i % 2 === 0 ? 'rgba(163, 31, 52, 0.03)' : 'rgba(120, 135, 150, 0.02)',
-          dotColor: i % 2 === 0 ? 'rgba(163, 31, 52, 0.6)' : 'rgba(120, 135, 150, 0.5)',
-          dotRadius: i % 2 === 0 ? 2.5 : 2.0,
+          speedX: (Math.random() - 0.5) * 0.004,
+          speedY: (Math.random() - 0.5) * 0.004,
+          speedZ: (Math.random() - 0.5) * 0.003,
+          strokeColor: isCrimson ? 'rgba(163, 31, 52, 0.40)' : 'rgba(100, 115, 130, 0.35)',
+          fillColor: isCrimson ? 'rgba(163, 31, 52, 0.04)' : 'rgba(100, 115, 130, 0.025)',
+          dotColor: isCrimson ? 'rgba(225, 29, 72, 0.65)' : 'rgba(100, 115, 130, 0.55)',
+          dotRadius: scale > 100 ? 3.0 : 2.0,
         });
-      });
+      }
       return items;
     };
 
@@ -146,38 +147,31 @@ export default function PresencePrismBackground() {
     const render = (time: number) => {
       ctx.clearRect(0, 0, width, height);
 
+      // Track screen positions of centers for constellation link lines
+      const positions: { id: number; x: number; y: number; color: string }[] = [];
+
       shapes.forEach((s, idx) => {
-        // 1. Move position across hero section
+        // 1. Position update: continuous wrap-around screen drift (no hard boundary pushback)
         s.x += s.vx;
         s.y += s.vy;
 
-        // Bounce gently at canvas edges
-        const padding = s.scale * 0.8;
-        if (s.x < padding) {
-          s.x = padding;
-          s.vx *= -1;
-        } else if (s.x > width - padding) {
-          s.x = width - padding;
-          s.vx *= -1;
-        }
+        const margin = s.scale * 1.2;
+        if (s.x < -margin) s.x = width + margin;
+        if (s.x > width + margin) s.x = -margin;
+        if (s.y < -margin) s.y = height + margin;
+        if (s.y > height + margin) s.y = -margin;
 
-        if (s.y < padding) {
-          s.y = padding;
-          s.vy *= -1;
-        } else if (s.y > height - padding) {
-          s.y = height - padding;
-          s.vy *= -1;
-        }
-
-        // 2. Rotate 3D shape
+        // 2. Rotation update
         s.rotX += s.speedX;
         s.rotY += s.speedY;
         s.rotZ += s.speedZ;
 
-        // Mouse influence & gentle floating wave
-        const floatY = Math.sin(time * 0.0008 + idx * 1.5) * 8;
-        const posX = s.x + mouseX * (idx + 1) * 0.2;
-        const posY = s.y + floatY + mouseY * (idx + 1) * 0.2;
+        // Gentle floating wave & mouse reaction
+        const floatY = Math.sin(time * 0.0009 + idx * 1.3) * 10;
+        const posX = s.x + mouseX * (idx + 1) * 0.15;
+        const posY = s.y + floatY + mouseY * (idx + 1) * 0.15;
+
+        positions.push({ id: s.id, x: posX, y: posY, color: s.strokeColor });
 
         let baseVerts = icoVerts;
         let baseFaces = icoFaces;
@@ -189,7 +183,7 @@ export default function PresencePrismBackground() {
           baseFaces = octaFaces;
         }
 
-        // 3. Transform 3D vertices
+        // 3. Transform 3D Vertices
         const transformed = baseVerts.map(([vx, vy, vz]) => {
           let y1 = vy * Math.cos(s.rotX) - vz * Math.sin(s.rotX);
           let z1 = vy * Math.sin(s.rotX) + vz * Math.cos(s.rotX);
@@ -210,7 +204,7 @@ export default function PresencePrismBackground() {
           return { px, py };
         });
 
-        // 4. Render faces & wireframes
+        // 4. Render faces & wireframe edges
         baseFaces.forEach(([iA, iB, iC]) => {
           const pA = transformed[iA];
           const pB = transformed[iB];
@@ -226,11 +220,11 @@ export default function PresencePrismBackground() {
           ctx.fill();
 
           ctx.strokeStyle = s.strokeColor;
-          ctx.lineWidth = 1.0;
+          ctx.lineWidth = s.scale > 100 ? 1.2 : 0.8;
           ctx.stroke();
         });
 
-        // 5. Render vertex nodes
+        // 5. Render glowing vertex dots
         transformed.forEach(({ px, py }) => {
           ctx.beginPath();
           ctx.arc(px, py, s.dotRadius, 0, Math.PI * 2);
@@ -238,6 +232,25 @@ export default function PresencePrismBackground() {
           ctx.fill();
         });
       });
+
+      // 6. Draw ambient connecting constellation lines between nearby shapes
+      for (let i = 0; i < positions.length; i++) {
+        for (let j = i + 1; j < positions.length; j++) {
+          const dx = positions[i].x - positions[j].x;
+          const dy = positions[i].y - positions[j].y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < 260) {
+            const alpha = (1 - dist / 260) * 0.15;
+            ctx.beginPath();
+            ctx.moveTo(positions[i].x, positions[i].y);
+            ctx.lineTo(positions[j].x, positions[j].y);
+            ctx.strokeStyle = `rgba(163, 31, 52, ${alpha})`;
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
 
       animationFrameId = requestAnimationFrame(render);
     };
