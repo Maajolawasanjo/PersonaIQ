@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   LayoutDashboard, 
@@ -18,9 +18,31 @@ import {
   CheckCircle,
   ArrowRight
 } from 'lucide-react';
+import { useAuth } from '@/providers/auth-provider';
+import { dashboardApi } from '@/lib/api/services';
+import { DashboardOverview } from '@/lib/api/types';
 
 export default function DashboardHomePage() {
-  const [isFirstTimeUser, setIsFirstTimeUser] = useState<boolean>(false);
+  const { user } = useAuth();
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const data = await dashboardApi.getOverview();
+        setOverview(data);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadDashboard();
+  }, []);
+
+  const isFirstTimeUser = overview ? overview.total_journeys === 0 : false;
+  const userName = user?.full_name || 'Executive';
 
   return (
     <div className="space-y-6 animate-fadeIn w-full">

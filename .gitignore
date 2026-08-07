@@ -96,3 +96,12 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+.venv/
+**/.venv/
+.pytest_cache/
+**/.pytest_cache/

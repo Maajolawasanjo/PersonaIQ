@@ -6,20 +6,22 @@ import { AuthLayout } from '../../components/auth/AuthLayout';
 import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
 import { PasswordField } from '../../components/auth/PasswordField';
 
+import { useAuth } from '@/providers/auth-provider';
+
 export default function LoginPage() {
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [failedAttempts, setFailedAttempts] = useState(0);
 
   const validateEmail = (val: string) => {
     const trimmed = val.trim().toLowerCase();
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -30,29 +32,16 @@ export default function LoginPage() {
       return;
     }
 
-    if (failedAttempts >= 5) {
-      window.location.href = '/account-locked';
-      return;
-    }
-
     setIsLoading(true);
 
-    // Simulate login verification
-    setTimeout(() => {
+    try {
+      await signIn(formattedEmail, password);
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Invalid email or password.');
+    } finally {
       setIsLoading(false);
-      // Demo test password check
-      if (password === 'wrong') {
-        const nextAttempts = failedAttempts + 1;
-        setFailedAttempts(nextAttempts);
-        if (nextAttempts >= 5) {
-          window.location.href = '/account-locked';
-        } else {
-          setErrorMessage(`Invalid email or password. (${5 - nextAttempts} attempts remaining before temporary lockout).`);
-        }
-      } else {
-        window.location.href = '/dashboard';
-      }
-    }, 1000);
+    }
   };
 
   return (

@@ -7,7 +7,10 @@ import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
 import { PasswordField } from '../../components/auth/PasswordField';
 import { PasswordStrengthMeter, validatePasswordRules } from '../../components/auth/PasswordStrengthMeter';
 
+import { useAuth } from '@/providers/auth-provider';
+
 export default function SignUpPage() {
+  const { signUp } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -34,7 +37,7 @@ export default function SignUpPage() {
     agreedTerms &&
     agreedPrivacy;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -47,10 +50,15 @@ export default function SignUpPage() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      await signUp(formattedEmail, password, fullName);
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Registration failed. Please try again.');
+    } finally {
       setIsLoading(false);
-      window.location.href = `/verify-email?email=${encodeURIComponent(formattedEmail)}`;
-    }, 1200);
+    }
   };
 
   return (

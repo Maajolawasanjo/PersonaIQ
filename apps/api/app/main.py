@@ -1,0 +1,70 @@
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from app.api import auth, dashboard, health, journey, upload, user
+from app.core.config import settings
+from app.core.errors import AppException
+from app.core.logging import logger, setup_logging
+from app.middleware.error_handler import (
+    app_exception_handler,
+    unhandled_exception_handler,
+    validation_exception_handler,
+)
+from app.middleware.request_id import RequestIDMiddleware
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    setup_logging(debug=settings.DEBUG)
+    logger.info(
+        "Booting PersonaIQ Backend Application",
+        environment=settings.ENVIRONMENT,
+        version="1.0.0",
+        api_prefix=settings.API_V1_STR,
+    )
+    yield
+    logger.info("Shutting down PersonaIQ Backend Application")
+
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    description="PersonaIQ Production AI Backend API Service",
+    version="1.0.0",
+    docs_url=f"{settings.API_V1_STR}/docs",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    redoc_url=f"{settings.API_V1_STR}/redoc",
+    lifespan=lifespan,
+)
+
+# Middleware Stack
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(RequestIDMiddleware)
+
+# Custom Exception Handlers
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
+
+# Mount Routers
+app.include_router(health.router, prefix=settings.API_V1_STR)
+app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(user.router, prefix=settings.API_V1_STR)
+app.include_router(journey.router, prefix=settings.API_V1_STR)
+app.include_router(upload.router, prefix=settings.API_V1_STR)
+app.include_router(dashboard.router, prefix=settings.API_V1_STR)
+
+
+@app.get("/", include_in_schema=False)
+async def root_redirect():
+    return {
+        "status": "online",
+        "service": settings.APP_NAME,
+        "docs": f"{settings.API_V1_STR}/docs",
+    }

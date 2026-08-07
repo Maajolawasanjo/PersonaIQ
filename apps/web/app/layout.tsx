@@ -24,6 +24,8 @@ export const metadata = {
   },
 };
 
+import { AuthProvider } from '@/providers/auth-provider';
+
 export default function RootLayout({
   children,
 }: {
@@ -32,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${GeistMono.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
