@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { AuthLayout } from '../../components/auth/AuthLayout';
-import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
 import { PasswordField } from '../../components/auth/PasswordField';
 import { PasswordStrengthMeter, validatePasswordRules } from '../../components/auth/PasswordStrengthMeter';
 
@@ -79,9 +78,6 @@ export default function SignUpPage() {
             Provision your PersonaIQ diagnostic workspace in seconds.
           </p>
         </div>
-
-        {/* Social SSO Connectors */}
-        <SocialAuthButtons />
 
         {/* Error Banner */}
         {errorMessage && (

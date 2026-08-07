@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { AuthLayout } from '../../components/auth/AuthLayout';
-import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
 import { PasswordField } from '../../components/auth/PasswordField';
 
 import { useAuth } from '@/providers/auth-provider';
@@ -66,9 +65,6 @@ export default function LoginPage() {
             Enter your credentials to continue to your workspace.
           </p>
         </div>
-
-        {/* Social SSO Connectors */}
-        <SocialAuthButtons />
 
         {/* Global Error Banner */}
         {errorMessage && (
