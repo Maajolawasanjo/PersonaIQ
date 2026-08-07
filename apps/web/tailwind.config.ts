@@ -9,7 +9,7 @@ const config: Config = {
     extend: {
       colors: {
         background: '#FAF9F6', // Soft Off-White
-        foreground: '#1F2937', // Charcoal
+        foreground: '#2C353E', // Soft Charcoal (Reduced blackness)
         primary: {
           DEFAULT: '#A31F34', // MIT Red
           foreground: '#FFFFFF',
@@ -22,24 +22,24 @@ const config: Config = {
           DEFAULT: '#F3F4F6',
           foreground: '#6B7280',
         },
-        // Oil black & obsidian overrides — warm/cool dark slate instead of pure black
+        // Softened executive dark slate & charcoal palette (reduced heavy blackness)
         gray: {
-          950: '#14191D', // Rich Oil Black Slate (navbar, footer, dark sections)
-          900: '#1C2226', // Dark Surface / Cards
-          800: '#252D32',
-          700: '#343E44',
-          600: '#4A555C',
-          550: '#606C73',
-          500: '#738087',
-          450: '#8A979E',
-          400: '#A3AFB5',
-          350: '#B8C4CA',
-          300: '#D1D9DE',
-          250: '#DCE2E6',
-          200: '#E5EAED',
-          150: '#EFEFEF',
-          100: '#F5F5F5',
-          50:  '#FAFAFA',
+          950: '#1F262E', // Softened Dark Slate (Navbar, Footer, Hero)
+          900: '#2A323B', // Soft Dark Surface / Cards
+          800: '#35404B',
+          700: '#44515E',
+          600: '#586675',
+          550: '#6C7B8B',
+          500: '#7E8D9D',
+          450: '#94A3B2',
+          400: '#ABB8C6',
+          350: '#C2CDD8',
+          300: '#D6DFE7',
+          250: '#E2E8EE',
+          200: '#EBF0F4',
+          150: '#F2F5F8',
+          100: '#F6F8FA',
+          50:  '#FAFCFD',
         },
       },
       fontFamily: {
