@@ -78,6 +78,12 @@ export const userApi = {
 
   deleteAccount: (): Promise<{ deleted: boolean }> =>
     apiClient.delete<{ deleted: boolean }>('/profile/account'),
+
+  getSessions: (): Promise<import('./types').UserSession[]> =>
+    apiClient.get<import('./types').UserSession[]>('/profile/sessions'),
+
+  revokeSession: (sessionId: string): Promise<{ revoked: boolean }> =>
+    apiClient.delete<{ revoked: boolean }>(`/profile/sessions/${sessionId}`),
 };
 
 

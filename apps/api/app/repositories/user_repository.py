@@ -98,4 +98,24 @@ class UserRepository(BaseRepository[User]):
         await self.db.execute(sql_delete(User).where(User.id == user_id))
         await self.db.flush()
 
+    async def get_active_user_sessions(self, user_id: UUID) -> list[RefreshToken]:
+        now = datetime.now(timezone.utc)
+        result = await self.db.execute(
+            select(RefreshToken).where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked == False,
+                RefreshToken.expires_at > now
+            ).order_by(RefreshToken.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def revoke_user_session_by_id(self, user_id: UUID, session_id: UUID) -> None:
+        await self.db.execute(
+            sql_update(RefreshToken)
+            .where(RefreshToken.user_id == user_id, RefreshToken.id == session_id)
+            .values(revoked=True)
+        )
+        await self.db.flush()
+
+
 

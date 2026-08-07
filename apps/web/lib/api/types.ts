@@ -40,6 +40,14 @@ export interface UserPreference {
   email_notifications: boolean;
 }
 
+export interface UserSession {
+  id: string;
+  device_info: string;
+  ip_address: string;
+  created_at: string;
+  expires_at: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;

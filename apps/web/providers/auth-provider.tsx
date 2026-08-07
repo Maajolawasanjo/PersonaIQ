@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { authApi } from '@/lib/api/services';
 import { UserProfile } from '@/lib/api/types';
@@ -9,6 +9,8 @@ interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  refetchUser: () => Promise<UserProfile | null>;
+  updateUserLocally: (partial: Partial<UserProfile>) => void;
   signIn: (email: string, pass: string) => Promise<any>;
   signUp: (email: string, pass: string, fullName: string) => Promise<any>;
   verifyOtp: (email: string, code: string) => Promise<any>;
@@ -24,22 +26,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const refetchUser = useCallback(async (): Promise<UserProfile | null> => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        const profile = await authApi.getMe();
+        setUser(profile);
+        return profile;
+      }
+      setUser(null);
+      return null;
+    } catch {
+      apiClient.clearTokens();
+      setUser(null);
+      return null;
+    }
+  }, []);
+
+  const updateUserLocally = useCallback((partial: Partial<UserProfile>) => {
+    setUser((prev) => (prev ? { ...prev, ...partial } : null));
+    // Broadcast change across browser tabs
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('personaiq_auth_channel');
+      channel.postMessage({ type: 'USER_UPDATED', payload: partial });
+      channel.close();
+    }
+  }, []);
+
+  // Initial authentication load & cross-tab synchronization
   useEffect(() => {
     async function loadUser() {
-      try {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-          const profile = await authApi.getMe();
-          setUser(profile);
-        }
-      } catch {
-        apiClient.clearTokens();
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
+      setIsLoading(true);
+      await refetchUser();
+      setIsLoading(false);
     }
     loadUser();
+
+    // 1. Cross-Tab Sync via BroadcastChannel & Storage Event
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('personaiq_auth_channel');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'LOGOUT') {
+          setUser(null);
+        } else if (event.data?.type === 'USER_UPDATED') {
+          refetchUser();
+        } else if (event.data?.type === 'LOGIN') {
+          refetchUser();
+        }
+      };
+      return () => channel.close();
+    }
+  }, [refetchUser]);
+
+  // 2. Proactive Session Token Refresh (Every 12 minutes)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          const res = await fetch('/api/v1/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          const data = await res.json();
+          if (data.success && data.data?.access_token) {
+            apiClient.setTokens(data.data.access_token, data.data.refresh_token);
+          }
+        } catch (e) {
+          console.warn('Proactive token refresh attempt skipped.');
+        }
+      }
+    }, 12 * 60 * 1000); // 12 mins
+
+    return () => clearInterval(interval);
   }, []);
 
   const signIn = async (email: string, pass: string) => {
@@ -53,6 +113,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         apiClient.setTokens(tokens.access_token, tokens.refresh_token);
         const profile = await authApi.getMe();
         setUser(profile);
+
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('personaiq_auth_channel');
+          channel.postMessage({ type: 'LOGIN' });
+          channel.close();
+        }
       }
       return tokens;
     } finally {
@@ -68,6 +134,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         apiClient.setTokens(tokens.access_token, tokens.refresh_token);
         const profile = await authApi.getMe();
         setUser(profile);
+
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('personaiq_auth_channel');
+          channel.postMessage({ type: 'LOGIN' });
+          channel.close();
+        }
       }
       return tokens;
     } finally {
@@ -83,6 +155,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         apiClient.setTokens(tokens.access_token, tokens.refresh_token);
         const profile = await authApi.getMe();
         setUser(profile);
+
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('personaiq_auth_channel');
+          channel.postMessage({ type: 'LOGIN' });
+          channel.close();
+        }
       }
       return tokens;
     } finally {
@@ -115,6 +193,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       apiClient.clearTokens();
       setUser(null);
       setIsLoading(false);
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const channel = new BroadcastChannel('personaiq_auth_channel');
+        channel.postMessage({ type: 'LOGOUT' });
+        channel.close();
+      }
     }
   };
 
@@ -124,6 +208,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
+        refetchUser,
+        updateUserLocally,
         signIn,
         signUp,
         verifyOtp,

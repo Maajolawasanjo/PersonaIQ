@@ -1,16 +1,44 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { userApi } from '@/lib/api/services';
+import { UserSession } from '@/lib/api/types';
 
 export default function SecuritySettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [sessions, setSessions] = useState<UserSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    async function loadSessions() {
+      try {
+        const data = await userApi.getSessions();
+        setSessions(data || []);
+      } catch (err) {
+        console.error('Failed to load active sessions:', err);
+      } finally {
+        setSessionsLoading(false);
+      }
+    }
+    loadSessions();
+  }, []);
+
+  const handleRevokeSession = async (sessionId: string) => {
+    try {
+      await userApi.revokeSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      setStatusMessage({ type: 'success', text: 'Device session revoked successfully.' });
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err?.message || 'Failed to revoke session.' });
+    }
+  };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,11 +65,13 @@ export default function SecuritySettingsPage() {
       });
       setStatusMessage({
         type: 'success',
-        text: 'Password updated successfully! Please log in again with your new password.',
+        text: 'Password updated successfully! All other active sessions have been revoked for your security.',
       });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      const updated = await userApi.getSessions();
+      setSessions(updated || []);
     } catch (err: any) {
       console.error('Failed to change password:', err);
       setStatusMessage({
@@ -62,7 +92,7 @@ export default function SecuritySettingsPage() {
         </Link>
         <div>
           <h1 className="text-[32px] sm:text-[36px] font-bold text-gray-950 font-sans leading-tight">Security</h1>
-          <p className="text-[13.5px] text-gray-500 font-normal">Manage your password, two-factor authentication, and active sessions.</p>
+          <p className="text-[13.5px] text-gray-500 font-normal">Manage your password, two-factor authentication, and active device sessions.</p>
         </div>
       </div>
 
@@ -133,6 +163,50 @@ export default function SecuritySettingsPage() {
           <span>{loading ? 'Updating...' : 'Update Password'}</span>
         </button>
       </form>
+
+      {/* Active Device Sessions */}
+      <div className="bg-white border border-gray-200 rounded-[20px] p-6 space-y-4 shadow-xs">
+        <div>
+          <h3 className="text-[18px] font-bold text-gray-950 font-sans">Active Device Sessions</h3>
+          <p className="text-[12.5px] text-gray-500 mt-0.5">Authorized browser and device sessions authenticated with your account.</p>
+        </div>
+
+        {sessionsLoading ? (
+          <div className="p-4 text-center text-gray-400 text-xs font-mono">Loading sessions...</div>
+        ) : sessions.length === 0 ? (
+          <div className="p-4 bg-gray-50 rounded-[12px] border border-gray-150 text-center text-[13px] text-gray-500">
+            No active secondary device sessions. Current session active.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sessions.map((sess, idx) => (
+              <div key={sess.id} className="p-4 bg-gray-50 border border-gray-150 rounded-[14px] flex items-center justify-between">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-[14px] text-gray-900">{sess.device_info || 'Web Session'}</span>
+                    {idx === 0 && (
+                      <span className="text-[9.5px] font-mono font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full uppercase">
+                        CURRENT DEVICE
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11.5px] text-gray-500 font-mono mt-0.5">
+                    IP: {sess.ip_address || '127.0.0.1'} • Created: {new Date(sess.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                {idx !== 0 && (
+                  <button
+                    onClick={() => handleRevokeSession(sess.id)}
+                    className="h-8 px-3 text-[11.5px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-[8px] transition-colors"
+                  >
+                    Revoke
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Two-Factor Authentication */}
       <div className="bg-white border border-gray-200 rounded-[20px] p-6 space-y-4 shadow-xs">

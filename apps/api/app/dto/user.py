@@ -66,3 +66,14 @@ class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=8)
     new_password: str = Field(..., min_length=8, max_length=100)
 
+
+class UserSessionDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    device_info: Optional[str] = "Unknown Device"
+    ip_address: Optional[str] = "Unknown Location"
+    created_at: datetime
+    expires_at: datetime
+
+

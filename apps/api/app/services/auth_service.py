@@ -344,6 +344,14 @@ class AuthService:
             email_service.send_account_deleted_email(email, first_name or "User", settings.EMAIL_SUPPORT_URL)
         )
 
+    async def get_user_sessions(self, user_id: UUID) -> list:
+        from app.dto.user import UserSessionDTO
+        sessions = await self.repo.get_active_user_sessions(user_id)
+        return [UserSessionDTO.model_validate(s) for s in sessions]
+
+    async def revoke_user_session(self, user_id: UUID, session_id: UUID) -> None:
+        await self.repo.revoke_user_session_by_id(user_id, session_id)
+
     async def _generate_auth_tokens(self, user) -> AuthTokenDTO:
         access_t = create_access_token(subject=str(user.id))
         refresh_t = create_refresh_token(subject=str(user.id))

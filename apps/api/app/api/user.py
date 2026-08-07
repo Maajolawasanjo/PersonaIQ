@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.dto.common import ResponseMeta, StandardResponse
-from app.dto.user import OnboardingRequest, UpdateProfileRequest, UserDTO, UpdatePreferenceRequest, ChangePasswordRequest
+from app.dto.user import OnboardingRequest, UpdateProfileRequest, UserDTO, UpdatePreferenceRequest, ChangePasswordRequest, UserSessionDTO
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.services.auth_service import AuthService
@@ -281,4 +281,54 @@ async def delete_account(
         data={"deleted": True},
         meta=meta,
     )
+
+
+@router.get(
+    "/sessions",
+    response_model=StandardResponse[list[UserSessionDTO]],
+    status_code=status.HTTP_200_OK,
+    summary="List Active User Device Sessions",
+)
+async def list_active_sessions(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "req_list_sessions")
+    service = AuthService(db)
+    sessions = await service.get_user_sessions(current_user.id)
+
+    meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
+    return StandardResponse(
+        success=True,
+        message="Active sessions retrieved successfully.",
+        data=sessions,
+        meta=meta,
+    )
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    response_model=StandardResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Revoke Specific Device Session",
+)
+async def revoke_session(
+    session_id: UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "req_revoke_session")
+    service = AuthService(db)
+    await service.revoke_user_session(current_user.id, session_id)
+
+    meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
+    return StandardResponse(
+        success=True,
+        message="Session revoked successfully.",
+        data={"revoked": True},
+        meta=meta,
+    )
+
 
