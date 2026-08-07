@@ -49,7 +49,7 @@ export default function MarketingLayout({
       </div>
       {/* Sticky Header - Solid Dark */}
       <header className="sticky top-0 z-40 w-full bg-gray-950 border-b border-white/[0.06]">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="w-full px-6 sm:px-8 lg:px-12 h-20 flex items-center justify-between">
           {/* Logo (Far Left) */}
           <div className="flex-1 flex justify-start">
             <Link href="/" className="flex items-center space-x-3 group">
@@ -68,7 +68,7 @@ export default function MarketingLayout({
           </div>
 
           {/* Desktop Navigation (Center) */}
-          <nav className="hidden md:flex items-center justify-center space-x-9 text-[15.5px] font-medium">
+          <nav className="hidden lg:flex items-center justify-center space-x-6 xl:space-x-8 text-[14.5px] xl:text-[15.5px] font-medium shrink-0">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -90,10 +90,10 @@ export default function MarketingLayout({
 
           {/* Action CTAs (Far Right) */}
           <div className="flex-1 flex items-center justify-end space-x-4">
-            <div className="hidden md:flex items-center space-x-5">
+            <div className="hidden lg:flex items-center space-x-5">
               <Link
                 href="/login"
-                className="text-[15.5px] font-semibold text-gray-400 hover:text-white transition-colors"
+                className="text-[14.5px] xl:text-[15.5px] font-semibold text-gray-400 hover:text-white transition-colors"
               >
                 Sign In
               </Link>
@@ -107,7 +107,7 @@ export default function MarketingLayout({
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 -mr-2 text-gray-400 hover:text-white focus:outline-none"
+              className="lg:hidden p-2 -mr-2 text-gray-400 hover:text-white focus:outline-none"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? (
