@@ -133,10 +133,10 @@ export default function PresencePrismBackground() {
           speedX: (Math.random() - 0.5) * 0.004,
           speedY: (Math.random() - 0.5) * 0.004,
           speedZ: (Math.random() - 0.5) * 0.003,
-          strokeColor: isCrimson ? 'rgba(163, 31, 52, 0.40)' : 'rgba(100, 115, 130, 0.35)',
-          fillColor: isCrimson ? 'rgba(163, 31, 52, 0.04)' : 'rgba(100, 115, 130, 0.025)',
-          dotColor: isCrimson ? 'rgba(225, 29, 72, 0.65)' : 'rgba(100, 115, 130, 0.55)',
-          dotRadius: scale > 100 ? 3.0 : 2.0,
+          strokeColor: isCrimson ? 'rgba(163, 31, 52, 0.18)' : 'rgba(120, 135, 150, 0.15)',
+          fillColor: isCrimson ? 'rgba(163, 31, 52, 0.015)' : 'rgba(120, 135, 150, 0.01)',
+          dotColor: isCrimson ? 'rgba(225, 29, 72, 0.30)' : 'rgba(120, 135, 150, 0.25)',
+          dotRadius: scale > 100 ? 2.2 : 1.5,
         });
       }
       return items;
@@ -220,7 +220,7 @@ export default function PresencePrismBackground() {
           ctx.fill();
 
           ctx.strokeStyle = s.strokeColor;
-          ctx.lineWidth = s.scale > 100 ? 1.2 : 0.8;
+          ctx.lineWidth = s.scale > 100 ? 0.9 : 0.6;
           ctx.stroke();
         });
 
@@ -240,13 +240,13 @@ export default function PresencePrismBackground() {
           const dy = positions[i].y - positions[j].y;
           const dist = Math.hypot(dx, dy);
 
-          if (dist < 260) {
-            const alpha = (1 - dist / 260) * 0.15;
+          if (dist < 240) {
+            const alpha = (1 - dist / 240) * 0.07;
             ctx.beginPath();
             ctx.moveTo(positions[i].x, positions[i].y);
             ctx.lineTo(positions[j].x, positions[j].y);
             ctx.strokeStyle = `rgba(163, 31, 52, ${alpha})`;
-            ctx.lineWidth = 0.6;
+            ctx.lineWidth = 0.5;
             ctx.stroke();
           }
         }
