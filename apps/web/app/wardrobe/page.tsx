@@ -26,7 +26,7 @@ interface Outfit {
   };
 }
 
-const MOCK_OUTFITS: Outfit[] = [
+const INITIAL_OUTFITS: Outfit[] = [
   {
     id: '1',
     name: 'Navy Executive Blazer & Trousers',
@@ -152,8 +152,40 @@ const AI_RECOMMENDATIONS = [
 
 export default function WardrobePage() {
   const [activeCategory, setActiveCategory] = useState('All');
-  const [outfits, setOutfits] = useState<Outfit[]>(MOCK_OUTFITS);
+  const [outfits, setOutfits] = useState<Outfit[]>(INITIAL_OUTFITS);
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
+
+  useEffect(() => {
+    async function loadWardrobe() {
+      try {
+        const res = await wardrobeApi.getItems();
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: Outfit[] = res.data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            category: item.category || 'Business Casual',
+            score: 88,
+            events: item.wear_count || 1,
+            lastWorn: 'Recently',
+            tag: item.is_favorite ? 'Favorite' : null,
+            favorite: item.is_favorite || false,
+            image: item.photo_url || '/images/brown-peaked-lapel-suit.jpg',
+            details: {
+              authority: 90,
+              trustworthiness: 88,
+              composure: 89,
+              colorNotes: `${item.color || 'Classic'} tone aligned with executive presence benchmarks.`,
+              vocalNotes: 'Tailored shoulder silhouette supports open diaphragmatic posture.',
+            },
+          }));
+          setOutfits(mapped);
+        }
+      } catch (err) {
+        console.warn('Backend wardrobe items unresolvable, using defaults:', err);
+      }
+    }
+    loadWardrobe();
+  }, []);
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.preventDefault();

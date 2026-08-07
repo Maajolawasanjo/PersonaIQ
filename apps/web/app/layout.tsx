@@ -3,6 +3,7 @@ import { GeistMono } from 'geist/font/mono';
 import { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/providers/auth-provider';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const geistSans = localFont({
   src: [
@@ -202,7 +203,9 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} ${GeistMono.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </AuthProvider>
       </body>
     </html>
   );
