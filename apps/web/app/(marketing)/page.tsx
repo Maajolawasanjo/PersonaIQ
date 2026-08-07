@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '../../components/ui/button';
+import PresencePrismBackground from '../../components/animations/PresencePrismBackground';
 
 export default function MarketingHomePage() {
   const [presenceScore, setPresenceScore] = useState(65);
@@ -258,196 +259,130 @@ export default function MarketingHomePage() {
 
   return (
     <div className="flex flex-col w-full">
-      {/* 1. Hero Section */}
-      <section className="relative pt-24 pb-32 overflow-hidden bg-pattern-waves">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-          {/* Left Hero Details */}
-          <div className="lg:col-span-5 flex flex-col space-y-7 text-left z-10">
-            <span className="text-[12px] font-bold text-primary tracking-widest uppercase font-mono">
-              BUILD YOUR PRESENCE. OWN EVERY MOMENT.
-            </span>
+      {/* 1. Hero Section — Academic Precision & 3D ThreeJS Presence Prisms */}
+      <section className="relative pt-24 pb-28 md:pt-32 md:pb-36 overflow-hidden bg-[#f9f9f9] min-h-[85vh] flex flex-col items-center justify-center text-center">
+        {/* Three.js Animated 3D Icosahedron Background */}
+        <PresencePrismBackground />
 
-            <h1 className="text-[52px] sm:text-[68px] font-extrabold tracking-tight text-gray-950 leading-[1.04] font-sans">
-              Your Presence <br /> Powered by <span className="text-primary">AI.</span>
-            </h1>
-
-            <p className="text-[17.5px] text-gray-550 leading-relaxed max-w-[480px]">
-              PersonaIQ combines Skin AI, Virtual Try-On, and contextual intelligence to create a personalized Presence Plan for every important moment.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-6 pt-2">
-              <Link href="/onboarding">
-                <Button className="w-full sm:w-auto h-12 px-7 bg-primary hover:bg-primary/95 text-white font-bold text-[14.5px] rounded-md transition-all active:scale-[0.98] shadow-sm flex items-center justify-center space-x-2">
-                  <span>Get Your Presence Plan</span>
-                  <span className="text-xs">→</span>
-                </Button>
-              </Link>
-              <Link href="/demo" className="flex items-center space-x-3 text-left group">
-                <div className="w-11 h-11 rounded-full bg-white border border-gray-250 flex items-center justify-center group-hover:border-gray-300 transition-colors shadow-sm shrink-0">
-                  <svg className="w-4 h-4 text-primary ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <span className="text-[14px] font-bold text-gray-850 block leading-tight">See How It Works</span>
-                  <span className="text-[11.5px] text-gray-400 font-semibold block">2 min overview</span>
-                </div>
-              </Link>
-            </div>
-
-            {/* Three key features horizontal grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8 border-t border-gray-150/40">
-              <div className="space-y-1.5 text-left">
-                <div className="flex items-center space-x-2">
-                  <div className="w-7 h-7 rounded-[6px] bg-primary/5 text-primary flex items-center justify-center shrink-0 border border-primary/10">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </div>
-                  <span className="text-[13px] font-bold text-gray-900 leading-tight">Skin AI Analysis</span>
-                </div>
-                <p className="text-[11.5px] text-gray-500 leading-normal">Understand your unique skin profile</p>
-              </div>
-
-              <div className="space-y-1.5 text-left">
-                <div className="flex items-center space-x-2">
-                  <div className="w-7 h-7 rounded-[6px] bg-primary/5 text-primary flex items-center justify-center shrink-0 border border-primary/10">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 21m0 0l-.813-5.096M9 21h8m-8 0H1m8-11.813a4.5 4.5 0 018.284 0M17 10a4.5 4.5 0 014.142 3.187M17 10h-2M13 3h-2" />
-                    </svg>
-                  </div>
-                  <span className="text-[13px] font-bold text-gray-900 leading-tight">Virtual Try-On</span>
-                </div>
-                <p className="text-[11.5px] text-gray-500 leading-normal">See what looks best on you, instantly</p>
-              </div>
-
-              <div className="space-y-1.5 text-left">
-                <div className="flex items-center space-x-2">
-                  <div className="w-7 h-7 rounded-[6px] bg-primary/5 text-primary flex items-center justify-center shrink-0 border border-primary/10">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                  </div>
-                  <span className="text-[13px] font-bold text-gray-900 leading-tight">Smart Recs</span>
-                </div>
-                <p className="text-[11.5px] text-gray-500 leading-normal">AI suggestions for every occasion</p>
-              </div>
+        <div className="max-w-4xl mx-auto px-6 relative z-10 flex flex-col items-center justify-center space-y-7 text-center">
+          
+          {/* Top Pill Badge with wireframe geometric context */}
+          <div className="relative inline-flex items-center justify-center">
+            <div className="px-4 py-1.5 rounded-full bg-white/80 border border-gray-200 shadow-sm backdrop-blur-md flex items-center space-x-2">
+              <span className="text-[11px] font-bold text-gray-700 font-mono tracking-widest uppercase">
+                PRESENCE INTELLIGENCE
+              </span>
             </div>
           </div>
 
-          {/* Right Hero Details - Model with floating cards */}
-          <div className="lg:col-span-7 flex justify-center lg:justify-end items-center relative z-10 w-full pt-10 lg:pt-0">
-            {/* Background Circle */}
-            <div className="absolute top-1/2 left-1/2 lg:left-2/3 transform -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[580px] sm:h-[580px] rounded-full bg-gradient-to-tr from-gray-150 to-gray-200/40 -z-10" />
+          {/* Main Display Headline */}
+          <h1 className="text-[46px] sm:text-[64px] md:text-[72px] font-bold tracking-tight text-gray-900 leading-[1.08] font-sans max-w-3xl">
+            Build Your Presence. <br />
+            <span className="text-[#750013]">Own Every Moment.</span>
+          </h1>
 
-            <div className="relative w-[340px] h-[440px] sm:w-[480px] sm:h-[585px] md:w-[500px] md:h-[610px] rounded-[32px] overflow-hidden border border-gray-150/50 shadow-md">
-              <img 
-                src="/images/professional-ai-headshot.jpg" 
-                alt="PersonaIQ Composure Profile" 
-                className="w-full h-full object-cover scale-105"
-              />
-            </div>
+          {/* Sub-headline */}
+          <p className="text-[16px] sm:text-[18px] text-gray-600 leading-relaxed max-w-[620px] font-sans">
+            AI-powered personal presence for life&apos;s most important moments—interviews, presentations, and everything in between.
+          </p>
 
-            {/* Floating Card 1: Score */}
-            <div className="absolute top-[2%] -right-[2%] sm:-right-[8%] md:-right-[10%] bg-white border border-gray-150 rounded-[16px] p-4.5 shadow-[0_10px_25px_rgba(0,0,0,0.03)] w-[160px] text-left z-20 hover:scale-[1.03] transition-transform hidden sm:block">
-              <div className="flex items-center space-x-1.5 pb-2 border-b border-gray-100 mb-2.5 text-[9.5px] font-bold text-gray-400 uppercase tracking-widest font-mono">
-                <svg className="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-                <span>Presence Score</span>
-              </div>
-              <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
-                <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" fill="transparent" stroke="#E5E7EB" strokeWidth="6" />
-                  <circle cx="50" cy="50" r="42" fill="transparent" stroke="#A31F34" strokeWidth="6"
-                    strokeDasharray="263.8" strokeDashoffset={263.8 - (263.8 * 92) / 100}
-                    strokeLinecap="round" />
-                </svg>
-                <div className="flex flex-col items-center">
-                  <span className="text-[20px] font-black text-gray-955 tracking-tight leading-none">92</span>
-                </div>
-              </div>
-              <div className="text-center mt-2.5">
-                <span className="text-[11.5px] font-bold text-gray-900 block leading-none">Exceptional</span>
-                <span className="text-[8.5px] text-gray-400 block mt-1">You're showing up your best.</span>
-              </div>
-            </div>
-
-            {/* Floating Card 2: Recommended */}
-            <div className="absolute top-[42%] -right-[8%] sm:-right-[14%] bg-white border border-gray-150 rounded-[16px] p-3.5 shadow-[0_10px_25px_rgba(0,0,0,0.03)] w-[200px] text-left z-20 hover:scale-[1.03] transition-transform hidden sm:block">
-              <div className="flex items-center space-x-1.5 pb-2 border-b border-gray-100 mb-2.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest font-mono">
-                <svg className="w-3 h-3 text-primary" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                <span>Recommended For You</span>
-              </div>
-              <div className="flex space-x-3 items-center">
-                <div className="w-12 h-14 rounded-[8px] overflow-hidden shrink-0 bg-slate-100 border border-gray-150">
-                  <img src="/images/brown-peaked-lapel-suit.jpg" className="w-full h-full object-cover" alt="Recommended style" />
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-[11px] font-bold text-gray-900 leading-tight">Executive Meeting</h4>
-                  <p className="text-[9.5px] text-gray-500 leading-none">Navy Blazer</p>
-                  <p className="text-[9.5px] text-gray-500 leading-none">White Shirt</p>
-                  <div className="flex space-x-1 pt-1">
-                    <span className="w-2 h-2 rounded-full bg-slate-900 border border-gray-200" />
-                    <span className="w-2 h-2 rounded-full bg-blue-900" />
-                    <span className="w-2 h-2 rounded-full bg-gray-200" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Card 3: Skin Overview */}
-            <div className="absolute bottom-[2%] -left-[2%] sm:-left-[10%] bg-white border border-gray-150 rounded-[16px] p-4 shadow-[0_10px_25px_rgba(0,0,0,0.03)] w-[210px] text-left z-20 hover:scale-[1.03] transition-transform hidden sm:block">
-              <div className="flex items-center space-x-1.5 pb-2 border-b border-gray-100 mb-2.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest font-mono">
-                <svg className="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span>Skin Health Overview</span>
-              </div>
-              <div className="flex space-x-3 items-center">
-                <div className="w-12 h-14 rounded-[8px] overflow-hidden shrink-0 bg-slate-900 border border-gray-150 relative">
-                  <img src="/images/professional-female-headshot.jpg" className="w-full h-full object-cover" alt="Scan details" />
-                  <div className="absolute inset-0 border border-primary/20 rounded-[8px] pointer-events-none" />
-                </div>
-                <div className="flex-1 space-y-1 text-[10px]">
-                  <div className="flex justify-between items-center text-gray-550">
-                    <span>Hydration</span>
-                    <span className="text-emerald-600 font-bold">Excellent</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-550">
-                    <span>Texture</span>
-                    <span className="text-emerald-600 font-bold">Great</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-555">
-                    <span>Even Tone</span>
-                    <span className="text-emerald-600 font-bold">Good</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+          {/* Centered CTA Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <Link href="/onboarding">
+              <Button className="h-12 px-8 bg-[#FF1323] hover:bg-[#E00010] text-white font-bold text-[14.5px] rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-[0.98]">
+                Start Your Journey
+              </Button>
+            </Link>
+            <Link href="/demo">
+              <Button variant="outline" className="h-12 px-8 bg-white/90 hover:bg-white text-gray-800 border-gray-250 font-bold text-[14.5px] rounded-xl shadow-sm transition-all active:scale-[0.98]">
+                How it Works
+              </Button>
+            </Link>
           </div>
+
         </div>
       </section>
 
-      {/* 2. Security & Composure metrics bar */}
-      <section className="py-6 bg-white border-b border-gray-150/40">
-        <div className="max-w-7xl mx-auto px-6 flex flex-wrap items-center justify-center gap-8 md:gap-16 opacity-75 select-none font-mono text-[10.5px] font-bold text-gray-400 tracking-[0.2em] uppercase">
-          <span className="flex items-center space-x-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <span>Secure On-Device Processing</span>
-          </span>
-          <span className="flex items-center space-x-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <span>Zero Data Retention Policy</span>
-          </span>
-          <span className="flex items-center space-x-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <span>99.4% Composure Index Rating</span>
-          </span>
+      {/* 2. The Intelligence Suite Section */}
+      <section className="py-24 bg-[#f3f3f3] border-t border-gray-200/60 relative">
+        <div className="max-w-6xl mx-auto px-6 text-center space-y-16">
+          
+          {/* Section Header */}
+          <div className="space-y-3 max-w-2xl mx-auto">
+            <h2 className="text-[32px] sm:text-[40px] font-bold tracking-tight text-gray-900 font-sans">
+              The Intelligence Suite
+            </h2>
+            <p className="text-[15px] sm:text-[16px] text-gray-600 leading-relaxed">
+              Advanced cognitive models designed to refine your physical and rhetorical presentation.
+            </p>
+          </div>
+
+          {/* 3-Column Card Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+            
+            {/* Card 1: Skin Intelligence */}
+            <div className="bg-white rounded-[16px] p-7 shadow-sm border border-gray-150 flex flex-col justify-between space-y-6 hover:shadow-md transition-shadow">
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-[10px] bg-red-50 text-[#750013] flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-[20px] font-bold text-gray-900 font-sans">
+                  Skin Intelligence
+                </h3>
+                <p className="text-[14px] text-gray-600 leading-relaxed">
+                  Micro-expression analysis mapping over 400 facial data points to provide feedback on perceived confidence and engagement levels in real-time.
+                </p>
+              </div>
+            </div>
+
+            {/* Card 2: Virtual Try-On */}
+            <div className="bg-white rounded-[16px] p-7 shadow-sm border border-gray-150 flex flex-col justify-between space-y-6 hover:shadow-md transition-shadow">
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-[10px] bg-red-50 text-[#750013] flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 21m0 0l-.813-5.096M9 21h8m-8 0H1m8-11.813a4.5 4.5 0 018.284 0M17 10a4.5 4.5 0 014.142 3.187M17 10h-2M13 3h-2" />
+                  </svg>
+                </div>
+                <h3 className="text-[20px] font-bold text-gray-900 font-sans">
+                  Virtual Try-On
+                </h3>
+                <p className="text-[14px] text-gray-600 leading-relaxed">
+                  Context-aware wardrobe simulation. Test various aesthetic combinations against the psychological profiles of your specific audience.
+                </p>
+              </div>
+            </div>
+
+            {/* Card 3: Explainable AI (Red Top Accent Line) */}
+            <div className="bg-white rounded-[16px] p-7 shadow-sm border-t-[3px] border-t-[#FF1323] border-x border-b border-gray-150 flex flex-col justify-between space-y-6 hover:shadow-md transition-shadow">
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-[10px] bg-slate-100 text-slate-700 flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <h3 className="text-[20px] font-bold text-gray-900 font-sans">
+                  Explainable AI
+                </h3>
+                <p className="text-[14px] text-gray-600 leading-relaxed">
+                  Transparent analytics. Understand exactly &quot;why&quot; certain behavioral adjustments are recommended based on established cognitive science.
+                </p>
+              </div>
+
+              {/* Bottom Explainability Box */}
+              <div className="bg-gray-100/80 rounded-[8px] p-3 border border-gray-200/60 font-mono text-[11px] text-gray-600 space-y-1">
+                <div className="text-[9.5px] font-bold uppercase text-gray-400 tracking-wider">
+                  ANALYSIS
+                </div>
+                <div className="text-gray-800 font-semibold">
+                  Confidence mapping = 92% structural integrity.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </section>
 
