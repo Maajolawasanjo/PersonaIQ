@@ -50,8 +50,7 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`;
-      await signUp(formattedEmail, password, fullName);
+      await signUp(formattedEmail, password, firstName.trim(), lastName.trim());
       window.location.href = `/verify-email?email=${encodeURIComponent(formattedEmail)}`;
     } catch (err: any) {
       setErrorMessage(err.message || 'Registration failed. Please try again.');

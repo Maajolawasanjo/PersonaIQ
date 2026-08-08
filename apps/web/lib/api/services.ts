@@ -11,12 +11,27 @@ import {
 } from './types';
 
 export const authApi = {
-  signUp: (email: string, password: string, fullName: string): Promise<AuthTokens> =>
-    apiClient.post<AuthTokens>('/auth/sign-up', {
+  signUp: (email: string, password: string, firstNameOrFullName: string, lastName?: string): Promise<AuthTokens> => {
+    let first_name = firstNameOrFullName ? firstNameOrFullName.trim() : '';
+    let last_name = lastName ? lastName.trim() : '';
+
+    if (!lastName && firstNameOrFullName.includes(' ')) {
+      const parts = firstNameOrFullName.trim().split(/\s+/);
+      first_name = parts[0];
+      last_name = parts.slice(1).join(' ');
+    }
+
+    if (!last_name) {
+      last_name = 'User';
+    }
+
+    return apiClient.post<AuthTokens>('/auth/sign-up', {
       email,
       password,
-      full_name: fullName,
-    }),
+      first_name,
+      last_name,
+    });
+  },
 
   signIn: (email: string, password: string): Promise<AuthTokens> =>
     apiClient.post<AuthTokens>('/auth/sign-in', {
@@ -94,14 +109,24 @@ export const journeyApi = {
   updateEventContext: (
     journeyId: string,
     eventData: {
-      event_type: string;
-      dress_code: string;
-      target_vibe: string;
-      event_date?: string;
+      name?: string;
+      industry?: string;
       location?: string;
+      event_date?: string;
+      event_time?: string;
+      dress_code?: string;
+      importance?: number;
+      event_type?: string;
+      target_vibe?: string;
     }
-  ): Promise<Journey> =>
-    apiClient.patch<Journey>(`/journeys/${journeyId}/event`, eventData),
+  ): Promise<Journey> => {
+    const payload: Record<string, any> = { ...eventData };
+    if (eventData.event_type && !payload.name) payload.name = eventData.event_type;
+    if (eventData.target_vibe && !payload.dress_code) payload.dress_code = eventData.target_vibe;
+    delete payload.event_type;
+    delete payload.target_vibe;
+    return apiClient.patch<Journey>(`/journeys/${journeyId}/event`, payload);
+  },
 
   getJourney: (journeyId: string): Promise<Journey> =>
     apiClient.get<Journey>(`/journeys/${journeyId}`),
