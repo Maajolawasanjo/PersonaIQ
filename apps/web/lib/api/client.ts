@@ -104,7 +104,7 @@ class ApiClient {
       return resData.data;
     } catch (err: any) {
       if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-        throw new Error("We couldn't connect to PersonaIQ. Please check your internet connection and try again.");
+        throw new Error("Unable to connect to the PersonaIQ backend server. Please verify your backend deployment.");
       }
       throw err;
     }
