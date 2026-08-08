@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update as sql_update
 from sqlalchemy.orm import selectinload
-from app.models.user import User, RefreshToken
+from app.models.user import User, RefreshToken, UserPreference
 from app.repositories.base import BaseRepository
 
 class UserRepository(BaseRepository[User]):

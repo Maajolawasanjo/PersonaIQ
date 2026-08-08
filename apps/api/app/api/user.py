@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from uuid import UUID
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
