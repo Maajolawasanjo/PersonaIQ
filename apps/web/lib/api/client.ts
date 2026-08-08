@@ -1,6 +1,6 @@
 import { StandardResponse } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://personaiq-3suq.onrender.com/api/v1';
 
 class ApiClient {
   private getAccessToken(): string | null {
@@ -104,7 +104,7 @@ class ApiClient {
       return resData.data;
     } catch (err: any) {
       if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-        throw new Error("Unable to connect to the PersonaIQ backend server. Please verify your backend deployment.");
+        throw new Error("Unable to connect to PersonaIQ services right now. Please try again in a few moments or contact support if the issue persists.");
       }
       throw err;
     }
