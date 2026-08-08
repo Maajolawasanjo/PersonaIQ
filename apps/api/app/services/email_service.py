@@ -18,7 +18,11 @@ class EmailService:
         self.smtp_port = settings.SMTP_PORT
         self.smtp_user = settings.SMTP_USER
         self.smtp_password = settings.SMTP_PASSWORD
-        self.from_email = settings.EMAILS_FROM_EMAIL or settings.SMTP_USER
+        # When using Gmail SMTP, From address MUST match authenticated smtp_user to pass SPF and prevent bounces/rejections
+        if "gmail" in (self.smtp_host or "").lower() and self.smtp_user:
+            self.from_email = self.smtp_user
+        else:
+            self.from_email = settings.EMAILS_FROM_EMAIL or self.smtp_user
         self.from_name = settings.EMAILS_FROM_NAME
 
     def _load_template(self, template_name: str, context: Dict[str, Any], fallback_html: str) -> str:
@@ -48,9 +52,11 @@ class EmailService:
             logger.info(f"--- EMAIL TO {to_email} ---\nSubject: {subject}\n{html_content[:200]}...")
             return False
 
+        sender = self.smtp_user if "gmail" in (self.smtp_host or "").lower() else self.from_email
+
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"{self.from_name} <{self.from_email}>"
+        msg["From"] = f"{self.from_name} <{sender}>"
         msg["To"] = to_email
 
         html_part = MIMEText(html_content, "html")
@@ -60,7 +66,7 @@ class EmailService:
             with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
                 server.starttls()
                 server.login(self.smtp_user, self.smtp_password.replace(" ", ""))
-                server.sendmail(self.from_email, [to_email], msg.as_string())
+                server.sendmail(sender, [to_email], msg.as_string())
             logger.info(f"Email successfully dispatched to {to_email} via SMTP.")
             return True
         except Exception as e:
