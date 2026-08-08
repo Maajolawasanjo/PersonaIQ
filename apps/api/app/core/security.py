@@ -8,7 +8,7 @@ from argon2.exceptions import VerifyMismatchError
 from app.core.config import settings
 from app.core.errors import AppException, ErrorCode
 
-ph = PasswordHasher()
+ph = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
 
 
 def hash_password(password: str) -> str:
