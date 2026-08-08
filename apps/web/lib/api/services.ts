@@ -11,27 +11,13 @@ import {
 } from './types';
 
 export const authApi = {
-  signUp: (email: string, password: string, firstNameOrFullName: string, lastName?: string): Promise<AuthTokens> => {
-    let first_name = firstNameOrFullName ? firstNameOrFullName.trim() : '';
-    let last_name = lastName ? lastName.trim() : '';
-
-    if (!lastName && firstNameOrFullName.includes(' ')) {
-      const parts = firstNameOrFullName.trim().split(/\s+/);
-      first_name = parts[0];
-      last_name = parts.slice(1).join(' ');
-    }
-
-    if (!last_name) {
-      last_name = 'User';
-    }
-
-    return apiClient.post<AuthTokens>('/auth/sign-up', {
+  signUp: (email: string, password: string, firstName: string, lastName: string): Promise<AuthTokens> =>
+    apiClient.post<AuthTokens>('/auth/sign-up', {
       email,
       password,
-      first_name,
-      last_name,
-    });
-  },
+      first_name: firstName,
+      last_name: lastName,
+    }),
 
   signIn: (email: string, password: string): Promise<AuthTokens> =>
     apiClient.post<AuthTokens>('/auth/sign-in', {
@@ -116,17 +102,9 @@ export const journeyApi = {
       event_time?: string;
       dress_code?: string;
       importance?: number;
-      event_type?: string;
-      target_vibe?: string;
     }
-  ): Promise<Journey> => {
-    const payload: Record<string, any> = { ...eventData };
-    if (eventData.event_type && !payload.name) payload.name = eventData.event_type;
-    if (eventData.target_vibe && !payload.dress_code) payload.dress_code = eventData.target_vibe;
-    delete payload.event_type;
-    delete payload.target_vibe;
-    return apiClient.patch<Journey>(`/journeys/${journeyId}/event`, payload);
-  },
+  ): Promise<Journey> =>
+    apiClient.patch<Journey>(`/journeys/${journeyId}/event`, eventData),
 
   getJourney: (journeyId: string): Promise<Journey> =>
     apiClient.get<Journey>(`/journeys/${journeyId}`),

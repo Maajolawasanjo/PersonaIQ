@@ -12,7 +12,7 @@ interface AuthContextType {
   refetchUser: () => Promise<UserProfile | null>;
   updateUserLocally: (partial: Partial<UserProfile>) => void;
   signIn: (email: string, pass: string) => Promise<any>;
-  signUp: (email: string, pass: string, firstNameOrFullName: string, lastName?: string) => Promise<any>;
+  signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<any>;
   verifyOtp: (email: string, code: string) => Promise<any>;
   resendOtp: (email: string) => Promise<any>;
   forgotPassword: (email: string) => Promise<any>;
@@ -126,10 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, pass: string, firstNameOrFullName: string, lastName?: string) => {
+  const signUp = async (email: string, pass: string, firstName: string, lastName: string) => {
     setIsLoading(true);
     try {
-      const tokens = await authApi.signUp(email, pass, firstNameOrFullName, lastName);
+      const tokens = await authApi.signUp(email, pass, firstName, lastName);
       if (tokens.access_token && tokens.refresh_token) {
         apiClient.setTokens(tokens.access_token, tokens.refresh_token);
         const profile = await authApi.getMe();
