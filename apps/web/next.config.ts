@@ -10,7 +10,7 @@ const cspHeader = `
   base-uri 'self';
   form-action 'self';
   frame-src https://www.openstreetmap.org https://maps.google.com https://www.google.com;
-  connect-src 'self' https://*.openstreetmap.org https://*.tile.openstreetmap.org;
+  connect-src 'self' https://personaiq-3suq.onrender.com https://personaiq.ai https://*.personaiq.ai https://personaiq.com https://*.personaiq.com https://*.openstreetmap.org https://*.tile.openstreetmap.org;
   frame-ancestors 'none';
   upgrade-insecure-requests;
 `;
