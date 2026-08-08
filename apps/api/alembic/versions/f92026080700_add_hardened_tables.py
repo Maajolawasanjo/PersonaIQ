@@ -14,93 +14,108 @@ down_revision: Union[str, None] = 'e23d1b45a8c7'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+
 def upgrade() -> None:
-    # Create wardrobe_items table if not exists
-    op.execute("""
-    CREATE TABLE IF NOT EXISTS wardrobe_items (
-        id VARCHAR(36) PRIMARY KEY,
-        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        name VARCHAR(255) NOT NULL,
-        category VARCHAR(100) NOT NULL,
-        color VARCHAR(100),
-        formality VARCHAR(100) DEFAULT 'Business Casual',
-        photo_url TEXT,
-        wear_count INTEGER DEFAULT 0,
-        is_favorite BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+    # Use Alembic DSL with proper UUID types to match existing users/journeys schema
 
-    # Create wardrobe_outfits table if not exists
-    op.execute("""
-    CREATE TABLE IF NOT EXISTS wardrobe_outfits (
-        id VARCHAR(36) PRIMARY KEY,
-        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        name VARCHAR(255) NOT NULL,
-        item_ids JSON,
-        confidence_score FLOAT DEFAULT 0.85,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+    op.create_table(
+        'wardrobe_items',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('name', sa.String(255), nullable=False),
+        sa.Column('category', sa.String(100), nullable=False),
+        sa.Column('color', sa.String(100), nullable=True),
+        sa.Column('formality', sa.String(100), nullable=True, server_default='Business Casual'),
+        sa.Column('photo_url', sa.Text(), nullable=True),
+        sa.Column('wear_count', sa.Integer(), nullable=False, server_default='0'),
+        sa.Column('is_favorite', sa.Boolean(), nullable=False, server_default='false'),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id'),
+        if_not_exists=True,
+    )
+    op.create_index('idx_wardrobe_items_user_id', 'wardrobe_items', ['user_id'], if_not_exists=True)
 
-    # Create presence_goals table if not exists
-    op.execute("""
-    CREATE TABLE IF NOT EXISTS presence_goals (
-        id VARCHAR(36) PRIMARY KEY,
-        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        journey_id VARCHAR(36) REFERENCES journeys(id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        category VARCHAR(100) DEFAULT 'Executive',
-        is_completed BOOLEAN DEFAULT FALSE,
-        due_date TIMESTAMP WITH TIME ZONE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+    op.create_table(
+        'wardrobe_outfits',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('name', sa.String(255), nullable=False),
+        sa.Column('item_ids', sa.JSON(), nullable=True),
+        sa.Column('confidence_score', sa.Float(), nullable=True, server_default='0.85'),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id'),
+        if_not_exists=True,
+    )
+    op.create_index('idx_wardrobe_outfits_user_id', 'wardrobe_outfits', ['user_id'], if_not_exists=True)
 
-    # Create presence_dna table if not exists
-    op.execute("""
-    CREATE TABLE IF NOT EXISTS presence_dna (
-        id VARCHAR(36) PRIMARY KEY,
-        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        archetype VARCHAR(100) NOT NULL,
-        vibe_signature VARCHAR(100) NOT NULL,
-        gravitas_score INTEGER DEFAULT 80,
-        warmth_score INTEGER DEFAULT 80,
-        clarity_score INTEGER DEFAULT 80,
-        style_match_score INTEGER DEFAULT 80,
-        analysis_summary TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+    op.create_table(
+        'presence_goals',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('journey_id', sa.UUID(), nullable=True),
+        sa.Column('title', sa.String(255), nullable=False),
+        sa.Column('description', sa.Text(), nullable=True),
+        sa.Column('category', sa.String(100), nullable=True, server_default='Executive'),
+        sa.Column('is_completed', sa.Boolean(), nullable=False, server_default='false'),
+        sa.Column('due_date', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['journey_id'], ['journeys.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id'),
+        if_not_exists=True,
+    )
+    op.create_index('idx_presence_goals_user_id', 'presence_goals', ['user_id'], if_not_exists=True)
 
-    # Create shared_journey_tokens table if not exists
-    op.execute("""
-    CREATE TABLE IF NOT EXISTS shared_journey_tokens (
-        id VARCHAR(36) PRIMARY KEY,
-        journey_id VARCHAR(36) NOT NULL REFERENCES journeys(id) ON DELETE CASCADE,
-        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        token VARCHAR(255) NOT NULL UNIQUE,
-        expires_at TIMESTAMP WITH TIME ZONE,
-        is_revoked BOOLEAN DEFAULT FALSE,
-        view_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+    op.create_table(
+        'presence_dna',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('archetype', sa.String(100), nullable=False),
+        sa.Column('vibe_signature', sa.String(100), nullable=False),
+        sa.Column('gravitas_score', sa.Integer(), nullable=True, server_default='80'),
+        sa.Column('warmth_score', sa.Integer(), nullable=True, server_default='80'),
+        sa.Column('clarity_score', sa.Integer(), nullable=True, server_default='80'),
+        sa.Column('style_match_score', sa.Integer(), nullable=True, server_default='80'),
+        sa.Column('analysis_summary', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id'),
+        if_not_exists=True,
+    )
+    op.create_index('idx_presence_dna_user_id', 'presence_dna', ['user_id'], if_not_exists=True)
 
-    op.execute("""
-    CREATE INDEX IF NOT EXISTS idx_wardrobe_items_user_id ON wardrobe_items(user_id);
-    CREATE INDEX IF NOT EXISTS idx_wardrobe_outfits_user_id ON wardrobe_outfits(user_id);
-    CREATE INDEX IF NOT EXISTS idx_presence_goals_user_id ON presence_goals(user_id);
-    CREATE INDEX IF NOT EXISTS idx_presence_dna_user_id ON presence_dna(user_id);
-    CREATE INDEX IF NOT EXISTS idx_shared_journey_tokens_token ON shared_journey_tokens(token);
-    CREATE INDEX IF NOT EXISTS idx_shared_journey_tokens_journey_id ON shared_journey_tokens(journey_id);
-    """)
+    op.create_table(
+        'shared_journey_tokens',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('journey_id', sa.UUID(), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('token', sa.String(255), nullable=False),
+        sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('is_revoked', sa.Boolean(), nullable=False, server_default='false'),
+        sa.Column('view_count', sa.Integer(), nullable=False, server_default='0'),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.ForeignKeyConstraint(['journey_id'], ['journeys.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('token'),
+        if_not_exists=True,
+    )
+    op.create_index('idx_shared_journey_tokens_token', 'shared_journey_tokens', ['token'], if_not_exists=True)
+    op.create_index('idx_shared_journey_tokens_journey_id', 'shared_journey_tokens', ['journey_id'], if_not_exists=True)
+
 
 def downgrade() -> None:
-    op.drop_table('shared_journey_tokens', if_exists=True)
-    op.drop_table('presence_dna', if_exists=True)
-    op.drop_table('presence_goals', if_exists=True)
-    op.drop_table('wardrobe_outfits', if_exists=True)
-    op.drop_table('wardrobe_items', if_exists=True)
+    op.drop_index('idx_shared_journey_tokens_journey_id', table_name='shared_journey_tokens')
+    op.drop_index('idx_shared_journey_tokens_token', table_name='shared_journey_tokens')
+    op.drop_table('shared_journey_tokens')
+    op.drop_index('idx_presence_dna_user_id', table_name='presence_dna')
+    op.drop_table('presence_dna')
+    op.drop_index('idx_presence_goals_user_id', table_name='presence_goals')
+    op.drop_table('presence_goals')
+    op.drop_index('idx_wardrobe_outfits_user_id', table_name='wardrobe_outfits')
+    op.drop_table('wardrobe_outfits')
+    op.drop_index('idx_wardrobe_items_user_id', table_name='wardrobe_items')
+    op.drop_table('wardrobe_items')
