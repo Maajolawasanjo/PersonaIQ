@@ -69,8 +69,8 @@ class EmailService:
 
     async def send_email(self, to_email: str, subject: str, html_content: str) -> bool:
         """Asynchronously dispatches an email using asyncio threadpool executor."""
-        if not settings.ENABLE_EMAIL_NOTIFICATIONS:
-            logger.info(f"Email notification suppressed (ENABLE_EMAIL_NOTIFICATIONS=false). Target: {to_email}")
+        if not settings.ENABLE_EMAIL_NOTIFICATIONS or settings.ENVIRONMENT == "testing":
+            logger.info(f"Email notification suppressed (ENABLE_EMAIL_NOTIFICATIONS=false or testing mode). Target: {to_email}")
             return False
 
         return await asyncio.to_thread(self._send_sync, to_email, subject, html_content)

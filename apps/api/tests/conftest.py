@@ -1,6 +1,9 @@
+
 import sys
 import os
 os.environ["ENVIRONMENT"] = "testing"
+os.environ["ENABLE_EMAIL_NOTIFICATIONS"] = "false"
+
 from pathlib import Path
 from typing import AsyncGenerator
 import pytest_asyncio
