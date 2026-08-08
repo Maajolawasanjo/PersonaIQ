@@ -10,8 +10,10 @@ async def test_email_service_sends_all_templates():
     to_email = "test@example.com"
     user_name = "Alex Mercer"
 
-    # Mock the SMTP connection
-    with patch("smtplib.SMTP") as mock_smtp_class:
+    # Mock the SMTP connection & enable production environment for test
+    with patch("app.core.config.settings.ENVIRONMENT", "production"), \
+         patch("app.core.config.settings.ENABLE_EMAIL_NOTIFICATIONS", True), \
+         patch("smtplib.SMTP") as mock_smtp_class:
         mock_smtp = MagicMock()
         mock_smtp_class.return_value.__enter__.return_value = mock_smtp
 

@@ -3,6 +3,10 @@ import sys
 import os
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["ENABLE_EMAIL_NOTIFICATIONS"] = "false"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["SECRET_KEY"] = "test_secret_key_environment_testing_2026"
+os.environ["SMTP_USER"] = "mock_user@personaiq.ai"
+os.environ["SMTP_PASSWORD"] = "mock_password_123"
 
 from pathlib import Path
 from typing import AsyncGenerator

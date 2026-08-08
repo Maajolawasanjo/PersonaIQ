@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.errors import AppException, ErrorCode
@@ -25,7 +25,7 @@ class AuthService:
             return None
         return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
-    async def sign_up(self, request: SignUpRequest) -> AuthTokenDTO:
+    async def sign_up(self, request: SignUpRequest, background_tasks: Optional[Any] = None) -> AuthTokenDTO:
         existing = await self.repo.get_by_email(request.email)
         if existing:
             raise AppException(
@@ -51,15 +51,18 @@ class AuthService:
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.flush()
 
-        # Send verification email asynchronously in background — returns HTTP response immediately
+        # Send verification email via FastAPI BackgroundTasks — returns HTTP response immediately
         email_service = EmailService()
         email_service.dispatch(
-            email_service.send_email_verification_email(user.email, otp)
+            background_tasks,
+            email_service.send_email_verification_email,
+            user.email,
+            otp,
         )
 
         return await self._generate_auth_tokens(user)
 
-    async def verify_otp(self, email: str, code: str) -> AuthTokenDTO:
+    async def verify_otp(self, email: str, code: str, background_tasks: Optional[Any] = None) -> AuthTokenDTO:
         user = await self.repo.get_by_email(email)
         if not user:
             raise AppException(
@@ -96,26 +99,29 @@ class AuthService:
 
         user_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
         if not was_verified:
-            # First-time verification: send welcome (fire-and-forget, never blocks)
+            # First-time verification: send welcome
             email_service.dispatch(
-                email_service.send_welcome_email(user.email, user_name)
+                background_tasks,
+                email_service.send_welcome_email,
+                user.email,
+                user_name,
             )
         else:
-            # Subsequent OTP (2FA completion): send login alert AFTER JWT is issued
+            # Subsequent OTP: send login alert
             email_service.dispatch(
-                email_service.send_login_alert_email(
-                    user.email,
-                    user_name,
-                    "Web Browser",
-                    "Detected Location",
-                    datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                )
+                background_tasks,
+                email_service.send_login_alert_email,
+                user.email,
+                user_name,
+                "Web Browser",
+                "Detected Location",
+                datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
             )
 
         return tokens
 
 
-    async def resend_otp(self, email: str) -> None:
+    async def resend_otp(self, email: str, background_tasks: Optional[Any] = None) -> None:
         user = await self.repo.get_by_email(email)
         if not user:
             raise AppException(
@@ -132,22 +138,22 @@ class AuthService:
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.flush()
 
-        # Non-fatal: resend failure should not error the endpoint
         email_service = EmailService()
         email_service.dispatch(
-            email_service.send_email_verification_email(user.email, otp)
+            background_tasks,
+            email_service.send_email_verification_email,
+            user.email,
+            otp,
         )
 
-    async def request_password_reset(self, email: str) -> None:
+    async def request_password_reset(self, email: str, background_tasks: Optional[Any] = None) -> None:
         user = await self.repo.get_by_email(email)
         if not user:
-            # Silent return to prevent user enumeration
             return
 
         import secrets
         from app.services.email_service import EmailService
 
-        # Secure reset token
         token = secrets.token_urlsafe(32)
         user.reset_token = token
         user.reset_expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
@@ -155,10 +161,13 @@ class AuthService:
 
         email_service = EmailService()
         email_service.dispatch(
-            email_service.send_password_reset_email(user.email, token)
+            background_tasks,
+            email_service.send_password_reset_email,
+            user.email,
+            token,
         )
 
-    async def reset_password(self, token: str, new_password: str) -> None:
+    async def reset_password(self, token: str, new_password: str, background_tasks: Optional[Any] = None) -> None:
         from sqlalchemy import select
         from app.models.user import User
 
@@ -180,26 +189,22 @@ class AuthService:
                 status_code=400,
             )
 
-        # Reset password and clear token
         user.hashed_password = hash_password(new_password)
         user.reset_token = None
         user.reset_expires_at = None
         await self.repo.db.flush()
-
-        # Security: revoke ALL existing refresh tokens so stolen sessions die immediately
         await self.repo.revoke_all_user_tokens(user.id)
 
-        # Send password-changed notification (fire-and-forget — DB is already committed)
         from app.services.email_service import EmailService
         email_service = EmailService()
         email_service.dispatch(
-            email_service.send_password_changed_email(
-                user.email,
-                f"{user.first_name or ''} {user.last_name or ''}".strip()
-            )
+            background_tasks,
+            email_service.send_password_changed_email,
+            user.email,
+            f"{user.first_name or ''} {user.last_name or ''}".strip(),
         )
 
-    async def sign_in(self, request: SignInRequest) -> AuthTokenDTO:
+    async def sign_in(self, request: SignInRequest, background_tasks: Optional[Any] = None) -> AuthTokenDTO:
         user = await self.repo.get_by_email(request.email)
         if not user:
             raise AppException(
@@ -208,7 +213,6 @@ class AuthService:
                 status_code=401,
             )
 
-        # Check Lockout
         locked_until = self._ensure_utc(user.locked_until)
         if locked_until and locked_until > datetime.now(timezone.utc):
             remaining_seconds = int((locked_until - datetime.now(timezone.utc)).total_seconds())
@@ -218,7 +222,6 @@ class AuthService:
                 status_code=423,
             )
 
-        # Verify Password
         if not verify_password(request.password, user.hashed_password):
             await self.repo.increment_failed_logins(user)
             raise AppException(
@@ -227,13 +230,8 @@ class AuthService:
                 status_code=401,
             )
 
-        # Reset failed attempts on success
         await self.repo.reset_failed_logins(user)
 
-        # For 2FA / Login verification in production:
-        # If user has 2FA enabled, we would send a code here and NOT return tokens yet.
-        # But for MVP we automatically sign in. Let's make sure they receive a login alert though!
-        # Generate 2FA code and send verification email
         import secrets
         from app.services.email_service import EmailService
 
@@ -244,7 +242,10 @@ class AuthService:
 
         email_service = EmailService()
         email_service.dispatch(
-            email_service.send_two_factor_code_email(user.email, otp)
+            background_tasks,
+            email_service.send_two_factor_code_email,
+            user.email,
+            otp,
         )
 
         return AuthTokenDTO(

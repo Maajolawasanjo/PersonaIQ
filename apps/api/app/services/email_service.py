@@ -68,40 +68,55 @@ class EmailService:
             raise e
 
     async def send_email(self, to_email: str, subject: str, html_content: str) -> bool:
-        """Asynchronously dispatches an email using asyncio threadpool executor."""
-        if not settings.ENABLE_EMAIL_NOTIFICATIONS or settings.ENVIRONMENT == "testing":
-            logger.info(f"Email notification suppressed (ENABLE_EMAIL_NOTIFICATIONS=false or testing mode). Target: {to_email}")
-            return False
+        """Asynchronously dispatches an email.
+
+        Strict Environment Gate:
+        Real SMTP / Provider API calls are ONLY executed when:
+        1. ENVIRONMENT == 'production' (case-insensitive)
+        2. ENABLE_EMAIL_NOTIFICATIONS == True
+        3. CI environment variable is NOT 'true'
+
+        In non-production environments (testing, development, dev, CI), real emails are
+        completely suppressed and logged as mock operations.
+        """
+        is_production = settings.ENVIRONMENT.lower() == "production"
+        is_ci = os.getenv("CI", "false").lower() == "true"
+        notifications_enabled = settings.ENABLE_EMAIL_NOTIFICATIONS
+
+        if not is_production or is_ci or not notifications_enabled:
+            logger.info(
+                f"[MOCK EMAIL DISPATCH] Environment: {settings.ENVIRONMENT} | CI: {is_ci} | Target: {to_email} | Subject: '{subject}'"
+            )
+            return True
 
         return await asyncio.to_thread(self._send_sync, to_email, subject, html_content)
 
-    def dispatch(self, coro) -> None:
-        """Fire-and-forget: schedules an email coroutine as a background asyncio task.
+    def dispatch(
+        self,
+        background_tasks: Optional[Any],
+        coro_func: Any,
+        *args: Any,
+        **kwargs: Any
+    ) -> None:
+        """Dispatches an email task using FastAPI BackgroundTasks if provided, or asyncio task as fallback.
 
-        Email delivery failures are caught and logged. They never propagate to the
-        caller or roll back any database transaction. Use this for all non-critical
-        notification emails (welcome, login-alert, analysis-ready, etc.).
-
-        Usage:
-            email_service.dispatch(
-                email_service.send_welcome_email(user.email, user_name)
-            )
+        Guarantees that email execution runs AFTER the HTTP response returns to the client.
+        In non-production environments, the task safely logs the mock email without network calls.
         """
-        async def _run():
-            try:
-                await coro
-            except Exception as e:
-                logger.error(f"[EmailService.dispatch] Background email task failed: {e}", exc_info=True)
+        if background_tasks is not None and hasattr(background_tasks, "add_task"):
+            background_tasks.add_task(coro_func, *args, **kwargs)
+        else:
+            async def _run():
+                try:
+                    await coro_func(*args, **kwargs)
+                except Exception as e:
+                    logger.error(f"[EmailService.dispatch] Background task failed: {e}", exc_info=True)
 
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.ensure_future(_run())
-            else:
-                loop.run_until_complete(_run())
-        except RuntimeError:
-            # No event loop in current thread — log and skip gracefully
-            logger.warning("[EmailService.dispatch] No running event loop. Email skipped.")
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(_run())
+            except RuntimeError:
+                logger.warning("[EmailService.dispatch] No running event loop. Email task skipped.")
 
     # 1. Welcome Email
     async def send_welcome_email(self, to_email: str, user_name: str) -> bool:

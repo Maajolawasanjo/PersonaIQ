@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.dto.auth import (
@@ -37,11 +37,12 @@ auth_limiter = RateLimiter(max_requests=20, window_seconds=60)
 async def sign_up(
     request_data: SignUpRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_signup")
     service = AuthService(db)
-    tokens = await service.sign_up(request_data)
+    tokens = await service.sign_up(request_data, background_tasks=background_tasks)
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     return StandardResponse(
@@ -62,11 +63,12 @@ async def sign_up(
 async def sign_in(
     request_data: SignInRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_signin")
     service = AuthService(db)
-    tokens = await service.sign_in(request_data)
+    tokens = await service.sign_in(request_data, background_tasks=background_tasks)
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     return StandardResponse(
@@ -111,11 +113,12 @@ async def refresh_tokens(
 async def verify_otp(
     request_data: VerifyOTPRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_verify_otp")
     service = AuthService(db)
-    tokens = await service.verify_otp(request_data.email, request_data.code)
+    tokens = await service.verify_otp(request_data.email, request_data.code, background_tasks=background_tasks)
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     return StandardResponse(
@@ -136,11 +139,12 @@ async def verify_otp(
 async def resend_otp(
     request_data: ResendOTPRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_resend_otp")
     service = AuthService(db)
-    await service.resend_otp(request_data.email)
+    await service.resend_otp(request_data.email, background_tasks=background_tasks)
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     return StandardResponse(
@@ -161,11 +165,12 @@ async def resend_otp(
 async def forgot_password(
     request_data: ForgotPasswordRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_forgot_pw")
     service = AuthService(db)
-    await service.request_password_reset(request_data.email)
+    await service.request_password_reset(request_data.email, background_tasks=background_tasks)
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     return StandardResponse(
@@ -186,11 +191,12 @@ async def forgot_password(
 async def reset_password(
     request_data: ResetPasswordRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_reset_pw")
     service = AuthService(db)
-    await service.reset_password(request_data.token, request_data.new_password)
+    await service.reset_password(request_data.token, request_data.new_password, background_tasks=background_tasks)
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     return StandardResponse(

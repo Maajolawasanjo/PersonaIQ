@@ -45,7 +45,11 @@ class PresenceService:
         # Fire analysis-started AFTER assets confirmed — non-blocking
         # Assets are fetched but AI hasn't started; this is the correct commit point
         email_service.dispatch(
-            email_service.send_analysis_started_email(user.email, user_name, event_title)
+            None,
+            email_service.send_analysis_started_email,
+            user.email,
+            user_name,
+            event_title,
         )
 
         # 2. Invoke AI Providers via Gateway
@@ -98,13 +102,13 @@ class PresenceService:
         # Fire analysis-ready AFTER plan is persisted — non-blocking
         dashboard_url = f"https://personaiq.com/dashboard/journeys/{journey_id}/plan"
         email_service.dispatch(
-            email_service.send_analysis_ready_email(
-                user.email,
-                user_name,
-                event_title,
-                int(score_result.overall_presence_index),
-                dashboard_url,
-            )
+            None,
+            email_service.send_analysis_ready_email,
+            user.email,
+            user_name,
+            event_title,
+            int(score_result.overall_presence_index),
+            dashboard_url,
         )
 
         return PresencePlanDTO.model_validate(plan)

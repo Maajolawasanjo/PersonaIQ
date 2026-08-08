@@ -46,6 +46,13 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@localhost:5432/personaiq_test
           JWT_SECRET_KEY: test_secret_key_ci_cd_environment
           ENVIRONMENT: testing
+          ENABLE_EMAIL_NOTIFICATIONS: false
+          SMTP_HOST: mock.smtp
+          SMTP_USER: no-reply@personaiq.ai
+          SMTP_PASSWORD: mock_password
+          EMAILS_FROM_EMAIL: no-reply@personaiq.ai
+          EMAILS_FROM_NAME: PersonaIQ CI
+          CI: true
           DEBUG: true
         run: |
           cd apps/api
