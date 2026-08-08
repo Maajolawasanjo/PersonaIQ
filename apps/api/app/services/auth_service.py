@@ -51,13 +51,11 @@ class AuthService:
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.flush()
 
-        # Send verification email — non-fatal: account creation succeeds even if SMTP is down
-        try:
-            email_service = EmailService()
-            await email_service.send_email_verification_email(user.email, otp)
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"[sign_up] Failed to send verification email to {user.email}: {e}")
+        # Send verification email asynchronously in background — returns HTTP response immediately
+        email_service = EmailService()
+        email_service.dispatch(
+            email_service.send_email_verification_email(user.email, otp)
+        )
 
         return await self._generate_auth_tokens(user)
 
@@ -135,12 +133,10 @@ class AuthService:
         await self.repo.db.flush()
 
         # Non-fatal: resend failure should not error the endpoint
-        try:
-            email_service = EmailService()
-            await email_service.send_email_verification_email(user.email, otp)
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"[resend_otp] Failed to resend OTP to {user.email}: {e}")
+        email_service = EmailService()
+        email_service.dispatch(
+            email_service.send_email_verification_email(user.email, otp)
+        )
 
     async def request_password_reset(self, email: str) -> None:
         user = await self.repo.get_by_email(email)
@@ -158,7 +154,9 @@ class AuthService:
         await self.repo.db.flush()
 
         email_service = EmailService()
-        await email_service.send_password_reset_email(user.email, token)
+        email_service.dispatch(
+            email_service.send_password_reset_email(user.email, token)
+        )
 
     async def reset_password(self, token: str, new_password: str) -> None:
         from sqlalchemy import select
@@ -245,7 +243,9 @@ class AuthService:
         await self.repo.db.flush()
 
         email_service = EmailService()
-        await email_service.send_two_factor_code_email(user.email, otp)
+        email_service.dispatch(
+            email_service.send_two_factor_code_email(user.email, otp)
+        )
 
         return AuthTokenDTO(
             requires_2fa=True,
