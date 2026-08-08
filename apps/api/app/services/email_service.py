@@ -79,11 +79,11 @@ class EmailService:
         In non-production environments (testing, development, dev, CI), real emails are
         completely suppressed and logged as mock operations.
         """
-        is_production = settings.ENVIRONMENT.lower() == "production"
+        is_testing = settings.ENVIRONMENT.lower() in ("testing", "test")
         is_ci = os.getenv("CI", "false").lower() == "true"
         notifications_enabled = settings.ENABLE_EMAIL_NOTIFICATIONS
 
-        if not is_production or is_ci or not notifications_enabled:
+        if is_testing or is_ci or not notifications_enabled:
             logger.info(
                 f"[MOCK EMAIL DISPATCH] Environment: {settings.ENVIRONMENT} | CI: {is_ci} | Target: {to_email} | Subject: '{subject}'"
             )
