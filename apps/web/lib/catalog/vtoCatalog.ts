@@ -361,3 +361,102 @@ export function getRecommendedAssets(occasion: string, category?: string): VTOAs
   }
   return list;
 }
+
+export interface StylistAnalysisResult {
+  look_name: string;
+  total_score: number;
+  items: Array<{ category: string; item_name: string }>;
+  reasoning: {
+    summary: string;
+    recommended_protocol: string;
+    avoid_protocol: string;
+  };
+}
+
+export function generateGeminiStylistReasoning(
+  occasion: string,
+  targetVibe: string = 'Authoritative',
+  clothing?: VTOAsset,
+  footwear?: VTOAsset,
+  accessory?: VTOAsset,
+  hairstyle?: VTOAsset
+): StylistAnalysisResult {
+  const occLower = occasion.toLowerCase();
+  const topClothing = clothing || getRecommendedAssets(occasion, 'clothing')[0] || VTO_CATALOG[0];
+  const topFootwear = footwear || getRecommendedAssets(occasion, 'footwear')[0] || VTO_CATALOG[13];
+  const topAccessory = accessory || getRecommendedAssets(occasion, 'accessories')[0] || VTO_CATALOG[20];
+  const topHairstyle = hairstyle || getRecommendedAssets(occasion, 'style_references')[0] || VTO_CATALOG[23];
+
+  let score = 94;
+  let lookTitle = `Executive ${targetVibe} Ensemble`;
+  let summaryText = '';
+  let recommendedText = '';
+  let avoidText = '';
+
+  if (occLower.includes('interview')) {
+    score = 97;
+    lookTitle = `Job Interview Power Profile`;
+    summaryText = `Pairing the ${topClothing.name} with ${topFootwear.name} projects crisp structure and trustworthiness. The ${topAccessory.name} anchors high executive authority while your ${topHairstyle.name} maintains clean framing around your T-zone.`;
+    recommendedText = `Polished leather Oxford shoes, minimal silver/steel watch, and crisp white or light blue collar framing.`;
+    avoidText = `Casual sneakers, unbuttoned collar without jacket structure, or flash/loud pattern ties.`;
+  } else if (occLower.includes('wedding')) {
+    score = 96;
+    lookTitle = `Regal Wedding Celebration Profile`;
+    summaryText = `The ${topClothing.name} delivers vibrant sophistication appropriate for a wedding guest or VIP. Accentuated by ${topFootwear.name} and ${topAccessory.name}, this look strikes an ideal balance between festive elegance and distinguished presence.`;
+    recommendedText = `Rich textured footwear, statement luxury chronograph or traditional cap/fila, and structured posture.`;
+    avoidText = `Overly drab corporate attire, unpolished footwear, or work-office lanyards.`;
+  } else if (occLower.includes('church') || occLower.includes('religious')) {
+    score = 95;
+    lookTitle = `Reverent Ceremonial Ensemble`;
+    summaryText = `Selected ${topClothing.name} paired with ${topFootwear.name} provides respectful, elevated formality for religious gatherings. The ${topAccessory.name} adds refined detail without drawing excessive attention away from the service.`;
+    recommendedText = `Modest high-collar cut, clean leather loafers or Oxfords, and subtle wristwatch.`;
+    avoidText = `Short cuts, excessively tight leisurewear, or prominent athletics logos.`;
+  } else if (occLower.includes('funeral') || occLower.includes('burial')) {
+    score = 93;
+    lookTitle = `Solemn Executive Tribute Profile`;
+    summaryText = `Deep, subdued tone of ${topClothing.name} combined with ${topFootwear.name} creates a dignified aesthetic suited for memorial honor. Modest styling of ${topHairstyle.name} reflects quiet respect.`;
+    recommendedText = `Subdued dark color palette (Black/Charcoal), minimal dark accessories, and clean-shaven or neat edge grooming.`;
+    avoidText = `Vibrant colors, bold metallic watches, glossy party wear, or casual footwear.`;
+  } else if (occLower.includes('traditional')) {
+    score = 98;
+    lookTitle = `Heritage Cultural Elegance Ensemble`;
+    summaryText = `Featuring the ${topClothing.name} with tailored ${topFootwear.name} and ${topAccessory.name}. This traditional profile highlights rich African craftsmanship while maintaining executive sophistication for high-status cultural events.`;
+    recommendedText = `Matching traditional cap (Fila), luxury leather slippers or loafers, and gold/bronze watch accents.`;
+    avoidText = `Western denim jackets over kaftans, athletic sneakers, or ill-fitting trousers.`;
+  } else if (occLower.includes('travel')) {
+    score = 92;
+    lookTitle = `Transit & Airport Lounge Executive`;
+    summaryText = `Designed for long-haul comfort: ${topClothing.name} paired with ${topFootwear.name} offers breathable mobility while ensuring you step off the aircraft looking composed for immediate client meetings.`;
+    recommendedText = `Slip-on leather loafers, crease-resistant knit layers, and functional travel messenger.`;
+    avoidText = `Stiff high-collar suits during flights, unsupportive dress shoes, or heavy metallic accessories.`;
+  } else if (occLower.includes('date')) {
+    score = 95;
+    lookTitle = `Elevated Evening Romance Look`;
+    summaryText = `Combines the modern silhouette of ${topClothing.name} with ${topFootwear.name} and ${topAccessory.name}. Strikes a warm, approachable vibe while projecting tasteful confidence and keen attention to detail.`;
+    recommendedText = `Smart tailored blazer or knit layer, polished leather Chelsea boots or loafers, and subtle fragrance note baseline.`;
+    avoidText = `Overly rigid boardroom ties, bulky work computer bags, or worn athletic footwear.`;
+  } else {
+    score = 94;
+    lookTitle = `Executive ${targetVibe} Presence Profile`;
+    summaryText = `Selected ${topClothing.name} matched with ${topFootwear.name} establishes strong visual authority for ${occasion.toUpperCase()}. Accentuated by ${topAccessory.name} and framed by ${topHairstyle.name}.`;
+    recommendedText = `Structured shoulder alignment, polished leather footwear, and minimalist timepieces.`;
+    avoidText = `Uncoordinated shoe and belt colors, informal denim, or unkempt neckline grooming.`;
+  }
+
+  return {
+    look_name: lookTitle,
+    total_score: score,
+    items: [
+      { category: 'Clothing', item_name: topClothing.name },
+      { category: 'Footwear', item_name: topFootwear.name },
+      { category: 'Accessory', item_name: topAccessory.name },
+      { category: 'Hairstyle', item_name: topHairstyle.name },
+    ],
+    reasoning: {
+      summary: summaryText,
+      recommended_protocol: recommendedText,
+      avoid_protocol: avoidText,
+    },
+  };
+}
+

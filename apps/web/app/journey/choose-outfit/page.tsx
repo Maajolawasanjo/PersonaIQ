@@ -25,7 +25,7 @@ import {
   Layers
 } from 'lucide-react';
 import { wardrobeApi, stylistApi } from '@/lib/api/services';
-import { VTO_CATALOG, VTO_MODELS, getRecommendedAssets, VTOAsset } from '@/lib/catalog/vtoCatalog';
+import { VTO_CATALOG, VTO_MODELS, getRecommendedAssets, VTOAsset, generateGeminiStylistReasoning } from '@/lib/catalog/vtoCatalog';
 
 const OCCASIONS = [
   { id: 'interview', name: 'Job Interview', icon: Briefcase },
@@ -104,19 +104,15 @@ export default function ChooseOutfitPage() {
         localStorage.setItem('personaiq_selected_outfit_title', topClothing.name);
       }
 
-      setRecommendation({
-        look_name: `Complete ${selectedOccasion.toUpperCase()} Ensemble`,
-        total_score: 96,
-        items: [
-          { category: 'Clothing', item_name: topClothing.name },
-          { category: 'Footwear', item_name: topShoe.name },
-          { category: 'Accessory', item_name: topAcc.name },
-          { category: 'Hairstyle', item_name: topHair.name },
-        ],
-        reasoning: {
-          summary: `Gemini Stylist matched this 4-piece ensemble for ${selectedOccasion.toUpperCase()}. High contrast framing pairs with your warm undertone to deliver maximum visual authority.`,
-        },
-      });
+      const dynamicAnalysis = generateGeminiStylistReasoning(
+        selectedOccasion,
+        targetVibe,
+        topClothing,
+        topShoe,
+        topAcc,
+        topHair
+      );
+      setRecommendation(dynamicAnalysis);
     } catch (e) {
       console.warn('Complete my look error:', e);
     } finally {
@@ -128,23 +124,20 @@ export default function ChooseOutfitPage() {
     setIsGenerating(true);
     try {
       const res = await stylistApi.recommendLook(selectedOccasion, targetVibe, 'Business Formal');
-      setRecommendation(res);
+      if (res && res.reasoning) {
+        setRecommendation(res);
+      } else {
+        throw new Error('Empty AI response');
+      }
     } catch (err) {
-      console.warn('AI Stylist recommendation fallback:', err);
-      setRecommendation({
-        look_name: 'Executive Leadership Profile',
-        total_score: 95,
-        items: [
-          { category: 'Suit / Ensemble', item_name: 'Executive Navy Tailored Suit' },
-          { category: 'Shirt / Inner', item_name: 'Crisp White Oxford Spread Collar' },
-          { category: 'Footwear', item_name: 'Classic Black Cap-Toe Oxford' },
-          { category: 'Hairstyle & Grooming', item_name: 'Low Drop Fade with Precision Edge' },
-          { category: 'Accessories', item_name: 'Chronograph Stainless Steel Watch' },
-        ],
-        reasoning: {
-          summary: `Optimized for ${selectedOccasion.toUpperCase()} engagements. High authority balance with pristine grooming telemetry.`,
-        },
-      });
+      console.warn('AI Stylist recommendation using local Gemini engine:', err);
+      const activeGarment = VTO_CATALOG.find((c) => c.id === selectedAssetId);
+      const dynamicAnalysis = generateGeminiStylistReasoning(
+        selectedOccasion,
+        targetVibe,
+        activeGarment
+      );
+      setRecommendation(dynamicAnalysis);
     } finally {
       setIsGenerating(false);
     }
