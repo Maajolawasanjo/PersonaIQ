@@ -63,7 +63,7 @@ class EmailService:
         msg.attach(html_part)
 
         try:
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+            with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10.0) as server:
                 server.starttls()
                 server.login(self.smtp_user, self.smtp_password.replace(" ", ""))
                 server.sendmail(sender, [to_email], msg.as_string())
@@ -71,7 +71,7 @@ class EmailService:
             return True
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {e}")
-            raise e
+            return False
 
     async def send_email(self, to_email: str, subject: str, html_content: str) -> bool:
         """Asynchronously dispatches an email.

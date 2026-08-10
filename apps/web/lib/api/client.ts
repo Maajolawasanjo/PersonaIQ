@@ -77,7 +77,18 @@ class ApiClient {
         headers,
       });
 
-      if (response.status === 401 && !isRetry && endpoint !== '/auth/refresh') {
+      const PUBLIC_ENDPOINTS = [
+        '/auth/sign-up',
+        '/auth/sign-in',
+        '/auth/verify-otp',
+        '/auth/resend-otp',
+        '/auth/forgot-password',
+        '/auth/reset-password',
+        '/auth/refresh',
+      ];
+      const isPublicEndpoint = PUBLIC_ENDPOINTS.some((ep) => endpoint.startsWith(ep));
+
+      if (response.status === 401 && !isRetry && !isPublicEndpoint && token) {
         const refreshed = await this.refreshTokens();
         if (refreshed) {
           return this.request<T>(endpoint, options, true);
@@ -92,7 +103,7 @@ class ApiClient {
       }));
 
       if (!response.ok || !resData.success) {
-        if (response.status === 401) {
+        if (response.status === 401 && !isPublicEndpoint && token) {
           throw new Error('Your session has expired. Please log in again.');
         }
         if (response.status === 423) {
