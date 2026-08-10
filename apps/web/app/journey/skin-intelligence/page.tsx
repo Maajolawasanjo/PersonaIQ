@@ -247,21 +247,11 @@ export default function SkinIntelligencePage() {
         <button
           type="button"
           onClick={handleNext}
-          className="h-11 px-7 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center space-x-2 cursor-pointer"
+          className="h-11 px-7 bg-red-600 hover:bg-red-700 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center space-x-2 cursor-pointer"
         >
           <span>Next Step — Select Wardrobe</span>
           <ArrowRight className="w-4 h-4" />
         </button>
-      </div>
-
-    </div>
-  );
-}
-          className="h-11 px-8 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2"
-        >
-          <span>Next Step</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
       </div>
 
     </div>

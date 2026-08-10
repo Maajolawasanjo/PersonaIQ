@@ -644,10 +644,3 @@ export default function ChooseOutfitPage() {
     </div>
   );
 }
-
-        </div>
-
-      </div>
-    </div>
-  );
-}
