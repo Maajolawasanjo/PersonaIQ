@@ -1,128 +1,160 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { CheckCircle2, ShieldCheck, RefreshCw, ArrowRight, Camera } from 'lucide-react';
+import { VTO_MODELS } from '@/lib/catalog/vtoCatalog';
 
 export default function ImageValidationPage() {
-  const [userPhoto, setUserPhoto] = React.useState<string>('/images/professional-female-headshot.jpg');
+  const router = useRouter();
+  const [userPhoto, setUserPhoto] = useState<string>('/vto/models/male_black.jpg');
+  const [modelName, setModelName] = useState<string>('Black Male Fitting Model');
+  const [isValidating, setIsValidating] = useState<boolean>(true);
 
-  React.useEffect(() => {
+  // Dynamic Telemetry State
+  const [telemetry, setTelemetry] = useState({
+    faceDetection: '100% (Optimal Alignment)',
+    faceScore: 100,
+    lightingLux: '96% (Even Luminance)',
+    lightingScore: 96,
+    resolution: '98% (Fidelity Ultra-High)',
+    resolutionScore: 98,
+    angleStatus: 'Optimal Camera Angle',
+    suggestion: 'Capture framed perfectly. Telemetry locked for skin & presence index analysis.',
+  });
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedPhoto = localStorage.getItem('personaiq_user_selfie_preview');
-      if (savedPhoto) {
+      const savedAvatarId = localStorage.getItem('personaiq_vto_avatar_id');
+
+      if (savedPhoto && savedPhoto.length > 10) {
         setUserPhoto(savedPhoto);
+        setModelName('User Uploaded Selfie');
+      } else if (savedAvatarId) {
+        const found = VTO_MODELS.find((m) => m.id === savedAvatarId);
+        if (found) {
+          setUserPhoto(found.image_url);
+          setModelName(found.name);
+        }
       }
+
+      // Simulate live AI telemetry scan
+      const timer = setTimeout(() => {
+        setIsValidating(false);
+      }, 600);
+      return () => clearTimeout(timer);
     }
   }, []);
 
+  const handleBeginAnalysis = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('personaiq_active_draft_step', '/journey/skin-intelligence');
+    }
+    router.push('/journey/skin-intelligence');
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn py-6">
-      
       {/* Top Header Bar */}
-      <div className="bg-gray-900 text-white px-5 py-3 rounded-t-[16px] flex items-center justify-between text-[12.5px] font-mono font-bold tracking-wide">
+      <div className="bg-gray-950 text-white px-5 py-3.5 rounded-t-2xl flex items-center justify-between text-xs font-mono font-bold tracking-wide border border-gray-800">
         <div className="flex items-center space-x-2">
-          <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
-          <span>Image Validation | Presence Journey</span>
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>Image Validation & Telemetry Check | Presence Journey</span>
         </div>
+        <span className="text-[10px] text-gray-400 font-mono">STEP 4 OF 6</span>
       </div>
 
       {/* Main Validation Card */}
-      <div className="bg-white border border-gray-200 border-t-0 rounded-b-[20px] p-6 sm:p-8 shadow-xs grid grid-cols-1 sm:grid-cols-12 gap-7 items-center">
-        
+      <div className="bg-white border border-gray-200 border-t-0 rounded-b-2xl p-6 sm:p-8 shadow-xs grid grid-cols-1 sm:grid-cols-12 gap-7 items-center">
         {/* Left Column: Portrait Viewfinder Feed */}
-        <div className="sm:col-span-5 relative aspect-[3/4] bg-gray-950 rounded-[16px] overflow-hidden border border-gray-800 shadow-md">
+        <div className="sm:col-span-5 relative aspect-[3/4] bg-gray-950 rounded-2xl overflow-hidden border border-gray-800 shadow-md">
           <img
             src={userPhoto}
             alt="Validated Capture"
-            className="w-full h-full object-cover grayscale contrast-125 brightness-95"
+            className="w-full h-full object-cover"
           />
 
-          {/* Scanner Grid Lines Overlay */}
-          <div className="absolute inset-0 border-2 border-red-500/40 pointer-events-none" />
-          <div className="absolute top-1/3 left-0 right-0 h-[2px] bg-red-500 shadow-[0_0_8px_#A31F34]" />
+          {/* Scanner Grid Overlay */}
+          <div className="absolute inset-0 border-2 border-red-500/30 pointer-events-none" />
+          <div className="absolute top-1/3 left-0 right-0 h-[2px] bg-red-600 shadow-[0_0_12px_#dc2626] animate-pulse" />
 
           {/* Live Feed Badge */}
-          <div className="absolute bottom-3 left-3 bg-gray-950/90 text-white px-3 py-1 rounded-full text-[10.5px] font-mono font-bold flex items-center space-x-2 border border-white/10">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>LIVE FEED ANALYSIS</span>
+          <div className="absolute bottom-3 left-3 right-3 bg-gray-950/85 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10.5px] font-mono font-bold flex items-center justify-between border border-white/10">
+            <div className="flex items-center space-x-1.5">
+              <span className={`w-2 h-2 rounded-full ${isValidating ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
+              <span>{isValidating ? 'ANALYZING...' : 'LIVE FEED LOCKED'}</span>
+            </div>
+            <span className="text-[10px] font-mono text-gray-300 truncate max-w-[120px]">{modelName}</span>
           </div>
         </div>
 
         {/* Right Column: Pre-Analysis Check Checklist */}
         <div className="sm:col-span-7 space-y-6">
-          
           <div className="space-y-2">
-            <div className="flex items-center space-x-2 text-primary font-bold">
-              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2z"/></svg>
-              <h2 className="text-[24px] font-bold text-gray-950 font-sans leading-tight">
+            <div className="flex items-center space-x-2 text-red-600 font-bold">
+              <ShieldCheck className="w-5 h-5" />
+              <h2 className="text-2xl font-bold text-gray-950 font-sans leading-tight">
                 Pre-Analysis Check
               </h2>
             </div>
-            <p className="text-[13.5px] text-gray-600 font-medium leading-relaxed">
-              We are validating your capture to ensure the highest fidelity for the Presence Journey processing.
+            <p className="text-xs text-gray-600 font-medium leading-relaxed">
+              We are validating your capture quality to ensure optimal facial detection and color contrast telemetry for your Presence Journey.
             </p>
           </div>
 
           {/* Diagnostic Telemetry Meters */}
           <div className="space-y-4 pt-1">
-            
             {/* Meter 1: Face Detection */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[12.5px]">
+              <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[10px] font-bold shrink-0">
-                    ✓
-                  </div>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span className="font-bold text-gray-950">Face Detection & Alignment</span>
                 </div>
-                <span className="font-mono font-bold text-emerald-600">100% (Optimal)</span>
+                <span className="font-mono font-bold text-emerald-600">{telemetry.faceDetection}</span>
               </div>
               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full rounded-full w-full" />
+                <div className="bg-emerald-500 h-full rounded-full w-full transition-all duration-700" />
               </div>
             </div>
 
             {/* Meter 2: Lighting Quality */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[12.5px]">
+              <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[10px] font-bold shrink-0">
-                    ✓
-                  </div>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span className="font-bold text-gray-950">Lighting & Lux Contrast</span>
                 </div>
-                <span className="font-mono font-bold text-emerald-600">96% (Even)</span>
+                <span className="font-mono font-bold text-emerald-600">{telemetry.lightingLux}</span>
               </div>
               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full rounded-full w-[96%]" />
+                <div className="bg-emerald-500 h-full rounded-full w-[96%] transition-all duration-700" />
               </div>
             </div>
 
             {/* Meter 3: Resolution & Clarity */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[12.5px]">
+              <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[10px] font-bold shrink-0">
-                    ✓
-                  </div>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span className="font-bold text-gray-950">Resolution & Focal Sharpness</span>
                 </div>
-                <span className="font-mono font-bold text-emerald-600">98% (Fidelity High)</span>
+                <span className="font-mono font-bold text-emerald-600">{telemetry.resolution}</span>
               </div>
               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full rounded-full w-[98%]" />
+                <div className="bg-emerald-500 h-full rounded-full w-[98%] transition-all duration-700" />
               </div>
             </div>
 
-            {/* Alert Box: Camera Angle Acceptable */}
-            <div className="bg-red-50/60 border border-red-200 rounded-[12px] p-3.5 flex items-start space-x-3 text-[12.5px] mt-2">
-              <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                !
-              </div>
+            {/* Alert Box */}
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 flex items-start space-x-3 text-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold text-gray-950 block">Camera Angle Acceptable</span>
-                <span className="text-primary font-medium text-[12px] block">
-                  Suggestion: Move slightly closer to the camera to optimize skin telemetry accuracy.
+                <span className="font-bold text-gray-950 block">{telemetry.angleStatus}</span>
+                <span className="text-emerald-800 font-medium text-[11.5px] block">
+                  {telemetry.suggestion}
                 </span>
               </div>
             </div>
@@ -130,27 +162,24 @@ export default function ImageValidationPage() {
 
           {/* Action Buttons */}
           <div className="space-y-2.5 pt-2">
-            <Link
-              href="/journey/skin-intelligence"
-              className="w-full h-12 bg-primary hover:bg-primary/95 text-white font-bold text-[14px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2"
+            <button
+              onClick={handleBeginAnalysis}
+              className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer"
             >
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z"/></svg>
               <span>Begin Skin & Presence Analysis</span>
-            </Link>
+              <ArrowRight className="w-4 h-4" />
+            </button>
 
             <Link
               href="/journey/capture-look"
-              className="w-full h-11 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold text-[13.3px] rounded-[10px] transition-all flex items-center justify-center space-x-2"
+              className="w-full h-10 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-2"
             >
-              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-              <span>Recapture Photo</span>
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Change Photo / Select Built-in Model</span>
             </Link>
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }
