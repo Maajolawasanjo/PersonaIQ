@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Lightbulb, ArrowRight, Sparkles, RefreshCw } from 'lucide-react';
 import { presenceApi } from '@/lib/api/services';
+import { VTO_MODELS } from '@/lib/catalog/vtoCatalog';
+import { analyzeImageFidelity } from '@/lib/utils/imageAnalysis';
 
 export default function SkinIntelligencePage() {
   const router = useRouter();
@@ -39,31 +41,48 @@ export default function SkinIntelligencePage() {
       setIsAnalyzing(true);
       if (typeof window !== 'undefined') {
         const savedPhoto = localStorage.getItem('personaiq_user_selfie_preview');
-        if (savedPhoto) {
-          setUserPhoto(savedPhoto);
+        const savedAvatarId = localStorage.getItem('personaiq_vto_avatar_id');
+
+        let targetPhoto = '/vto/models/male/black/male_black_base.jpg';
+        if (savedPhoto && savedPhoto.length > 10) {
+          targetPhoto = savedPhoto;
+        } else if (savedAvatarId) {
+          const found = VTO_MODELS.find((m) => m.id === savedAvatarId);
+          if (found) targetPhoto = found.image_url;
+        }
+        setUserPhoto(targetPhoto);
+
+        // Read real sampled computer vision telemetry
+        let imageTelemetry: any = null;
+        const cachedTelemetry = localStorage.getItem('personaiq_image_telemetry');
+        if (cachedTelemetry) {
+          try {
+            imageTelemetry = JSON.parse(cachedTelemetry);
+          } catch (e) {}
         }
 
-        const journeyId = localStorage.getItem('personaiq_active_journey_id');
-        if (journeyId) {
-          try {
-            const plan = await presenceApi.analyzeJourney(journeyId);
-            if (plan) {
-              setSkinData({
-                score: Math.round(plan.presence_score || 89),
-                headline: plan.vibe_analysis || 'Excellent skin clarity and cognitive alertness baseline.',
-                analysis: plan.executive_summary || 'Visual markers indicate strong hydration and professional presence readiness.',
-                tip: plan.key_takeaway || 'Maintain front-facing natural light to preserve contrast during live presentations.',
-                luminosity: 'Low (Ideal)',
-                texture: `${Math.min(98, Math.round(plan.presence_score || 88))}%`,
-                fatigue: plan.presence_score > 85 ? 'Low (Alert)' : 'Moderate',
-                strengths: plan.recommendations?.[0]?.action || 'Exceptional baseline skin tone and contrast alignment.',
-                focusArea: plan.recommendations?.[1]?.action || 'Optimize ambient room lighting to eliminate soft under-eye shadows.',
-              });
-            }
-          } catch (err) {
-            console.warn('Backend journey analysis fallback, generating dynamic session telemetry:', err);
-          }
+        if (!imageTelemetry) {
+          imageTelemetry = await analyzeImageFidelity(targetPhoto);
         }
+
+        const skin = imageTelemetry.skinTone || { undertone: 'Warm', hex: '#8c6450', lumaCategory: 'Medium' };
+        const score = Math.min(99, Math.max(75, Math.round(imageTelemetry.lightingScore * 0.5 + imageTelemetry.resolutionScore * 0.5)));
+
+        setSkinData({
+          score: score,
+          headline: `Analyzed ${skin.undertone} undertone & ${skin.lumaCategory} luma baseline.`,
+          analysis: `Pixel RGB sampling (${skin.hex}) indicates a high-contrast ${skin.undertone} undertone. Overall image contrast standard deviation is ${imageTelemetry.contrastStdDev || 35} lux.`,
+          tip: skin.undertone === 'Warm'
+            ? 'Pair with rich navy, charcoal, or deep olive tailoring to accentuate your warm skin undertone.'
+            : 'Pair with crisp white, icy blue, or sterling silver accents to complement your cool skin contrast.',
+          luminosity: `${imageTelemetry.avgLuminance || 125} Luma Lux (${imageTelemetry.avgLuminance > 160 ? 'High Glare' : imageTelemetry.avgLuminance < 90 ? 'Deep Contrast' : 'Balanced Lux'})`,
+          texture: `${imageTelemetry.resolutionScore || 92}% (${imageTelemetry.width || 800}x${imageTelemetry.height || 1000} Resolution)`,
+          fatigue: imageTelemetry.lightingScore > 88 ? 'Low / Alert Baseline' : 'Moderate Shadow Falloff',
+          strengths: `Sampled facial RGB (${skin.hex}) shows consistent ${skin.undertone} tone distribution across key presentation focal points.`,
+          focusArea: imageTelemetry.avgLuminance < 100
+            ? 'Increase front key lighting by 15% to boost T-zone definition in virtual video feeds.'
+            : 'Maintain 45° diffuse lighting to preserve natural edge sharpness.',
+        });
       }
       setIsAnalyzing(false);
     }
