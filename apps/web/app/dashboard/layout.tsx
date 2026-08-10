@@ -72,30 +72,35 @@ const IconProgress = () => (
   </svg>
 );
 
+const IconStylist = () => (
+  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+  </svg>
+);
+
 // ─── Primary Nav Items ──────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { label: 'Dashboard',    href: '/dashboard',              icon: <IconDashboard /> },
-  { label: 'New Analysis', href: '/journey/start',          icon: <IconAnalysis /> },
-  { label: 'History',      href: '/dashboard/history',      icon: <IconHistory /> },
-  { label: 'Plans',        href: '/dashboard/plans',        icon: <IconPlans /> },
-  { label: 'Progress',     href: '/dashboard/progress',     icon: <IconProgress /> },
-  { label: 'Wardrobe',     href: '/wardrobe',               icon: <IconWardrobe /> },
-  { label: 'Insights',     href: '/dashboard/presence-dna', icon: <IconInsights /> },
-  { label: 'Profile',      href: '/dashboard/profile',      icon: <IconProfile /> },
-  { label: 'Settings',     href: '/dashboard/settings',     icon: <IconSettings /> },
+  { label: 'Dashboard',         href: '/dashboard',              icon: <IconDashboard /> },
+  { label: 'AI Stylist & VTO',  href: '/wardrobe/style-me',      icon: <IconStylist />, badge: 'AI VTO' },
+  { label: 'Presence Journey',  href: '/journey/start',          icon: <IconAnalysis />, badge: 'NEW' },
+  { label: 'Digital Wardrobe',  href: '/wardrobe',               icon: <IconWardrobe /> },
+  { label: 'Presence DNA™',     href: '/dashboard/presence-dna', icon: <IconInsights /> },
+  { label: 'Saved Plans',       href: '/dashboard/plans',        icon: <IconPlans /> },
+  { label: 'History',           href: '/dashboard/history',      icon: <IconHistory /> },
+  { label: 'Progress',          href: '/dashboard/progress',     icon: <IconProgress /> },
+  { label: 'Profile',           href: '/dashboard/profile',      icon: <IconProfile /> },
+  { label: 'Settings',          href: '/dashboard/settings',     icon: <IconSettings /> },
 ];
 
 // ─── Mobile bottom nav ────────────────────────────────────────────────────────
 const MOBILE_NAV = [
-  { label: 'Home',     href: '/dashboard',              icon: <IconDashboard /> },
-  { label: 'Analysis', href: '/journey/start',          icon: <IconAnalysis /> },
-  { label: 'History',  href: '/dashboard/history',      icon: <IconHistory /> },
-  { label: 'Plans',    href: '/dashboard/plans',        icon: <IconPlans /> },
-  { label: 'Progress', href: '/dashboard/progress',     icon: <IconProgress /> },
-  { label: 'Wardrobe', href: '/wardrobe',               icon: <IconWardrobe /> },
-  { label: 'Insights', href: '/dashboard/presence-dna', icon: <IconInsights /> },
-  { label: 'Profile',  href: '/dashboard/profile',      icon: <IconProfile /> },
-  { label: 'Settings', href: '/dashboard/settings',     icon: <IconSettings /> },
+  { label: 'Home',      href: '/dashboard',              icon: <IconDashboard /> },
+  { label: 'Stylist',   href: '/wardrobe/style-me',      icon: <IconStylist /> },
+  { label: 'Journey',   href: '/journey/start',          icon: <IconAnalysis /> },
+  { label: 'Wardrobe',  href: '/wardrobe',               icon: <IconWardrobe /> },
+  { label: 'Presence',  href: '/dashboard/presence-dna', icon: <IconInsights /> },
+  { label: 'Plans',     href: '/dashboard/plans',        icon: <IconPlans /> },
+  { label: 'Profile',   href: '/dashboard/profile',      icon: <IconProfile /> },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -183,9 +188,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   {item.icon}
                   <span>{item.label}</span>
-                  {item.label === 'New Analysis' && (
+                  {item.badge && (
                     <span className="ml-auto text-[9.5px] font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
-                      NEW
+                      {item.badge}
                     </span>
                   )}
                 </Link>
