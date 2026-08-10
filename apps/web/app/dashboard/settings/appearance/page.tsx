@@ -225,6 +225,25 @@ export default function AppearanceSettingsPage() {
               View Detailed Metrics
             </button>
           </div>
+
+          {/* Save Action */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const { userApi } = await import('@/lib/api/services');
+                  await userApi.updatePreferences({ preferred_theme: theme });
+                  alert('Appearance preferences saved successfully!');
+                } catch (e) {
+                  alert('Failed to save appearance preferences.');
+                }
+              }}
+              className="w-full h-11 bg-primary hover:bg-primary/95 text-white font-bold text-[13px] rounded-[12px] shadow-sm transition-all"
+            >
+              Save Preferences
+            </button>
+          </div>
         </div>
 
       </div>

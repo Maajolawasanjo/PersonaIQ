@@ -52,38 +52,54 @@ export default function ImageValidationPage() {
             </p>
           </div>
 
-          {/* Checklist */}
-          <div className="space-y-3.5 pt-1">
-            {/* Check 1 */}
-            <div className="flex items-start space-x-3 text-[13px]">
-              <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
-                ✓
+          {/* Diagnostic Telemetry Meters */}
+          <div className="space-y-4 pt-1">
+            
+            {/* Meter 1: Face Detection */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[12.5px]">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                    ✓
+                  </div>
+                  <span className="font-bold text-gray-950">Face Detection & Alignment</span>
+                </div>
+                <span className="font-mono font-bold text-emerald-600">100% (Optimal)</span>
               </div>
-              <div>
-                <span className="font-bold text-gray-950 block">Face Detected</span>
-                <span className="text-gray-500 text-[12px] font-medium block">Optimal positioning within frame.</span>
-              </div>
-            </div>
-
-            {/* Check 2 */}
-            <div className="flex items-start space-x-3 text-[13px]">
-              <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
-                ✓
-              </div>
-              <div>
-                <span className="font-bold text-gray-950 block">Lighting Good</span>
-                <span className="text-gray-500 text-[12px] font-medium block">Even distribution, no harsh shadows.</span>
+              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                <div className="bg-emerald-500 h-full rounded-full w-full" />
               </div>
             </div>
 
-            {/* Check 3 */}
-            <div className="flex items-start space-x-3 text-[13px]">
-              <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
-                ✓
+            {/* Meter 2: Lighting Quality */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[12.5px]">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                    ✓
+                  </div>
+                  <span className="font-bold text-gray-950">Lighting & Lux Contrast</span>
+                </div>
+                <span className="font-mono font-bold text-emerald-600">96% (Even)</span>
               </div>
-              <div>
-                <span className="font-bold text-gray-950 block">Resolution Excellent</span>
-                <span className="text-gray-500 text-[12px] font-medium block">High clarity for detailed mapping.</span>
+              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                <div className="bg-emerald-500 h-full rounded-full w-[96%]" />
+              </div>
+            </div>
+
+            {/* Meter 3: Resolution & Clarity */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[12.5px]">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                    ✓
+                  </div>
+                  <span className="font-bold text-gray-950">Resolution & Focal Sharpness</span>
+                </div>
+                <span className="font-mono font-bold text-emerald-600">98% (Fidelity High)</span>
+              </div>
+              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                <div className="bg-emerald-500 h-full rounded-full w-[98%]" />
               </div>
             </div>
 
@@ -95,7 +111,7 @@ export default function ImageValidationPage() {
               <div>
                 <span className="font-bold text-gray-950 block">Camera Angle Acceptable</span>
                 <span className="text-primary font-medium text-[12px] block">
-                  Suggestion: Move slightly closer to the camera to optimize analysis accuracy.
+                  Suggestion: Move slightly closer to the camera to optimize skin telemetry accuracy.
                 </span>
               </div>
             </div>
@@ -104,19 +120,19 @@ export default function ImageValidationPage() {
           {/* Action Buttons */}
           <div className="space-y-2.5 pt-2">
             <Link
-              href="/journey/presence-scan"
+              href="/journey/skin-intelligence"
               className="w-full h-12 bg-primary hover:bg-primary/95 text-white font-bold text-[14px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2"
             >
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z"/></svg>
-              <span>Begin AI Processing</span>
+              <span>Begin Skin & Presence Analysis</span>
             </Link>
 
             <Link
               href="/journey/capture-look"
-              className="w-full h-11 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold text-[13px] rounded-[10px] transition-all flex items-center justify-center space-x-2"
+              className="w-full h-11 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold text-[13.3px] rounded-[10px] transition-all flex items-center justify-center space-x-2"
             >
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-              <span>Recapture</span>
+              <span>Recapture Photo</span>
             </Link>
           </div>
 
