@@ -33,10 +33,10 @@ const OCCASIONS = [
 ];
 
 const AVATARS = [
-  { id: 'black_male', label: 'Black Male Model', image: '/vto and more/black male.png' },
-  { id: 'black_female', label: 'Black Female Model', image: '/vto and more/black female.png' },
-  { id: 'white_male', label: 'White Male Model', image: '/vto and more/white male.png' },
-  { id: 'white_female', label: 'White Female Model', image: '/vto and more/white female.png' },
+  { id: 'black_male', label: 'Black Male Model', image: '/images/professional-ai-headshot.jpg' },
+  { id: 'black_female', label: 'Black Female Model', image: '/images/professional-female-headshot.jpg' },
+  { id: 'white_male', label: 'White Male Model', image: '/images/brown-peaked-lapel-suit.jpg' },
+  { id: 'white_female', label: 'White Female Model', image: '/images/casual-dress.jpg' },
 ];
 
 export default function StyleMePage() {

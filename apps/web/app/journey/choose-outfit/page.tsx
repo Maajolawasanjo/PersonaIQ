@@ -39,10 +39,10 @@ const OCCASIONS = [
 ];
 
 const AVATARS = [
-  { id: 'black_male', label: 'Black Male Model', image: '/vto and more/black male.png' },
-  { id: 'black_female', label: 'Black Female Model', image: '/vto and more/black female.png' },
-  { id: 'white_male', label: 'White Male Model', image: '/vto and more/white male.png' },
-  { id: 'white_female', label: 'White Female Model', image: '/vto and more/white female.png' },
+  { id: 'black_male', label: 'Black Male Model', image: '/images/professional-ai-headshot.jpg' },
+  { id: 'black_female', label: 'Black Female Model', image: '/images/professional-female-headshot.jpg' },
+  { id: 'white_male', label: 'White Male Model', image: '/images/brown-peaked-lapel-suit.jpg' },
+  { id: 'white_female', label: 'White Female Model', image: '/images/casual-dress.jpg' },
 ];
 
 interface OutfitItem {
@@ -72,7 +72,7 @@ export default function ChooseOutfitPage() {
   const [selectedOutfitId, setSelectedOutfitId] = useState<string>('charcoal');
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
 
-  // Digital Closet & Recent Garments
+  // Verified Digital Closet & Garments Catalog
   const [outfitList, setOutfitList] = useState<OutfitItem[]>([
     {
       id: 'charcoal',
@@ -101,6 +101,34 @@ export default function ChooseOutfitPage() {
       category: 'Outerwear',
       image: '/images/premium-winter-casual.jpg',
       fitScore: 'Presence Index™ Fit: 90% (High)',
+    },
+    {
+      id: 'kaftan',
+      title: '3-Piece Traditional Kaftan',
+      category: 'Traditional Ceremonial',
+      image: '/images/kaftan-3piece.jpg',
+      fitScore: 'Presence Index™ Fit: 95% (High)',
+    },
+    {
+      id: 'livity',
+      title: 'Livity Tailored Suit',
+      category: 'Executive Formal',
+      image: '/images/livity-traditional-suit.jpg',
+      fitScore: 'Presence Index™ Fit: 93% (High)',
+    },
+    {
+      id: 'tunic',
+      title: 'Mandarin Tunic Suit',
+      category: 'Cultural Elegance',
+      image: '/images/chinese-tunic-suit.jpg',
+      fitScore: 'Presence Index™ Fit: 91% (High)',
+    },
+    {
+      id: 'monogram',
+      title: 'Luxury Monogram Blazer',
+      category: 'Statement Executive',
+      image: '/images/luxury-monogram-style.jpg',
+      fitScore: 'Presence Index™ Fit: 96% (High)',
     },
   ]);
 
