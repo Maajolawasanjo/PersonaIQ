@@ -146,26 +146,61 @@ export default function ChooseOutfitPage() {
   const handleImportProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productUrl) return;
-    try {
-      await stylistApi.importProduct(productUrl);
-      const newId = `imported_${Date.now()}`;
-      const newItem: VTOAsset = {
-        id: newId,
-        name: 'Imported Garment from Online Store',
-        category: 'clothing',
-        subcategory: 'imported',
-        gender: 'unisex',
-        asset_type: 'product',
-        image_url: '/images/brown-peaked-lapel-suit.jpg',
-        occasions: [selectedOccasion],
-        is_active: true,
-      };
-      setUserUploads((prev) => [newItem, ...prev]);
-      setSelectedAssetId(newId);
-      setProductUrl('');
-    } catch (err) {
-      alert('Garment imported into active journey session!');
+    
+    // Parse slug & keywords for fallback
+    let fallbackName = 'Online Store Garment';
+    let fallbackCategory: 'clothing' | 'footwear' | 'accessories' = 'clothing';
+    const lowerUrl = productUrl.toLowerCase();
+    
+    if (lowerUrl.includes('shoe') || lowerUrl.includes('boot') || lowerUrl.includes('sneaker') || lowerUrl.includes('loafer')) {
+      fallbackCategory = 'footwear';
+      fallbackName = 'Imported Footwear';
+    } else if (lowerUrl.includes('watch') || lowerUrl.includes('belt') || lowerUrl.includes('tie') || lowerUrl.includes('bag')) {
+      fallbackCategory = 'accessories';
+      fallbackName = 'Imported Luxury Accessory';
+    } else if (lowerUrl.includes('dress') || lowerUrl.includes('suit') || lowerUrl.includes('blazer') || lowerUrl.includes('shirt')) {
+      fallbackCategory = 'clothing';
+      fallbackName = 'Imported Apparel Item';
     }
+
+    try {
+      const res = await stylistApi.importProduct(productUrl);
+      if (res?.data) {
+        const importedItem: VTOAsset = {
+          id: res.data.id || `imported_${Date.now()}`,
+          name: res.data.name || fallbackName,
+          category: res.data.category || fallbackCategory,
+          subcategory: 'online_store',
+          gender: 'unisex',
+          asset_type: 'product',
+          image_url: res.data.photo_url || productUrl,
+          occasions: ['all'],
+          is_active: true,
+        };
+        setUserUploads((prev) => [importedItem, ...prev]);
+        setSelectedAssetId(importedItem.id);
+        setProductUrl('');
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend product import service offline, parsing URL locally:', err);
+    }
+
+    // Direct URL Fallback
+    const importedItem: VTOAsset = {
+      id: `imported_${Date.now()}`,
+      name: fallbackName,
+      category: fallbackCategory,
+      subcategory: 'online_store',
+      gender: 'unisex',
+      asset_type: 'product',
+      image_url: productUrl, // Uses exact pasted product/image URL!
+      occasions: ['all'],
+      is_active: true,
+    };
+    setUserUploads((prev) => [importedItem, ...prev]);
+    setSelectedAssetId(importedItem.id);
+    setProductUrl('');
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
