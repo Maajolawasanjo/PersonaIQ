@@ -89,12 +89,12 @@ export default function PresenceDNAAnalysisPage() {
           <div className="space-y-1">
             <div className="flex items-baseline space-x-1">
               <span className="text-[44px] font-extrabold text-red-600 font-sans leading-none">
-                84.2
+                {dnaData?.avg_presence_index ? dnaData.avg_presence_index.toFixed(1) : '--'}
               </span>
             </div>
             <span className="text-[11px] font-mono text-gray-500 flex items-center space-x-1 pt-1">
               <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>+2.4 since last quarter</span>
+              <span>{dnaData?.avg_presence_index > 0 ? '+2.4 since baseline' : 'Baseline calculated'}</span>
             </span>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function PresenceDNAAnalysisPage() {
 
           <div className="space-y-1">
             <span className="text-[42px] font-extrabold text-gray-950 font-sans leading-none block">
-              128
+              {dnaData?.total_journeys_completed ?? 0}
             </span>
             <span className="text-[11px] font-mono text-gray-500 block pt-1">
               Total recorded sessions
@@ -127,10 +127,10 @@ export default function PresenceDNAAnalysisPage() {
 
           <div className="space-y-2">
             <span className="text-[36px] font-extrabold text-gray-950 font-sans leading-none block">
-              92%
+              {dnaData?.vocal_confidence_base ? `${Math.round(dnaData.vocal_confidence_base)}%` : '--'}
             </span>
             <div className="w-full h-2 bg-gray-150 rounded-full overflow-hidden">
-              <div className="h-full bg-gray-900 w-[92%]" />
+              <div className="h-full bg-gray-900" style={{ width: `${dnaData?.vocal_confidence_base || 0}%` }} />
             </div>
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function PresenceDNAAnalysisPage() {
           <div className="w-16 h-16 rounded-[14px] overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
             <img
               src="/images/brown-peaked-lapel-suit.jpg"
-              alt="Minimalist Corporate"
+              alt={dnaData?.top_style || 'Executive Baseline'}
               className="w-full h-full object-cover"
             />
           </div>
@@ -150,7 +150,7 @@ export default function PresenceDNAAnalysisPage() {
               <span>TOP STYLE</span>
             </span>
             <h3 className="text-[14px] font-bold text-gray-950 font-sans">
-              Minimalist Corporate
+              {dnaData?.top_style || 'Not Established'}
             </h3>
             <p className="text-[10.5px] text-gray-500 font-normal leading-tight">
               Correlates with +4% higher authority scoring in recorded meetings.

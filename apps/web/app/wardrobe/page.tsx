@@ -152,7 +152,8 @@ const AI_RECOMMENDATIONS = [
 
 export default function WardrobePage() {
   const [activeCategory, setActiveCategory] = useState('All');
-  const [outfits, setOutfits] = useState<Outfit[]>(INITIAL_OUTFITS);
+  const [outfits, setOutfits] = useState<Outfit[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
 
   useEffect(() => {
@@ -164,7 +165,7 @@ export default function WardrobePage() {
             id: item.id,
             name: item.name,
             category: item.category || 'Business Casual',
-            score: 88,
+            score: item.score || 88,
             events: item.wear_count || 1,
             lastWorn: 'Recently',
             tag: item.is_favorite ? 'Favorite' : null,
@@ -179,9 +180,14 @@ export default function WardrobePage() {
             },
           }));
           setOutfits(mapped);
+        } else {
+          setOutfits([]);
         }
       } catch (err) {
-        console.warn('Backend wardrobe items unresolvable, using defaults:', err);
+        console.warn('Backend wardrobe items unresolvable:', err);
+        setOutfits([]);
+      } finally {
+        setIsLoading(false);
       }
     }
     loadWardrobe();
@@ -200,6 +206,10 @@ export default function WardrobePage() {
     if (activeCategory === 'Favorites') return o.favorite;
     return o.category === activeCategory;
   });
+
+  const avgScore = outfits.length > 0 ? Math.round(outfits.reduce((acc, curr) => acc + curr.score, 0) / outfits.length) : '--';
+  const bestScore = outfits.length > 0 ? Math.max(...outfits.map(o => o.score)) : '--';
+  const favoritesCount = outfits.filter(o => o.favorite).length;
 
   return (
     <div className="space-y-8 animate-fadeIn w-full">
@@ -226,9 +236,9 @@ export default function WardrobePage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total Outfits', value: outfits.length },
-          { label: 'Avg. Score', value: Math.round(outfits.reduce((acc, curr) => acc + curr.score, 0) / outfits.length) },
-          { label: 'Favorites', value: outfits.filter(o => o.favorite).length },
-          { label: 'Best Score', value: Math.max(...outfits.map(o => o.score)) },
+          { label: 'Avg. Score', value: avgScore },
+          { label: 'Favorites', value: favoritesCount },
+          { label: 'Best Score', value: bestScore },
         ].map((stat) => (
           <div key={stat.label} className="bg-white border border-gray-200 rounded-[16px] p-5 shadow-2xs text-center">
             <div className="text-[32px] font-extrabold font-sans text-gray-950 leading-none">{stat.value}</div>
@@ -260,8 +270,27 @@ export default function WardrobePage() {
           </div>
 
           {/* Outfit Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {filtered.map((outfit) => (
+          {filtered.length === 0 ? (
+            <div className="bg-white border border-gray-200 rounded-[20px] p-8 text-center space-y-4">
+              <div className="w-14 h-14 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center mx-auto text-gray-400">
+                <Shirt className="w-6 h-6 text-gray-400" />
+              </div>
+              <div className="space-y-1 max-w-sm mx-auto">
+                <h3 className="text-[17px] font-bold text-gray-950 font-sans">No Outfits in Wardrobe</h3>
+                <p className="text-[12.5px] text-gray-500 font-normal">
+                  Your wardrobe is currently empty. Upload photos during your Presence Journey or click below to add your first outfit.
+                </p>
+              </div>
+              <Link
+                href="/journey/choose-outfit"
+                className="inline-flex items-center space-x-1.5 h-9 px-4 bg-primary text-white font-bold text-[12px] rounded-[8px] hover:bg-primary/90 transition-colors"
+              >
+                <span>Add Your First Outfit</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {filtered.map((outfit) => (
               <div
                 key={outfit.id}
                 onClick={() => setSelectedOutfit(outfit)}
@@ -317,6 +346,7 @@ export default function WardrobePage() {
               </div>
             ))}
           </div>
+          )}
 
           {/* Empty State */}
           {filtered.length === 0 && (

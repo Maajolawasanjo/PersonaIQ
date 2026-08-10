@@ -3,13 +3,14 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from pydantic import BaseModel as PydanticBaseModel
 from app.core.database import get_db
 from app.dto.common import ResponseMeta, StandardResponse
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.models.presence_dna import PresenceDNA, PresenceGoal
+from app.models.journey import Journey
 
 router = APIRouter(prefix="/presence-dna", tags=["Presence DNA & Progress Analytics"])
 
@@ -35,21 +36,32 @@ async def get_presence_dna(
     goals_res = await db.execute(select(PresenceGoal).where(PresenceGoal.user_id == current_user.id))
     goals = goals_res.scalars().all()
 
+    # Count real journeys completed by user
+    journey_count_res = await db.execute(
+        select(func.count(Journey.id)).where(
+            Journey.user_id == current_user.id,
+            Journey.status == "COMPLETED"
+        )
+    )
+    real_journey_count = journey_count_res.scalar() or 0
+
+    journey_avg_res = await db.execute(
+        select(func.avg(Journey.active_presence_index)).where(
+            Journey.user_id == current_user.id,
+            Journey.status == "COMPLETED"
+        )
+    )
+    real_avg_score = journey_avg_res.scalar()
+    real_avg_score_val = round(float(real_avg_score), 1) if real_avg_score is not None else 0.0
+
     data = {
-        "avg_presence_index": dna.avg_presence_index if dna else 84.2,
-        "vocal_confidence_base": dna.vocal_confidence_base if dna else 92.0,
-        "visual_authority_base": dna.visual_authority_base if dna else 87.0,
-        "executive_presence_base": dna.executive_presence_base if dna else 89.0,
-        "total_journeys_completed": dna.total_journeys_completed if dna else 128,
-        "top_style": dna.top_style if dna else "Minimalist Corporate",
-        "trajectory": dna.trajectory_data if dna else [
-            {"month": "JAN", "score": 68},
-            {"month": "FEB", "score": 72},
-            {"month": "MAR", "score": 78},
-            {"month": "APR", "score": 82},
-            {"month": "MAY", "score": 84},
-            {"month": "JUN", "score": 89},
-        ],
+        "avg_presence_index": dna.avg_presence_index if dna else real_avg_score_val,
+        "vocal_confidence_base": dna.vocal_confidence_base if dna else (real_avg_score_val if real_avg_score_val > 0 else 0.0),
+        "visual_authority_base": dna.visual_authority_base if dna else (real_avg_score_val if real_avg_score_val > 0 else 0.0),
+        "executive_presence_base": dna.executive_presence_base if dna else (real_avg_score_val if real_avg_score_val > 0 else 0.0),
+        "total_journeys_completed": dna.total_journeys_completed if dna else real_journey_count,
+        "top_style": dna.top_style if dna else ("Executive Baseline" if real_journey_count > 0 else "Not Established"),
+        "trajectory": dna.trajectory_data if dna else [],
         "goals": [
             {
                 "id": str(g.id),
@@ -61,17 +73,7 @@ async def get_presence_dna(
                 "is_achieved": g.is_achieved,
             }
             for g in goals
-        ] if goals else [
-            {
-                "id": "g1",
-                "title": "Reach Presence Index 95",
-                "target_metric": "index",
-                "current_value": 89,
-                "target_value": 95,
-                "deadline": "Sep 30",
-                "is_achieved": False,
-            }
-        ],
+        ] if goals else [],
     }
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
