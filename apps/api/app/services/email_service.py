@@ -107,20 +107,22 @@ class EmailService:
         """Dispatches an email task using FastAPI BackgroundTasks if provided, or asyncio task as fallback.
 
         Guarantees that email execution runs AFTER the HTTP response returns to the client.
-        In non-production environments, the task safely logs the mock email without network calls.
         """
-        if background_tasks is not None and hasattr(background_tasks, "add_task"):
-            background_tasks.add_task(coro_func, *args, **kwargs)
-        else:
-            async def _run():
-                try:
-                    await coro_func(*args, **kwargs)
-                except Exception as e:
-                    logger.error(f"[EmailService.dispatch] Background task failed: {e}", exc_info=True)
+        async def _run_task():
+            try:
+                func_name = getattr(coro_func, "__name__", str(coro_func))
+                logger.info(f"[EmailService.dispatch] Starting background email task '{func_name}' for target={args[0] if args else 'N/A'}...")
+                result = await coro_func(*args, **kwargs)
+                logger.info(f"[EmailService.dispatch] Completed email task '{func_name}': result={result}")
+            except Exception as e:
+                logger.error(f"[EmailService.dispatch] Background task failed: {e}", exc_info=True)
 
+        if background_tasks is not None and hasattr(background_tasks, "add_task"):
+            background_tasks.add_task(_run_task)
+        else:
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(_run())
+                loop.create_task(_run_task())
             except RuntimeError:
                 logger.warning("[EmailService.dispatch] No running event loop. Email task skipped.")
 
