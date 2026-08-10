@@ -195,13 +195,36 @@ export default function EventDetailsPage() {
           >
             Cancel
           </Link>
-          <Link
-            href="/journey/dress-code"
-            className="h-11 px-7 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2"
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const journeyId = typeof window !== 'undefined' ? localStorage.getItem('personaiq_active_journey_id') : null;
+                if (journeyId) {
+                  const { journeyApi } = await import('@/lib/api/services');
+                  await journeyApi.updateEventContext(journeyId, {
+                    name: eventName || 'Executive Engagement',
+                    industry: industry || 'Technology',
+                    location: location || 'Global',
+                    event_date: date || undefined,
+                    event_time: time || undefined,
+                    importance: selectedStakes === 'critical' ? 3 : selectedStakes === 'strategic' ? 2 : 1,
+                  });
+                }
+              } catch (e) {
+                console.warn('Failed to update event context on backend:', e);
+              } finally {
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('personaiq_active_draft_step', '/journey/dress-code');
+                }
+                window.location.href = '/journey/dress-code';
+              }
+            }}
+            className="h-11 px-7 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2 cursor-pointer"
           >
             <span>Continue</span>
             <span>→</span>
-          </Link>
+          </button>
         </div>
 
       </div>

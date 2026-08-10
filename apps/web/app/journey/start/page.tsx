@@ -1,10 +1,36 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, Hammer, Target } from 'lucide-react';
+import { journeyApi } from '@/lib/api/services';
 
 export default function JourneyStartPage() {
+  const router = useRouter();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleStart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    try {
+      const journey = await journeyApi.createJourney('Executive Presence Journey');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('personaiq_active_journey_id', journey.id);
+        localStorage.setItem('personaiq_active_draft_step', '/journey/event-type');
+      }
+      router.push('/journey/event-type');
+    } catch (err) {
+      console.warn('Backend creation fallback, proceeding to event-type step:', err);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('personaiq_active_draft_step', '/journey/event-type');
+      }
+      router.push('/journey/event-type');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <div className="min-h-[70vh] flex items-center justify-center py-6 px-4 animate-fadeIn">
       <div className="bg-white border border-gray-200 rounded-[28px] max-w-lg w-full p-8 sm:p-10 shadow-sm text-center space-y-8">
@@ -13,7 +39,7 @@ export default function JourneyStartPage() {
         <div className="flex justify-center">
           <div className="w-16 h-16 rounded-full border border-dashed border-red-500 flex items-center justify-center bg-red-50/50">
             <svg
-              className="w-7 h-7 text-red-650 animate-spin-slow"
+              className={`w-7 h-7 text-red-650 ${isCreating ? 'animate-spin' : 'animate-spin-slow'}`}
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
@@ -41,13 +67,15 @@ export default function JourneyStartPage() {
 
         {/* Start Button */}
         <div>
-          <Link
-            href="/journey/event-type"
-            className="inline-flex h-11 px-8 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm items-center justify-center space-x-2 transition-all hover:scale-[1.01]"
+          <button
+            type="button"
+            onClick={handleStart}
+            disabled={isCreating}
+            className="inline-flex h-11 px-8 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm items-center justify-center space-x-2 transition-all hover:scale-[1.01] disabled:opacity-75 cursor-pointer"
           >
-            <span>Start First Journey</span>
+            <span>{isCreating ? 'Creating Journey Session...' : 'Start First Journey'}</span>
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
 
         {/* Divider */}
