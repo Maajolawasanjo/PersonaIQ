@@ -12,11 +12,28 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
+import { presenceDnaApi } from '@/lib/api/services';
 
 export default function PresenceDNAAnalysisPage() {
   const [activeTab, setActiveTab] = useState<string>('Overview');
+  const [dnaData, setDnaData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const tabs = ['Overview', 'Progress', 'Growth Timeline', 'Achievements', 'Insights', 'Goals'];
+
+  React.useEffect(() => {
+    async function loadDna() {
+      try {
+        const data = await presenceDnaApi.getDna();
+        setDnaData(data);
+      } catch (e) {
+        console.error('Failed to load Presence DNA:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadDna();
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn py-2 bg-white p-6 sm:p-8 rounded-[24px] shadow-sm border border-gray-150">

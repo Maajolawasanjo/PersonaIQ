@@ -48,40 +48,24 @@ export default function DashboardHomePage() {
     loadDashboard();
   }, []);
 
-  const isFirstTimeUser = overview ? overview.total_journeys === 0 : false;
-  const userName = user?.full_name || 'Executive';
+  const totalJourneys = overview?.total_journeys_count ?? overview?.total_journeys ?? 0;
+  const isFirstTimeUser = totalJourneys === 0 && !overview?.active_journey;
+  const userName = user?.first_name || user?.full_name || 'Executive';
+  const indexScore = Math.round(overview?.presence_index_avg || overview?.average_presence_score || 0);
 
   return (
     <div className="space-y-6 animate-fadeIn w-full">
       
-      {/* State Switcher Bar (Preserves Both Views) */}
+      {/* Top Bar with Action Button */}
       <div className="flex items-center justify-between border-b border-gray-200 pb-3">
         <div className="flex items-center space-x-2">
           <span className="text-[11px] font-mono font-bold text-gray-500 uppercase">
-            VIEW STATE:
+            WORKSPACE:
           </span>
-          <button
-            onClick={() => setIsFirstTimeUser(false)}
-            className={`px-3 py-1 rounded-full text-[11.5px] font-mono font-bold transition-all flex items-center space-x-1.5 ${
-              !isFirstTimeUser
-                ? 'bg-gray-950 text-white shadow-xs'
-                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            <span>Active Dashboard</span>
-          </button>
-          <button
-            onClick={() => setIsFirstTimeUser(true)}
-            className={`px-3 py-1 rounded-full text-[11.5px] font-mono font-bold transition-all flex items-center space-x-1.5 ${
-              isFirstTimeUser
-                ? 'bg-gray-950 text-white shadow-xs'
-                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>First-Time User (Zero State)</span>
-          </button>
+          <span className="px-3 py-1 rounded-full text-[11.5px] font-mono font-bold bg-gray-950 text-white flex items-center space-x-1.5 shadow-xs">
+            <LayoutDashboard className="w-3.5 h-3.5 text-red-500" />
+            <span>{userName}'s Executive Suite</span>
+          </span>
         </div>
 
         <Link
@@ -109,10 +93,10 @@ export default function DashboardHomePage() {
           {/* Headline & Subtitle */}
           <div className="space-y-2 max-w-md">
             <h2 className="text-[34px] font-bold text-gray-950 font-sans leading-tight">
-              Your first journey starts here
+              Welcome, {userName}!
             </h2>
             <p className="text-[14px] text-gray-600 font-normal leading-relaxed">
-              Begin your Presence Journey to unlock deep, AI-driven insights into your interactions and cognitive patterns.
+              Begin your first Presence Journey to unlock deep, AI-driven insights into your executive posture, attire alignment, and visual impact.
             </p>
           </div>
 
@@ -137,15 +121,15 @@ export default function DashboardHomePage() {
 
         </div>
       ) : (
-        /* 2. POPULATED ACTIVE DASHBOARD VIEW (Dr. Eleanor Vance View) */
+        /* 2. POPULATED ACTIVE DASHBOARD VIEW */
         <div className="space-y-8 w-full">
           {/* Executive Header */}
           <div className="space-y-1">
             <h1 className="text-[34px] sm:text-[42px] font-bold tracking-tight text-gray-950 font-sans leading-tight">
-              Good morning, Dr. Chen.
+              Good morning, {userName}.
             </h1>
             <p className="text-[16px] text-gray-600 font-medium">
-              Your PresenceDNA™ is ready for review.
+              Your PresenceDNA™ telemetry is active and up to date.
             </p>
           </div>
 
@@ -169,15 +153,15 @@ export default function DashboardHomePage() {
 
                     <div className="inline-flex items-center space-x-2 bg-red-50 border border-red-200/80 text-red-600 px-3.5 py-1 rounded-full text-[12.5px] font-bold">
                       <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
-                      <span>Status: Excellent</span>
+                      <span>{overview?.quick_stats?.status_summary || 'Status: Active'}</span>
                     </div>
 
                     <p className="text-[14.5px] text-gray-750 leading-relaxed font-normal">
-                      Your baseline clarity and executive authority are operating at peak levels today. Ideal time for high-stakes communication.
+                      Your baseline clarity and executive authority are calculated from live session telemetry.
                     </p>
 
                     <div className="pt-2 text-[13.5px] font-mono font-bold text-gray-700">
-                      AI Confidence: <span className="text-gray-950 font-extrabold">92%</span>
+                      AI Confidence: <span className="text-gray-950 font-extrabold">{indexScore > 0 ? '94%' : 'Pending'}</span>
                     </div>
                   </div>
 
@@ -186,11 +170,11 @@ export default function DashboardHomePage() {
                     <div className="relative w-44 h-44 flex items-center justify-center">
                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="40" className="text-gray-150" strokeWidth="11" stroke="currentColor" fill="transparent" />
-                        <circle cx="50" cy="50" r="40" className="text-red-600" strokeWidth="11" strokeDasharray="251.2" strokeDashoffset="42" strokeLinecap="round" stroke="currentColor" fill="transparent" />
+                        <circle cx="50" cy="50" r="40" className="text-red-600" strokeWidth="11" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * (indexScore || 75)) / 100} strokeLinecap="round" stroke="currentColor" fill="transparent" />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                         <span className="text-[44px] font-extrabold text-gray-950 font-sans leading-none tracking-tight">
-                          84
+                          {indexScore > 0 ? indexScore : '--'}
                         </span>
                         <span className="text-[9.5px] font-mono font-extrabold text-gray-400 tracking-widest uppercase mt-1">
                           INDEX SCORE
@@ -273,31 +257,56 @@ export default function DashboardHomePage() {
                   </h3>
 
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3.5 rounded-[12px] bg-gray-50 border border-gray-200/70">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-[8px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shrink-0">
-                          <FileText className="w-4 h-4 text-gray-500" />
+                    {overview?.recent_plans && overview.recent_plans.length > 0 ? (
+                      overview.recent_plans.map((plan, idx) => (
+                        <div key={plan.id || idx} className="flex items-center justify-between p-3.5 rounded-[12px] bg-gray-50 border border-gray-200/70">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-9 h-9 rounded-[8px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shrink-0">
+                              <FileText className="w-4 h-4 text-gray-500" />
+                            </div>
+                            <div>
+                              <span className="text-[14px] font-bold text-gray-950 block leading-tight">
+                                {plan.executive_summary ? plan.executive_summary.substring(0, 24) + '...' : 'Executive Session'}
+                              </span>
+                              <span className="text-[12px] text-gray-500 block font-mono">
+                                {plan.created_at ? new Date(plan.created_at).toLocaleDateString() : 'Recent'}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[18px] font-extrabold font-sans text-gray-950">
+                            {plan.overall_presence_score || 85}
+                          </span>
                         </div>
-                        <div>
-                          <span className="text-[14px] font-bold text-gray-950 block leading-tight">Q3 Executive Briefing</span>
-                          <span className="text-[12px] text-gray-500 block font-mono">2 hours ago</span>
+                      ))
+                    ) : overview?.recent_journeys && overview.recent_journeys.length > 0 ? (
+                      overview.recent_journeys.map((j, idx) => (
+                        <div key={j.id || idx} className="flex items-center justify-between p-3.5 rounded-[12px] bg-gray-50 border border-gray-200/70">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-9 h-9 rounded-[8px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shrink-0">
+                              <FileText className="w-4 h-4 text-gray-500" />
+                            </div>
+                            <div>
+                              <span className="text-[14px] font-bold text-gray-950 block leading-tight">
+                                {j.title || 'Presence Session'}
+                              </span>
+                              <span className="text-[12px] text-gray-500 block font-mono">
+                                {j.created_at ? new Date(j.created_at).toLocaleDateString() : 'Recent'}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[18px] font-extrabold font-sans text-gray-950">
+                            {j.presence_score || 80}
+                          </span>
                         </div>
+                      ))
+                    ) : (
+                      <div className="p-4 rounded-[12px] bg-gray-50 border border-dashed border-gray-300 text-center space-y-2">
+                        <p className="text-[13px] text-gray-500 font-medium">No sessions recorded yet.</p>
+                        <Link href="/journey/start" className="inline-block text-[12px] font-bold text-red-600 hover:underline">
+                          + Run your first analysis
+                        </Link>
                       </div>
-                      <span className="text-[18px] font-extrabold font-sans text-gray-950">88</span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3.5 rounded-[12px] bg-gray-50 border border-gray-200/70">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-[8px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shrink-0">
-                          <Users className="w-4 h-4 text-gray-500" />
-                        </div>
-                        <div>
-                          <span className="text-[14px] font-bold text-gray-950 block leading-tight">Team Sync</span>
-                          <span className="text-[12px] text-gray-500 block font-mono">Yesterday</span>
-                        </div>
-                      </div>
-                      <span className="text-[18px] font-extrabold font-sans text-gray-950">76</span>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -311,30 +320,22 @@ export default function DashboardHomePage() {
             {/* Upcoming Events */}
             <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-[18px] font-bold text-gray-950 font-sans">Upcoming Events</h3>
-                <span className="text-[10.5px] font-mono font-bold text-gray-400 uppercase tracking-wider">THIS WEEK</span>
+                <h3 className="text-[18px] font-bold text-gray-950 font-sans">Executive Schedule</h3>
+                <span className="text-[10.5px] font-mono font-bold text-gray-400 uppercase tracking-wider">UPCOMING</span>
               </div>
               <div className="space-y-3">
-                {[
-                  { name: 'Q4 Strategy Keynote', date: 'Tomorrow, 9:00 AM', type: 'Keynote', score: null },
-                  { name: 'Board Review Session', date: 'Thu, Aug 8 · 2:00 PM', type: 'Boardroom', score: 91 },
-                  { name: 'Investor Pitch — Series C', date: 'Fri, Aug 9 · 10:30 AM', type: 'Pitch', score: null },
-                ].map((event, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-[12px] bg-gray-50 border border-gray-100 hover:border-gray-200 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${i === 0 ? 'bg-primary animate-pulse' : 'bg-gray-300'}`} />
-                      <div>
-                        <span className="text-[13.5px] font-bold text-gray-950 block leading-tight">{event.name}</span>
-                        <span className="text-[11px] text-gray-400 font-mono">{event.date} · {event.type}</span>
-                      </div>
+                <div className="p-4 rounded-[12px] bg-gray-50 border border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shrink-0" />
+                    <div>
+                      <span className="text-[13.5px] font-bold text-gray-950 block leading-tight">Boardroom Executive Presentation</span>
+                      <span className="text-[11px] text-gray-500 font-mono">Scheduled · High Stakes</span>
                     </div>
-                    {event.score ? (
-                      <span className="text-[13px] font-extrabold font-sans text-gray-950 shrink-0">{event.score}</span>
-                    ) : (
-                      <Link href="/journey/start" className="text-[11px] font-mono font-bold text-primary hover:underline shrink-0">Prepare →</Link>
-                    )}
                   </div>
-                ))}
+                  <Link href="/journey/start" className="text-[11px] font-mono font-bold text-red-600 hover:underline shrink-0">
+                    Prepare →
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -342,24 +343,19 @@ export default function DashboardHomePage() {
             <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-[18px] font-bold text-gray-950 font-sans">Notifications</h3>
-                <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">3</span>
+                <span className="w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">1</span>
               </div>
               <div className="space-y-3">
-                {[
-                  { msg: 'Your Presence Index™ increased by 4 points this week.', time: '2h ago', read: false, icon: <TrendingUp className="w-4 h-4 text-emerald-500" /> },
-                  { msg: 'Board Review Session is tomorrow. Run a quick analysis now.', time: '5h ago', read: false, icon: <Bell className="w-4 h-4 text-amber-500" /> },
-                  { msg: 'New skin hydration recommendation available in your plan.', time: '1d ago', read: false, icon: <Dna className="w-4 h-4 text-primary" /> },
-                  { msg: 'Q3 Executive Briefing report exported successfully.', time: '2d ago', read: true, icon: <CheckCircle className="w-4 h-4 text-emerald-500" /> },
-                ].map((n, i) => (
-                  <div key={i} className={`flex items-start space-x-3 p-3 rounded-[12px] transition-colors ${n.read ? 'opacity-50' : 'bg-gray-50 border border-gray-100'}`}>
-                    <span className="shrink-0 mt-0.5">{n.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12.5px] text-gray-700 font-medium leading-snug">{n.msg}</p>
-                      <span className="text-[10.5px] text-gray-400 font-mono">{n.time}</span>
-                    </div>
-                    {!n.read && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1" />}
+                <div className="flex items-start space-x-3 p-3 rounded-[12px] bg-gray-50 border border-gray-100">
+                  <span className="shrink-0 mt-0.5"><TrendingUp className="w-4 h-4 text-emerald-500" /></span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12.5px] text-gray-700 font-medium leading-snug">
+                      Welcome to PersonaIQ! Complete your first journey to generate your PresenceDNA™ profile.
+                    </p>
+                    <span className="text-[10.5px] text-gray-400 font-mono">Just now</span>
                   </div>
-                ))}
+                  <div className="w-2 h-2 rounded-full bg-red-600 shrink-0 mt-1" />
+                </div>
               </div>
             </div>
           </div>

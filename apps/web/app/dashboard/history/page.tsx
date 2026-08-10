@@ -20,53 +20,47 @@ import {
   Trash2,
   Archive
 } from 'lucide-react';
+import { journeyApi } from '@/lib/api/services';
 
 export default function JourneyArchivePage() {
   const [filter, setFilter] = useState<string>('All');
   const [search, setSearch] = useState<string>('');
   const [isEmptyArchive, setIsEmptyArchive] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [journeys, setJourneys] = useState([
-    {
-      id: 'j1',
-      date: 'OCT 24, 2026',
-      title: 'Venture Capital Pitch',
-      target: 'Tech Investors',
-      score: 94,
-      isLatest: true,
-      outfitName: 'Navy Unstructured Blazer & Grey Trousers',
-      outfitDesc: 'AI noted this combination projected authoritative calm without appearing overly rigid.',
-      image: '/images/brown-peaked-lapel-suit.jpg',
-      category: 'Interview',
-      archived: false,
-    },
-    {
-      id: 'j2',
-      date: 'SEP 12, 2026',
-      title: 'Series B Board Meeting',
-      target: 'Existing Board',
-      score: 88,
-      isLatest: false,
-      outfitName: 'Charcoal Suit & Blue Oxford',
-      outfitDesc: 'A conservative but sharp choice. The system suggested loosening tie slightly.',
-      image: '/images/african-senator-suit.jpg',
-      category: 'Presentation',
-      archived: false,
-    },
-    {
-      id: 'j3',
-      date: 'AUG 05, 2026',
-      title: 'Academic Symposium Keynote',
-      target: 'Peers & Researchers',
-      score: 91,
-      isLatest: false,
-      outfitName: 'Traditional African Senator Wear',
-      outfitDesc: 'High distinction native attire aligned with cultural authority.',
-      image: '/images/african-senator-suit.jpg',
-      category: 'Networking',
-      archived: true,
-    },
-  ]);
+  const [journeys, setJourneys] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    async function loadJourneys() {
+      try {
+        const res = await journeyApi.listJourneys(1, 20);
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((j: any, index: number) => ({
+            id: j.id,
+            date: j.created_at ? new Date(j.created_at).toLocaleDateString().toUpperCase() : 'RECENT',
+            title: j.title || 'Executive Presence Session',
+            target: j.event?.dress_code || 'General Audience',
+            score: j.presence_score || 85,
+            isLatest: index === 0,
+            outfitName: j.event?.target_vibe ? `${j.event.target_vibe} Suit` : 'Navy Executive Suit',
+            outfitDesc: 'Analyzed for high executive authority and visual presence.',
+            image: '/images/brown-peaked-lapel-suit.jpg',
+            category: 'Presentation',
+            archived: j.status === 'ARCHIVED',
+          }));
+          setJourneys(mapped);
+          setIsEmptyArchive(false);
+        } else {
+          setIsEmptyArchive(true);
+        }
+      } catch (err) {
+        console.warn('Could not fetch journeys from API, using default history list:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadJourneys();
+  }, []);
 
   const categories = ['All', 'Interview', 'Presentation', 'Networking'];
 

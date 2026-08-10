@@ -4,8 +4,32 @@ import React from 'react';
 import Link from 'next/link';
 import { User, Palette, Bell, Shield, Link2, Lock, Accessibility, CreditCard, HelpCircle, Info, ChevronRight } from 'lucide-react';
 
+import { userApi } from '@/lib/api/services';
+import { UserProfile } from '@/lib/api/types';
+
 export default function SettingsMainHubPage() {
+  const [profile, setProfile] = React.useState<UserProfile | null>(null);
+
+  React.useEffect(() => {
+    async function loadProfile() {
+      try {
+        const user = await userApi.getProfile();
+        setProfile(user);
+      } catch (err) {
+        console.warn('Could not fetch user profile for settings:', err);
+      }
+    }
+    loadProfile();
+  }, []);
+
   const sections = [
+    {
+      id: 'profile',
+      title: 'Profile Settings',
+      desc: 'Name, email, occupation, and country.',
+      icon: <User className="w-5 h-5" />,
+      href: '/dashboard/settings/profile',
+    },
     {
       id: 'security',
       title: 'Security',
@@ -64,12 +88,34 @@ export default function SettingsMainHubPage() {
       {/* Header */}
       <div className="space-y-1 border-b border-gray-100 pb-4">
         <h1 className="text-[32px] sm:text-[36px] font-bold text-gray-950 font-sans leading-tight">
-          Settings
+          Settings & Account
         </h1>
         <p className="text-[13.5px] text-gray-500 font-normal">
-          Manage your preferences and presence configuration.
+          Manage your account profile and presence configuration.
         </p>
       </div>
+
+      {/* Live Profile Header Banner */}
+      {profile && (
+        <div className="p-4 bg-gray-50 border border-gray-200 rounded-[18px] flex items-center justify-between">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-full bg-red-600 text-white font-bold text-lg flex items-center justify-center shadow-xs">
+              {(profile.first_name?.[0] || profile.email?.[0] || 'U').toUpperCase()}
+            </div>
+            <div>
+              <h3 className="text-[16px] font-bold text-gray-950 font-sans leading-tight">
+                {profile.full_name || profile.first_name ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'Executive'}
+              </h3>
+              <p className="text-[12.5px] text-gray-500 font-mono">
+                {profile.email}
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+            Active Account
+          </span>
+        </div>
+      )}
 
       {/* Main Preference Cards List */}
       <div className="space-y-3">
