@@ -51,7 +51,7 @@ export default function SignUpPage() {
 
     try {
       await signUp(formattedEmail, password, firstName.trim(), lastName.trim());
-      window.location.href = `/verify-email?email=${encodeURIComponent(formattedEmail)}`;
+      window.location.href = '/onboarding';
     } catch (err: any) {
       setErrorMessage(err.message || 'Registration failed. Please try again.');
     } finally {

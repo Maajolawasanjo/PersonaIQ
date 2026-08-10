@@ -60,25 +60,9 @@ async def test_sign_in_success(client: AsyncClient, db_session: AsyncSession):
 
     data = response.json()
     assert data["success"] is True
-    assert data["data"]["requires_2fa"] is True
-
-    # Retrieve OTP from Database
-    from sqlalchemy import select
-    from app.models.user import User
-    query = select(User).where(User.email == "signin@personaiq.ai")
-    result = await db_session.execute(query)
-    user = result.scalar_one()
-    assert user.otp_code is not None
-
-    # Verify 2FA OTP
-    verify_payload = {
-        "email": "signin@personaiq.ai",
-        "code": user.otp_code,
-    }
-    verify_res = await client.post("/api/v1/auth/verify-otp", json=verify_payload)
-    assert verify_res.status_code == 200
-    verify_data = verify_res.json()
-    assert "access_token" in verify_data["data"]
+    assert data["data"]["requires_2fa"] is False
+    assert "access_token" in data["data"]
+    assert "refresh_token" in data["data"]
 
 
 
@@ -170,7 +154,7 @@ async def test_otp_verification_flow(client: AsyncClient, db_session: AsyncSessi
     result = await db_session.execute(query)
     user = result.scalar_one()
     assert user.otp_code is not None
-    assert user.is_verified is False
+    assert user.is_verified is True
 
     # 3. Verify OTP
     verify_payload = {

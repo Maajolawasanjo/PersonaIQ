@@ -132,6 +132,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tokens = await authApi.signUp(email, pass, firstName, lastName);
       if (tokens.access_token && tokens.refresh_token) {
         apiClient.setTokens(tokens.access_token, tokens.refresh_token);
+        const profile = await authApi.getMe();
+        setUser(profile);
+
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('personaiq_auth_channel');
+          channel.postMessage({ type: 'LOGIN' });
+          channel.close();
+        }
       }
       return tokens;
     } finally {
