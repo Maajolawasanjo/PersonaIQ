@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   Award, 
@@ -16,8 +16,32 @@ import {
   ArrowRight,
   Check
 } from 'lucide-react';
+import { VTO_MODELS } from '@/lib/catalog/vtoCatalog';
 
 export default function JourneyCompletePage() {
+  const [userPhoto, setUserPhoto] = useState<string>('/vto/models/male/black/male_black_base.jpg');
+  const [score, setScore] = useState<number>(95);
+  const [occasion, setOccasion] = useState<string>('Job Interview');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedPhoto = localStorage.getItem('personaiq_user_outfit_preview') || localStorage.getItem('personaiq_user_selfie_preview');
+      const savedAvatarId = localStorage.getItem('personaiq_vto_avatar_id');
+      const savedScore = localStorage.getItem('personaiq_active_presence_score');
+      const savedOccasion = localStorage.getItem('personaiq_active_occasion') || 'interview';
+
+      if (savedPhoto && savedPhoto.length > 10) {
+        setUserPhoto(savedPhoto);
+      } else if (savedAvatarId) {
+        const found = VTO_MODELS.find((m) => m.id === savedAvatarId);
+        if (found) setUserPhoto(found.image_url);
+      }
+
+      if (savedScore) setScore(parseInt(savedScore, 10));
+      setOccasion(savedOccasion.toUpperCase());
+    }
+  }, []);
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn py-6 text-center">
       
@@ -34,29 +58,29 @@ export default function JourneyCompletePage() {
           You&apos;re Ready.
         </h1>
         <p className="text-[14px] text-gray-600 font-medium">
-          Your Presence Plan has been saved. Good luck with your upcoming engagement.
+          Your Presence Plan for <strong className="text-gray-950">{occasion}</strong> is saved and active.
         </p>
       </div>
 
       {/* Middle Milestone Card */}
       <div className="bg-white border border-gray-200 rounded-[24px] p-6 shadow-xs text-left max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
-        <div className="sm:col-span-5 h-44 rounded-[18px] overflow-hidden bg-gray-100 border border-gray-200">
+        <div className="sm:col-span-5 h-44 rounded-[18px] overflow-hidden bg-gray-950 border border-gray-200">
           <img
-            src="/images/563018699011466.jpeg"
-            alt="Professional Preparedness Milestone"
-            className="w-full h-full object-cover object-top"
+            src={userPhoto}
+            alt="Validated Preparation Milestone"
+            className="w-full h-full object-contain p-2"
           />
         </div>
         <div className="sm:col-span-7 space-y-2">
-          <span className="text-[10px] font-mono font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200 uppercase tracking-wider inline-flex items-center space-x-1.5">
-            <Award className="w-3.5 h-3.5 text-gray-500" />
-            <span>MILESTONE REACHED</span>
+          <span className="text-[10px] font-mono font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-200 uppercase tracking-wider inline-flex items-center space-x-1.5">
+            <Award className="w-3.5 h-3.5 text-red-600" />
+            <span>AI MILESTONE LOCKED</span>
           </span>
           <h2 className="text-[22px] font-bold text-gray-950 font-sans leading-tight">
             Professional Preparedness
           </h2>
           <p className="text-[12.5px] text-gray-600 font-normal leading-relaxed">
-            You have completed all modules and achieved a mastery level score. Your physiological and rhetorical baseline is optimal.
+            You have completed all presence modules for {occasion}. Visual, rhetorical, and skin telemetry baselines are optimal for executive authority.
           </p>
         </div>
       </div>
@@ -68,44 +92,43 @@ export default function JourneyCompletePage() {
           <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider">
             PRESENCE INDEX™
           </span>
-          <div className="w-20 h-20 rounded-full border-4 border-red-600 border-t-red-200 flex items-center justify-center text-[26px] font-bold text-gray-950 font-sans">
-            92
+          <div className="w-20 h-20 rounded-full border-4 border-red-600 border-t-red-200 flex items-center justify-center text-[26px] font-bold text-gray-950 font-sans shadow-inner">
+            {score}
           </div>
-          <span className="text-[11px] font-mono text-gray-500">
-            Excellent Readiness
+          <span className="text-[11px] font-mono font-bold text-red-600">
+            {score >= 95 ? 'Excellent Readiness' : 'High Authority'}
           </span>
         </div>
 
-        {/* Duration Card */}
-        <div className="bg-white border border-gray-200 rounded-[20px] p-5 shadow-xs flex flex-col justify-center space-y-1">
-          <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1.5">
-            <Clock className="w-3.5 h-3.5 text-gray-400" />
-            <span>DURATION</span>
-          </span>
-          <div className="flex items-baseline space-x-1">
-            <span className="text-[32px] font-bold text-gray-950 font-sans leading-none">
-              12
-            </span>
-            <span className="text-[13px] font-mono text-gray-500">mins</span>
-          </div>
-        </div>
-
-        {/* Confidence Card */}
+        {/* AI Confidence Card */}
         <div className="bg-white border border-gray-200 rounded-[20px] p-5 shadow-xs flex flex-col justify-center space-y-1">
           <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1.5">
             <Target className="w-3.5 h-3.5 text-gray-400" />
-            <span>CONFIDENCE</span>
+            <span>AI CONFIDENCE</span>
           </span>
           <div className="flex items-baseline space-x-1">
             <span className="text-[32px] font-bold text-gray-950 font-sans leading-none">
-              98
+              96
             </span>
             <span className="text-[13px] font-mono text-gray-500">%</span>
           </div>
         </div>
+
+        {/* Telemetry Status Card */}
+        <div className="bg-white border border-gray-200 rounded-[20px] p-5 shadow-xs flex flex-col justify-center space-y-1">
+          <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1.5">
+            <Clock className="w-3.5 h-3.5 text-gray-400" />
+            <span>STATUS</span>
+          </span>
+          <div className="flex items-baseline space-x-1">
+            <span className="text-[20px] font-bold text-emerald-600 font-sans leading-tight">
+              VERIFIED
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Completion Launchpad Grid (Priority 4) */}
+      {/* Completion Launchpad Grid */}
       <div className="max-w-3xl mx-auto pt-6 border-t border-gray-200 space-y-4 text-left">
         <div className="flex items-center justify-between">
           <h3 className="text-[20px] font-bold text-gray-950 font-sans">

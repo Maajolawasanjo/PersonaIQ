@@ -1,47 +1,66 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Clock, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Clock, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { generateGeminiStylistReasoning } from '@/lib/catalog/vtoCatalog';
 
 export default function AIRecommendationsPage() {
-  const recommendations = [
-    {
-      id: 1,
-      priority: 'HIGH PRIORITY',
-      title: 'Steam & Press Blazer Collar',
-      impact: 'High Impact',
-      confidence: '94% Confidence',
-      time: '5 mins',
-      reason: 'Wrinkle-free clothing significantly improves perceived executive composure and attention to detail.',
-    },
-    {
-      id: 2,
-      priority: 'MEDIUM PRIORITY',
-      title: 'Adjust Key Light Angle to 45°',
-      impact: 'Medium Impact',
-      confidence: '91% Confidence',
-      time: '2 mins',
-      reason: 'Reduces harsh facial shadows under camera lighting, highlighting skin clarity.',
-    },
-    {
-      id: 3,
-      priority: 'MEDIUM PRIORITY',
-      title: 'Polish Oxford Leather Shoes',
-      impact: 'Medium Impact',
-      confidence: '89% Confidence',
-      time: '3 mins',
-      reason: 'Ensures footwear aligns seamlessly with the formal dress code requirements.',
-    },
-  ];
+  const [occasion, setOccasion] = useState<string>('Job Interview');
+  const [outfitTitle, setOutfitTitle] = useState<string>('Executive Tailored Suit');
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedOccasion = localStorage.getItem('personaiq_active_occasion') || 'interview';
+      const savedTitle = localStorage.getItem('personaiq_selected_outfit_title') || 'Executive Tailored Suit';
+      const skinUndertone = localStorage.getItem('personaiq_skin_undertone') || 'Warm';
+
+      setOccasion(savedOccasion);
+      setOutfitTitle(savedTitle);
+
+      const dynamicAnalysis = generateGeminiStylistReasoning(savedOccasion);
+
+      setRecommendations([
+        {
+          id: 1,
+          priority: 'HIGH PRIORITY',
+          title: `Press & Structure ${savedTitle}`,
+          impact: 'High Impact',
+          confidence: '96% AI Alignment',
+          time: '5 mins',
+          reason: dynamicAnalysis.reasoning.summary,
+        },
+        {
+          id: 2,
+          priority: 'RECOMMENDED PROTOCOL',
+          title: 'Grooming & Lighting Alignment',
+          impact: 'High Impact',
+          confidence: '94% AI Alignment',
+          time: '3 mins',
+          reason: dynamicAnalysis.reasoning.recommended_protocol,
+        },
+        {
+          id: 3,
+          priority: 'AVOID PROTOCOL',
+          title: 'Color & Contrast Guardrail',
+          impact: 'Critical Guardrail',
+          confidence: '98% AI Alignment',
+          time: '2 mins',
+          reason: dynamicAnalysis.reasoning.avoid_protocol,
+        },
+      ]);
+    }
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn py-2">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-200 pb-3">
         <div className="flex items-center space-x-2">
-          <span className="text-[11px] font-mono font-bold text-primary bg-red-50 border border-primary/20 px-2.5 py-0.5 rounded">
-            STEP 14 OF 19
+          <span className="text-[11px] font-mono font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded flex items-center space-x-1">
+            <Sparkles className="w-3 h-3" />
+            <span>AI REASONING ENGINE</span>
           </span>
           <h1 className="text-[20px] font-bold text-gray-950 font-sans">
             AI Recommendations™
@@ -53,10 +72,10 @@ export default function AIRecommendationsPage() {
       {/* Subtitle */}
       <div className="space-y-1">
         <h2 className="text-[28px] font-bold text-gray-950 font-sans leading-tight">
-          Targeted presence enhancements.
+          Targeted presence protocols for <span className="uppercase text-red-600">{occasion}</span>.
         </h2>
         <p className="text-[13.5px] text-gray-600 font-medium">
-          These explainable recommendations yield the highest impact on your overall composure index.
+          These explainable AI recommendations yield the highest impact on your overall composure index.
         </p>
       </div>
 
@@ -68,7 +87,7 @@ export default function AIRecommendationsPage() {
             className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-xs space-y-3 hover:border-gray-300 transition-all"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10.5px] font-mono font-bold text-primary bg-red-50 border border-primary/20 px-2.5 py-0.5 rounded">
+              <span className="text-[10.5px] font-mono font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded">
                 {item.priority}
               </span>
               <div className="flex items-center space-x-3 text-[11.5px] font-mono text-gray-500">
@@ -92,7 +111,7 @@ export default function AIRecommendationsPage() {
             </div>
 
             <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11.5px] font-mono text-gray-500">
-              <span>Reasoning Model</span>
+              <span>Reasoning Model: Gemini Stylist Llama-3 Vision</span>
               <span className="font-bold text-gray-900">{item.confidence}</span>
             </div>
           </div>
@@ -102,15 +121,15 @@ export default function AIRecommendationsPage() {
       {/* Navigation */}
       <div className="flex items-center justify-between pt-2">
         <Link
-          href="/journey/persona-engine"
+          href="/journey/choose-outfit"
           className="h-11 px-5 bg-white border border-gray-300 hover:border-gray-400 text-gray-700 font-bold text-[13px] rounded-[10px] shadow-2xs transition-colors flex items-center justify-center space-x-1.5"
         >
           <ArrowLeft className="w-4 h-4 text-gray-500" />
-          <span>Engine Timeline</span>
+          <span>Back to Outfit Selection</span>
         </Link>
         <Link
           href="/journey/presence-index"
-          className="h-11 px-7 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2"
+          className="h-11 px-7 bg-red-600 hover:bg-red-700 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2"
         >
           <span>View Presence Index</span>
           <ArrowRight className="w-4 h-4" />

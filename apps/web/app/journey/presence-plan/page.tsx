@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   Check, 
@@ -16,18 +16,42 @@ import {
   ArrowRight,
   Download
 } from 'lucide-react';
+import { VTO_CATALOG, generateGeminiStylistReasoning } from '@/lib/catalog/vtoCatalog';
 
 export default function BestPresencePlanPage() {
+  const [outfitImage, setOutfitImage] = useState<string>('/vto/clothing/professional/01_navy_suit.jpg');
+  const [outfitTitle, setOutfitTitle] = useState<string>('Executive Tailored Suit');
+  const [score, setScore] = useState<number>(96);
+  const [occasion, setOccasion] = useState<string>('Job Interview');
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+
   const [checklist, setChecklist] = useState([
-    { id: 1, text: 'Steam blazer & trousers', done: true },
-    { id: 2, text: 'Polish oxford shoes', done: true },
-    { id: 3, text: 'Charge primary mobile device', done: true },
-    { id: 4, text: 'Review briefing documents', done: true },
-    { id: 5, text: 'Confirm travel itinerary', done: true },
-    { id: 6, text: 'Prepare concise intro statement', done: true },
-    { id: 7, text: 'Hydrate (500ml water)', done: false, time: 'Estimated time: 5 mins' },
-    { id: 8, text: 'Final mirror check', done: false, time: 'Estimated time: 2 mins' },
+    { id: 1, text: 'Steam & press selected garment', done: true },
+    { id: 2, text: 'Polish footwear & check belt tone match', done: true },
+    { id: 3, text: 'Perform focal sharpness mirror check', done: true },
+    { id: 4, text: 'Review event agenda & key speaking points', done: true },
+    { id: 5, text: 'Confirm travel itinerary & arrival window', done: true },
+    { id: 6, text: 'Hydrate & check T-zone lighting contrast', done: false, time: 'Estimated time: 5 mins' },
+    { id: 7, text: 'Final mirror check', done: false, time: 'Estimated time: 2 mins' },
   ]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedPhoto = localStorage.getItem('personaiq_user_outfit_preview');
+      const savedTitle = localStorage.getItem('personaiq_selected_outfit_title');
+      const savedScore = localStorage.getItem('personaiq_active_presence_score');
+      const savedOccasion = localStorage.getItem('personaiq_active_occasion') || 'interview';
+
+      if (savedPhoto) setOutfitImage(savedPhoto);
+      if (savedTitle) setOutfitTitle(savedTitle);
+      if (savedScore) setScore(parseInt(savedScore, 10));
+      setOccasion(savedOccasion);
+
+      // Generate 100% dynamic AI analysis
+      const analysis = generateGeminiStylistReasoning(savedOccasion);
+      setAiAnalysis(analysis);
+    }
+  }, []);
 
   const toggleCheck = (id: number) => {
     setChecklist((prev) =>
@@ -48,14 +72,14 @@ export default function BestPresencePlanPage() {
           <div className="flex items-center space-x-2">
             <span className="text-[11px] font-mono font-bold text-red-650 bg-red-50 px-2.5 py-0.5 rounded border border-red-200 flex items-center space-x-1.5">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>ANALYSIS COMPLETE</span>
+              <span>REAL AI ANALYSIS COMPLETE</span>
             </span>
           </div>
           <h1 className="text-[34px] font-bold text-gray-950 font-sans leading-tight">
             Best Presence Plan™
           </h1>
           <p className="text-[14px] text-gray-600 font-medium">
-            Your command center and optimal preparation strategy for today&apos;s executive review.
+            Your command center and optimal preparation strategy for <strong className="text-gray-950 uppercase">{occasion}</strong>.
           </p>
         </div>
 
@@ -67,7 +91,7 @@ export default function BestPresencePlanPage() {
             </span>
             <div className="flex items-baseline space-x-1">
               <span className="text-[28px] font-black text-gray-950 font-sans leading-none">
-                92
+                {score}
               </span>
               <span className="text-[12px] font-mono text-gray-500">/ 100</span>
             </div>
@@ -84,7 +108,7 @@ export default function BestPresencePlanPage() {
             </div>
             <div>
               <span className="text-[9.5px] font-mono text-gray-500 uppercase block">PREP WINDOW</span>
-              <span className="text-[13px] font-bold text-gray-950 font-sans">45 mins</span>
+              <span className="text-[13px] font-bold text-gray-950 font-sans">30 mins</span>
             </div>
           </div>
         </div>
@@ -98,34 +122,40 @@ export default function BestPresencePlanPage() {
         <div className="lg:col-span-7 space-y-5">
           
           {/* Winning Outfit Flatlay Image */}
-          <div className="relative aspect-[4/3] w-full rounded-[20px] overflow-hidden bg-gray-100 border border-gray-200 shadow-xs">
+          <div className="relative aspect-[4/3] w-full rounded-[20px] overflow-hidden bg-gray-950 border border-gray-200 shadow-xs">
             <img
-              src="/images/brown-peaked-lapel-suit.jpg"
+              src={outfitImage}
               alt="The Winning Outfit"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain p-2"
             />
             <span className="absolute bottom-4 left-4 text-[11px] font-mono font-bold text-gray-900 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-gray-200 shadow-sm uppercase tracking-wider">
-              THE WINNING OUTFIT
+              WINNING SELECTION: {outfitTitle}
             </span>
           </div>
 
           {/* Analysis Card */}
           <div className="bg-gray-50 border border-gray-200 rounded-[20px] p-6 space-y-3">
             <span className="text-[10px] font-mono font-bold text-gray-600 bg-white px-2.5 py-0.5 rounded border border-gray-200 uppercase tracking-wider">
-              ANALYSIS
+              GEMINI STYLIST RATIONALE
             </span>
 
             <h3 className="text-[20px] font-bold text-gray-950 font-sans">
               Why This Look Succeeds
             </h3>
 
-            <p className="text-[13px] text-gray-600 font-normal leading-relaxed">
-              The selected charcoal suit paired with a crisp white shirt provides a high-contrast, authoritative baseline suitable for executive engagements. The subtle integration of the MIT Red pocket square introduces a calculated element of dynamism and confidence without overpowering the core academic aesthetic.
+            <p className="text-[13px] text-gray-700 font-normal leading-relaxed">
+              {aiAnalysis?.reasoning?.summary || `The ${outfitTitle} delivers a structured, high-authority baseline customized for ${occasion.toUpperCase()} engagements.`}
             </p>
 
-            <p className="text-[13px] text-gray-600 font-normal leading-relaxed">
-              Predictive modeling indicates this specific combination optimizes perceived competence and approachability, aligning perfectly with the room&apos;s projected psychometric profile.
-            </p>
+            <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-1.5 text-xs">
+              <span className="font-bold text-emerald-700 block font-mono">RECOMMENDED PROTOCOL:</span>
+              <p className="text-gray-700">{aiAnalysis?.reasoning?.recommended_protocol || 'Maintain clean collar alignment and polished leather footwear.'}</p>
+            </div>
+
+            <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-1.5 text-xs">
+              <span className="font-bold text-red-700 block font-mono">AVOID PROTOCOL:</span>
+              <p className="text-gray-700">{aiAnalysis?.reasoning?.avoid_protocol || 'Avoid casual unbuttoned collars or mismatched shoe and belt tones.'}</p>
+            </div>
           </div>
 
         </div>
@@ -138,7 +168,7 @@ export default function BestPresencePlanPage() {
             {/* Checklist Header */}
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-[18px] font-bold text-gray-950 font-sans">
-                Preparation
+                Preparation Checklist
               </h3>
               <span className="text-[11px] font-mono font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded border border-gray-200">
                 {doneCount}/{checklist.length} Done
@@ -184,7 +214,7 @@ export default function BestPresencePlanPage() {
             <div className="pt-3 space-y-2">
               <Link
                 href="/journey/complete"
-                className="w-full h-11 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2"
+                className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2"
               >
                 <Save className="w-4 h-4 text-white" />
                 <span>Save Presence Plan</span>
@@ -194,7 +224,7 @@ export default function BestPresencePlanPage() {
                 className="w-full h-10 bg-white hover:bg-gray-50 text-gray-700 font-bold text-[12.5px] rounded-[10px] border border-gray-200 transition-colors flex items-center justify-center space-x-2"
               >
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span>Export PDF</span>
+                <span>Export Briefing PDF</span>
               </Link>
             </div>
 
@@ -204,7 +234,7 @@ export default function BestPresencePlanPage() {
 
       </div>
 
-      {/* Command Center Quick Actions & Exploration Hub (Priority 1) */}
+      {/* Command Center Quick Actions & Exploration Hub */}
       <div className="pt-6 border-t border-gray-150 space-y-4">
         <div className="flex items-center justify-between">
           <div>

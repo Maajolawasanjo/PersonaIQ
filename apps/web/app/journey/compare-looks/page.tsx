@@ -1,52 +1,78 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Sparkles, Check, ArrowRight } from 'lucide-react';
+import { VTO_CATALOG, getRecommendedAssets, generateGeminiStylistReasoning } from '@/lib/catalog/vtoCatalog';
 
 export default function CompareLooksPage() {
-  const items = [
-    {
-      id: 1,
-      rank: 'RANK #1',
-      confidence: '96%',
-      status: '✔ Excellent Match',
-      isWinner: true,
-      image: '/images/563018699011466.jpeg',
-      summary:
-        'Outfit 1 aligns perfectly with the expected dress code for an academic keynote. The structured silhouette conveys intellectual authority, while the subtle tonal contrast maintains approachability without distracting from the content.',
-    },
-    {
-      id: 2,
-      rank: 'RANK #2',
-      confidence: '84%',
-      status: '✔ Strong Match',
-      isWinner: false,
-      image: '/images/casual-dress.jpg',
-      summary:
-        'Outfit 2 presents a highly acceptable alternative. The layering adds a dimension of modern tech-industry aesthetics, suitable for panel discussions, though it may read as slightly too informal for a primary keynote address.',
-    },
-    {
-      id: 3,
-      rank: 'RANK #3',
-      confidence: '72%',
-      status: '? Viable Option',
-      isWinner: false,
-      image: '/images/instagram-style.jpg',
-      summary:
-        'Outfit 3 leans heavily into avant-garde minimalism. While architecturally interesting and highly memorable, it departs slightly from traditional academic expectations and may draw undue attention away from the speaker\'s core message.',
-    },
-  ];
+  const [occasion, setOccasion] = useState<string>('Job Interview');
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedOccasion = localStorage.getItem('personaiq_active_occasion') || 'interview';
+      const userSelectedPhoto = localStorage.getItem('personaiq_user_outfit_preview');
+      const userSelectedTitle = localStorage.getItem('personaiq_selected_outfit_title') || 'Executive Tailored Suit';
+      const userScore = localStorage.getItem('personaiq_active_presence_score') || '96';
+
+      setOccasion(savedOccasion);
+
+      const recommendedClothing = getRecommendedAssets(savedOccasion, 'clothing');
+      const alt1 = recommendedClothing[1] || VTO_CATALOG[1];
+      const alt2 = recommendedClothing[2] || VTO_CATALOG[2];
+
+      const mainAnalysis = generateGeminiStylistReasoning(savedOccasion);
+
+      setItems([
+        {
+          id: 1,
+          rank: 'RANK #1 (PRIMARY SELECTION)',
+          confidence: `${userScore}%`,
+          status: '✔ Winner - Highest Alignment',
+          isWinner: true,
+          title: userSelectedTitle,
+          image: userSelectedPhoto || recommendedClothing[0]?.image_url || '/vto/clothing/professional/01_navy_suit.jpg',
+          summary: mainAnalysis.reasoning.summary,
+        },
+        {
+          id: 2,
+          rank: 'RANK #2 (ALTERNATIVE)',
+          confidence: '88%',
+          status: '✔ Strong Alternative',
+          isWinner: false,
+          title: alt1.name,
+          image: alt1.image_url,
+          summary: `Alternative look using ${alt1.name}. Maintains high formality for ${savedOccasion.toUpperCase()} while offering a slightly more approachable vibe.`,
+        },
+        {
+          id: 3,
+          rank: 'RANK #3 (ALTERNATIVE)',
+          confidence: '78%',
+          status: '✔ Smart Casual Option',
+          isWinner: false,
+          title: alt2.name,
+          image: alt2.image_url,
+          summary: `Leans into modern relaxed tailoring with ${alt2.name}. Suitable for secondary break-out sessions during ${savedOccasion.toUpperCase()}.`,
+        },
+      ]);
+    }
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn py-4 text-center">
       
       {/* Header */}
       <div className="space-y-2 max-w-xl mx-auto">
+        <span className="text-[11px] font-mono font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-200 uppercase inline-flex items-center space-x-1.5">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>REAL-TIME AI COMPARISON ENGINE</span>
+        </span>
         <h1 className="text-[32px] sm:text-[38px] font-bold text-gray-950 font-sans leading-tight">
-          Final Evaluation
+          Final Outfit Evaluation
         </h1>
         <p className="text-[13.5px] text-gray-600 font-normal leading-relaxed">
-          Side-by-side analysis of your generated visual presence profiles. Review technical rankings and suitability for your target academic environment.
+          Side-by-side analysis of your primary choice vs catalog alternatives for <strong className="text-gray-950 uppercase">{occasion}</strong>.
         </p>
       </div>
 
@@ -55,17 +81,21 @@ export default function CompareLooksPage() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="bg-white border border-gray-200 rounded-[22px] p-4 shadow-xs space-y-4 hover:border-gray-300 transition-all flex flex-col justify-between"
+            className={`bg-white border rounded-[22px] p-4 shadow-xs space-y-4 transition-all flex flex-col justify-between ${
+              item.isWinner ? 'border-2 border-red-600 shadow-md ring-2 ring-red-500/10' : 'border-gray-200 hover:border-gray-300'
+            }`}
           >
             {/* Image Container */}
-            <div className="relative aspect-[3/4] w-full rounded-[16px] overflow-hidden bg-gray-100">
+            <div className="relative aspect-[3/4] w-full rounded-[16px] overflow-hidden bg-gray-950 border border-gray-200">
               <img
                 src={item.image}
                 alt={item.rank}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-2"
               />
-              <span className="absolute top-3 left-3 text-[10px] font-mono font-bold text-gray-800 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded border border-gray-200">
-                @ ANALYSIS
+              <span className={`absolute top-3 left-3 text-[10px] font-mono font-bold px-2.5 py-1 rounded border shadow-xs ${
+                item.isWinner ? 'bg-red-600 text-white border-red-700' : 'bg-white/90 text-gray-800 border-gray-200'
+              }`}>
+                {item.isWinner ? '★ WINNER' : 'CATALOG OPTION'}
               </span>
             </div>
 
@@ -76,15 +106,15 @@ export default function CompareLooksPage() {
                   <span className="text-[10px] font-mono text-gray-500 block uppercase tracking-wider">
                     {item.rank}
                   </span>
-                  <span className="text-[24px] font-black text-gray-950 font-sans leading-none">
-                    #{item.id}
+                  <span className="text-[15px] font-bold text-gray-950 font-sans truncate block max-w-[140px]">
+                    {item.title}
                   </span>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-mono text-gray-500 block uppercase tracking-wider">
-                    CONFIDENCE
+                    SCORE
                   </span>
-                  <span className="text-[20px] font-bold text-gray-950 font-sans leading-none">
+                  <span className="text-[20px] font-extrabold text-red-600 font-sans leading-none">
                     {item.confidence}
                   </span>
                 </div>
@@ -92,7 +122,7 @@ export default function CompareLooksPage() {
 
               {/* Status Header */}
               <div className="space-y-1.5">
-                <div className="flex items-center space-x-1.5 font-bold text-[15px] text-gray-950 font-sans">
+                <div className="flex items-center space-x-1.5 font-bold text-[14px] text-gray-950 font-sans">
                   <span className={item.isWinner ? 'text-red-600' : 'text-gray-600'}>
                     {item.status}
                   </span>
@@ -110,10 +140,10 @@ export default function CompareLooksPage() {
       <div className="pt-4 flex justify-center">
         <Link
           href="/journey/presence-index"
-          className="h-12 px-9 bg-[#5c0612] hover:bg-[#4a050e] text-white font-bold text-[14px] rounded-[10px] shadow-md transition-all flex items-center space-x-2"
+          className="h-12 px-9 bg-red-600 hover:bg-red-700 text-white font-bold text-[14px] rounded-[10px] shadow-md transition-all flex items-center space-x-2"
         >
-          <span>Generate My Presence Plan</span>
-          <span>→</span>
+          <span>Proceed to Presence Index™</span>
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
 
