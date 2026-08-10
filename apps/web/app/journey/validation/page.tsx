@@ -4,6 +4,17 @@ import React from 'react';
 import Link from 'next/link';
 
 export default function ImageValidationPage() {
+  const [userPhoto, setUserPhoto] = React.useState<string>('/images/professional-female-headshot.jpg');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedPhoto = localStorage.getItem('personaiq_user_selfie_preview');
+      if (savedPhoto) {
+        setUserPhoto(savedPhoto);
+      }
+    }
+  }, []);
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn py-6">
       
@@ -21,7 +32,7 @@ export default function ImageValidationPage() {
         {/* Left Column: Portrait Viewfinder Feed */}
         <div className="sm:col-span-5 relative aspect-[3/4] bg-gray-950 rounded-[16px] overflow-hidden border border-gray-800 shadow-md">
           <img
-            src="/images/professional-female-headshot.jpg"
+            src={userPhoto}
             alt="Validated Capture"
             className="w-full h-full object-cover grayscale contrast-125 brightness-95"
           />

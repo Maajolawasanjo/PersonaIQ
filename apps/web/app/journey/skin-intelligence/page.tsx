@@ -5,6 +5,17 @@ import Link from 'next/link';
 import { Lightbulb, ArrowRight } from 'lucide-react';
 
 export default function SkinIntelligencePage() {
+  const [userPhoto, setUserPhoto] = React.useState<string>('/images/professional-female-headshot.jpg');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedPhoto = localStorage.getItem('personaiq_user_selfie_preview');
+      if (savedPhoto) {
+        setUserPhoto(savedPhoto);
+      }
+    }
+  }, []);
+
   return (
     <div className="space-y-8 animate-fadeIn max-w-4xl mx-auto py-6">
       
@@ -30,7 +41,7 @@ export default function SkinIntelligencePage() {
         <div className="lg:col-span-6 bg-white border border-gray-200 rounded-[20px] overflow-hidden shadow-xs relative">
           <div className="relative aspect-[4/5] bg-gray-100">
             <img
-              src="/images/professional-female-headshot.jpg"
+              src={userPhoto}
               alt="Skin Intelligence Model"
               className="w-full h-full object-cover"
             />
