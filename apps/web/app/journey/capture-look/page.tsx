@@ -179,24 +179,59 @@ export default function CaptureLookPage() {
               </span>
             </div>
 
-            <div className="pt-2 flex items-center justify-center space-x-2 text-[12px] text-gray-400 font-medium">
+            <div className="pt-[2px] flex items-center justify-center space-x-2 text-[12px] text-gray-400 font-medium">
               <div className="w-10 h-[1px] bg-gray-300" />
               <span>OR</span>
               <div className="w-10 h-[1px] bg-gray-300" />
             </div>
 
-            <div className="pt-1">
+            <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   startCamera();
                 }}
-                className="h-10 px-5 bg-white border border-gray-300 hover:border-gray-400 text-gray-800 font-bold text-[13px] rounded-[10px] shadow-2xs inline-flex items-center space-x-2 cursor-pointer"
+                className="h-10 px-5 bg-white border border-gray-300 hover:border-gray-400 text-gray-800 font-bold text-[13px] rounded-[10px] shadow-2xs inline-flex items-center space-x-2 cursor-pointer w-full sm:w-auto justify-center"
               >
                 <Camera className="w-4 h-4 text-primary" />
                 <span>Open Live Camera</span>
               </button>
+            </div>
+
+            {/* Built-in Model Selection Quick Selector */}
+            <div className="pt-3 border-t border-gray-200/80 space-y-3">
+              <span className="text-[11px] font-mono font-bold text-gray-500 uppercase tracking-widest block text-center">
+                PRE-BUILT FITTING MODELS (NO CAMERA NEEDED)
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: 'male_black', name: 'Black Male', img: '/vto/models/male/black/male_black_base.jpg' },
+                  { id: 'female_black', name: 'Black Female', img: '/vto/models/female/black/female_black_base.jpg' },
+                  { id: 'male_white', name: 'White Male', img: '/vto/models/male/white/male_white_base.jpg' },
+                  { id: 'female_white', name: 'White Female', img: '/vto/models/female/white/female_white_base.jpg' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewUrl(m.img);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('personaiq_user_selfie_preview', m.img);
+                        localStorage.setItem('personaiq_vto_avatar_id', m.id);
+                        localStorage.setItem('personaiq_vto_avatar_image', m.img);
+                      }
+                    }}
+                    className="p-1.5 bg-white border border-gray-200 hover:border-red-600 rounded-xl flex items-center space-x-2 cursor-pointer transition-all text-left group"
+                  >
+                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-900 shrink-0">
+                      <img src={m.img} alt={m.name} className="w-full h-full object-cover object-top" />
+                    </div>
+                    <span className="text-[11px] font-bold text-gray-800 group-hover:text-red-600 truncate">{m.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
