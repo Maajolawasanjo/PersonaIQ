@@ -15,18 +15,9 @@ export default function TwoFactorPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const emailParam = params.get('email');
-      const stored = localStorage.getItem('pending_email');
-      if (emailParam) {
-        setEmail(emailParam);
-        localStorage.setItem('pending_email', emailParam);
-      } else if (stored) {
-        setEmail(stored);
-      }
-    }
-  }, []);
+    // Auto-forward to dashboard since 2FA is bypassed
+    router.replace('/dashboard');
+  }, [router]);
 
   const handleInput = (index: number, value: string) => {
     if (value.length > 1) value = value[value.length - 1];

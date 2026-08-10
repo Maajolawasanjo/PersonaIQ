@@ -17,19 +17,9 @@ export default function VerifyEmailPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Parse query param email if available, fallback to localStorage
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const emailParam = params.get('email');
-      const stored = localStorage.getItem('pending_email');
-      if (emailParam) {
-        setEmail(emailParam);
-        localStorage.setItem('pending_email', emailParam);
-      } else if (stored) {
-        setEmail(stored);
-      }
-    }
-  }, []);
+    // Auto-forward to onboarding since accounts are verified on signup
+    router.replace('/onboarding');
+  }, [router]);
 
   useEffect(() => {
     if (countdown > 0) {
