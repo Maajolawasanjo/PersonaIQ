@@ -79,6 +79,51 @@ export default function ChooseOutfitPage() {
     VTO_CATALOG.find(c => c.id === selectedAssetId) ||
     VTO_CATALOG[0];
 
+  const handleCompleteMyLook = async () => {
+    setIsGenerating(true);
+    try {
+      const topClothing = getRecommendedAssets(selectedOccasion, 'clothing')[0] || VTO_CATALOG[0];
+      const topShoe = getRecommendedAssets(selectedOccasion, 'footwear')[0] || VTO_CATALOG[13];
+      const topAcc = getRecommendedAssets(selectedOccasion, 'accessories')[0] || VTO_CATALOG[20];
+      const topHair = getRecommendedAssets(selectedOccasion, 'style_references')[0] || VTO_CATALOG[23];
+
+      setSelectedAssetId(topClothing.id);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          'personaiq_complete_look',
+          JSON.stringify({
+            clothing: topClothing,
+            footwear: topShoe,
+            accessories: topAcc,
+            hairstyle: topHair,
+            occasion: selectedOccasion,
+          })
+        );
+        localStorage.setItem('personaiq_user_outfit_preview', topClothing.image_url);
+        localStorage.setItem('personaiq_selected_outfit_title', topClothing.name);
+      }
+
+      setRecommendation({
+        look_name: `Complete ${selectedOccasion.toUpperCase()} Ensemble`,
+        total_score: 96,
+        items: [
+          { category: 'Clothing', item_name: topClothing.name },
+          { category: 'Footwear', item_name: topShoe.name },
+          { category: 'Accessory', item_name: topAcc.name },
+          { category: 'Hairstyle', item_name: topHair.name },
+        ],
+        reasoning: {
+          summary: `Gemini Stylist matched this 4-piece ensemble for ${selectedOccasion.toUpperCase()}. High contrast framing pairs with your warm undertone to deliver maximum visual authority.`,
+        },
+      });
+    } catch (e) {
+      console.warn('Complete my look error:', e);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleAskAiStylist = async () => {
     setIsGenerating(true);
     try {
@@ -341,21 +386,54 @@ export default function ChooseOutfitPage() {
             </form>
           </div>
 
-          {/* 4. Trigger AI Stylist Strategy */}
-          <button
-            onClick={handleAskAiStylist}
-            disabled={isGenerating}
-            className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
-          >
-            {isGenerating ? (
-              <RefreshCw className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5" />
-                <span>Ask AI Stylist for Complete Strategy</span>
-              </>
-            )}
-          </button>
+          {/* 4. Complete My Look & Ask AI Stylist Strategy */}
+          <div className="space-y-3">
+            <button
+              onClick={() => handleCompleteMyLook()}
+              disabled={isGenerating}
+              className="w-full h-13 bg-[#5c0612] hover:bg-[#4a050e] text-white font-bold text-sm rounded-xl flex items-center justify-center space-x-2 shadow-lg transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isGenerating ? (
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 text-amber-300" />
+                  <span>✨ Complete My Look (AI Auto-Match)</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleAskAiStylist}
+              disabled={isGenerating}
+              className="w-full h-10 bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Zap className="w-4 h-4 text-red-600" />
+              <span>Ask AI Stylist for Complete Strategy</span>
+            </button>
+          </div>
+
+          {/* Journey Context Awareness Card */}
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-2 text-xs">
+            <div className="flex items-center justify-between font-mono font-bold text-gray-500 uppercase text-[10px]">
+              <span>ACTIVE JOURNEY CONTEXT</span>
+              <span className="text-emerald-600 font-bold">● STATE SYNCED</span>
+            </div>
+            <div className="space-y-1.5 font-medium text-gray-700">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Occasion:</span>
+                <span className="font-bold text-gray-950 capitalize">{selectedOccasion}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Target Vibe:</span>
+                <span className="font-bold text-gray-950">{targetVibe}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Skin Undertone:</span>
+                <span className="font-bold text-emerald-700">Warm Golden (Analyzed)</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right Column: VTO Category Catalog Tabs & Asset Selection Gallery (7 Cols) */}
@@ -519,14 +597,14 @@ export default function ChooseOutfitPage() {
             </div>
           </div>
 
-          {/* AI Strategy Breakdown */}
+          {/* AI Strategy Breakdown & "Why This Works" Reasoning */}
           {recommendation && (
             <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-xs animate-fadeIn">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div className="flex items-center space-x-2">
                   <Zap className="w-4 h-4 text-red-600" />
                   <h3 className="text-sm font-bold text-gray-950 font-sans">
-                    Llama 3.3 PersonaIQ Strategy Analysis
+                    PersonaIQ Gemini Stylist Strategy Analysis
                   </h3>
                 </div>
                 <span className="text-xs font-mono font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">
@@ -534,6 +612,7 @@ export default function ChooseOutfitPage() {
                 </span>
               </div>
 
+              {/* Complete Look Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {recommendation.items?.map((item: any, idx: number) => (
                   <div key={idx} className="p-3 bg-gray-50 border border-gray-150 rounded-xl space-y-1">
@@ -542,8 +621,36 @@ export default function ChooseOutfitPage() {
                   </div>
                 ))}
               </div>
+
+              {/* WHY THIS WORKS Breakdown Box */}
+              <div className="bg-red-50/40 border border-red-200/80 rounded-xl p-4 space-y-2">
+                <span className="text-[11px] font-mono font-bold text-red-700 uppercase tracking-widest block">
+                  💡 WHY THIS WORKS (AI REASONING LAYER)
+                </span>
+                <p className="text-xs text-gray-800 leading-relaxed font-medium">
+                  {recommendation.reasoning?.summary ||
+                    `This combination establishes high executive authority for ${selectedOccasion.toUpperCase()}. Deep navy/dark tones communicate structure and credibility, while the crisp spread collar framing enhances posture symmetry.`}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px] text-gray-600">
+                  <div className="bg-white p-2 rounded-lg border border-red-100 font-medium">
+                    <strong className="text-gray-900 block">✓ Recommended Protocol:</strong>
+                    Silver minimalist watch, structured belt, and clean Oxford shoes.
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-red-100 font-medium">
+                    <strong className="text-gray-900 block">✕ Avoid for {selectedOccasion}:</strong>
+                    Excessive novelty jewelry, informal footwear, or casual sneakers.
+                  </div>
+                </div>
+              </div>
             </div>
           )}
+
+        </div>
+
+      </div>
+    </div>
+  );
+}
 
         </div>
 

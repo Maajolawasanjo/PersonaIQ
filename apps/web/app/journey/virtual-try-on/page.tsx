@@ -52,10 +52,23 @@ export default function VirtualTryOnPage() {
       if (savedPhoto) {
         setUserPhoto(savedPhoto);
       }
-      const savedOutfitUrl = localStorage.getItem('personaiq_user_outfit_preview');
-      if (savedOutfitUrl) {
-        const found = VTO_CATALOG.find((item) => item.image_url === savedOutfitUrl);
-        if (found) setSelectedGarment(found);
+      const completeLookRaw = localStorage.getItem('personaiq_complete_look');
+      if (completeLookRaw) {
+        try {
+          const parsed = JSON.parse(completeLookRaw);
+          if (parsed.clothing) setSelectedGarment(parsed.clothing);
+          if (parsed.footwear) setSelectedShoe(parsed.footwear);
+          if (parsed.accessories) setSelectedAccessory(parsed.accessories);
+          if (parsed.hairstyle) setSelectedHairstyle(parsed.hairstyle);
+        } catch (e) {
+          console.warn('Error parsing complete look:', e);
+        }
+      } else {
+        const savedOutfitUrl = localStorage.getItem('personaiq_user_outfit_preview');
+        if (savedOutfitUrl) {
+          const found = VTO_CATALOG.find((item) => item.image_url === savedOutfitUrl);
+          if (found) setSelectedGarment(found);
+        }
       }
     }
   }, []);
