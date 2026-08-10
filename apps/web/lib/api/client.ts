@@ -78,6 +78,7 @@ class ApiClient {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
+        credentials: 'include',
         headers,
       });
 
@@ -110,10 +111,11 @@ class ApiClient {
         if (response.status === 401 && !isPublicEndpoint && token) {
           throw new Error('Your session has expired. Please log in again.');
         }
+        const serverErrorMessage = resData.message || (resData as any).error?.message;
         if (response.status === 423) {
-          throw new Error(resData.message || 'Account locked temporarily due to security policy.');
+          throw new Error(serverErrorMessage || 'Account locked temporarily due to security policy.');
         }
-        throw new Error(resData.message || `Request failed with status ${response.status}`);
+        throw new Error(serverErrorMessage || `Request failed with status ${response.status}`);
       }
 
       return resData.data;

@@ -224,12 +224,21 @@ export default function WardrobePage() {
             Your saved outfits, virtual try-ons, and AI-ranked looks.
           </p>
         </div>
-        <Link
-          href="/journey/choose-outfit"
-          className="h-10 px-5 bg-primary hover:bg-primary/90 text-white font-bold text-[13px] rounded-[10px] flex items-center space-x-2 shadow-sm transition-all"
-        >
-          <span>+ Add Outfit</span>
-        </Link>
+        <div className="flex items-center space-x-3">
+          <Link
+            href="/wardrobe/style-me"
+            className="h-10 px-5 bg-red-600 hover:bg-red-700 text-white font-bold text-[13px] rounded-[10px] flex items-center space-x-2 shadow-sm transition-all"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>AI Stylist & VTO Studio</span>
+          </Link>
+          <Link
+            href="/journey/choosing-outfit"
+            className="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-[13px] rounded-[10px] flex items-center space-x-2 transition-all"
+          >
+            <span>+ Add Outfit</span>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Row */}

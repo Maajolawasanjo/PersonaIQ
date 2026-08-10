@@ -5,6 +5,8 @@ from app.models.upload import SelfieUpload, OutfitUpload
 from app.models.analysis import SkinAnalysis, OutfitComparison
 from app.models.presence import PresencePlan, Recommendation, PreparationChecklist
 from app.models.wardrobe import WardrobeItem, WardrobeOutfit
+from app.models.style_profile import StyleProfile
+from app.models.imported_product import ImportedProduct
 from app.models.presence_dna import PresenceDNA, PresenceGoal
 from app.models.share import SharedJourneyToken
 
@@ -26,6 +28,8 @@ __all__ = [
     "PreparationChecklist",
     "WardrobeItem",
     "WardrobeOutfit",
+    "StyleProfile",
+    "ImportedProduct",
     "PresenceDNA",
     "PresenceGoal",
     "SharedJourneyToken",

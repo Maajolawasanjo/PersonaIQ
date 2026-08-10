@@ -183,3 +183,25 @@ export const compareApi = {
   compareJourneys: (journeyIds: string[]): Promise<any> =>
     apiClient.post<any>('/compare', { journey_ids: journeyIds }),
 };
+
+export const stylistApi = {
+  recommendLook: (occasion: string, targetVibe = 'Authoritative', dressCode = 'Business Formal'): Promise<any> =>
+    apiClient.post<any>('/stylist/recommend-look', {
+      occasion,
+      target_vibe: targetVibe,
+      dress_code: dressCode,
+    }),
+  vtoPreview: (avatarChoice: string, items: any[], userPhotoUrl?: string): Promise<any> =>
+    apiClient.post<any>('/stylist/vto-preview', {
+      avatar_choice: avatarChoice,
+      user_photo_url: userPhotoUrl,
+      items,
+    }),
+  importProduct: (productUrl: string): Promise<any> =>
+    apiClient.post<any>('/stylist/import-product', {
+      product_url: productUrl,
+    }),
+  getWardrobeGaps: (occasion: string): Promise<any> =>
+    apiClient.post<any>(`/stylist/wardrobe-gaps?occasion=${occasion}`),
+  getAvatars: (): Promise<any> => apiClient.get<any>('/stylist/avatars'),
+};

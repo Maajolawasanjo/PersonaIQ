@@ -147,25 +147,14 @@ async def test_otp_verification_flow(client: AsyncClient, db_session: AsyncSessi
     signup_res = await client.post("/api/v1/auth/sign-up", json=signup_payload)
     assert signup_res.status_code == 201
 
-    # 2. Retrieve OTP from Database
+    # 2. Retrieve User from Database and verify instant activation
     from sqlalchemy import select
     from app.models.user import User
     query = select(User).where(User.email == "otp_test@personaiq.ai")
     result = await db_session.execute(query)
     user = result.scalar_one()
-    assert user.otp_code is not None
     assert user.is_verified is True
-
-    # 3. Verify OTP
-    verify_payload = {
-        "email": "otp_test@personaiq.ai",
-        "code": user.otp_code,
-    }
-    verify_res = await client.post("/api/v1/auth/verify-otp", json=verify_payload)
-    assert verify_res.status_code == 200
-    verify_data = verify_res.json()
-    assert verify_data["success"] is True
-    assert verify_data["data"]["user"]["email"] == "otp_test@personaiq.ai"
+    assert user.otp_code is None
 
     # 4. Confirm verified status in Database
     db_session.expire_all()

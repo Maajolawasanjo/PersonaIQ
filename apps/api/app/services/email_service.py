@@ -63,11 +63,17 @@ class EmailService:
         msg.attach(html_part)
 
         try:
-            with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10.0) as server:
-                server.starttls()
-                server.login(self.smtp_user, self.smtp_password.replace(" ", ""))
-                server.sendmail(sender, [to_email], msg.as_string())
-            logger.info(f"Email successfully dispatched to {to_email} via SMTP.")
+            port = int(self.smtp_port or 587)
+            if port == 465:
+                with smtplib.SMTP_SSL(self.smtp_host, port, timeout=10.0) as server:
+                    server.login(self.smtp_user, self.smtp_password.replace(" ", ""))
+                    server.sendmail(sender, [to_email], msg.as_string())
+            else:
+                with smtplib.SMTP(self.smtp_host, port, timeout=10.0) as server:
+                    server.starttls()
+                    server.login(self.smtp_user, self.smtp_password.replace(" ", ""))
+                    server.sendmail(sender, [to_email], msg.as_string())
+            logger.info(f"Email successfully dispatched to {to_email} via SMTP (port {port}).")
             return True
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {e}")

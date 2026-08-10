@@ -17,6 +17,7 @@ class WardrobeItem(BaseModel):
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
+    # Legacy properties
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     color: Mapped[Optional[str]] = mapped_column(String(50))
@@ -26,6 +27,37 @@ class WardrobeItem(BaseModel):
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False)
     wear_count: Mapped[int] = mapped_column(Integer, default=0)
     meta_data: Mapped[Optional[dict]] = mapped_column(JSON_TYPE)
+
+    # Classification
+    subcategory: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    garment_type: Mapped[Optional[str]] = mapped_column(String(100))
+    gender_target: Mapped[Optional[str]] = mapped_column(String(50), default="unisex")
+    style_family: Mapped[Optional[str]] = mapped_column(String(100))
+
+    # Visual Attributes
+    thumbnail_url: Mapped[Optional[str]] = mapped_column(Text)
+    secondary_colors: Mapped[Optional[dict]] = mapped_column(JSON_TYPE)
+    pattern: Mapped[Optional[str]] = mapped_column(String(100))
+    material: Mapped[Optional[str]] = mapped_column(String(100))
+    silhouette: Mapped[Optional[str]] = mapped_column(String(100))
+
+    # Styling & Taxonomy Intelligence
+    occasions: Mapped[Optional[dict]] = mapped_column(JSON_TYPE)
+    seasons: Mapped[Optional[dict]] = mapped_column(JSON_TYPE)
+    compatible_categories: Mapped[Optional[dict]] = mapped_column(JSON_TYPE)
+    style_tags: Mapped[Optional[dict]] = mapped_column(JSON_TYPE)
+    color_profile: Mapped[Optional[dict]] = mapped_column(JSON_TYPE)
+
+    # Source Provenance
+    source_type: Mapped[str] = mapped_column(String(50), default="user_upload", index=True)
+    source_url: Mapped[Optional[str]] = mapped_column(Text)
+    brand: Mapped[Optional[str]] = mapped_column(String(255))
+    product_url: Mapped[Optional[str]] = mapped_column(Text)
+    external_product_id: Mapped[Optional[str]] = mapped_column(String(255))
+
+    # Virtual Try-On Capabilities
+    vto_supported: Mapped[bool] = mapped_column(Boolean, default=True)
+    vto_category: Mapped[Optional[str]] = mapped_column(String(100))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True

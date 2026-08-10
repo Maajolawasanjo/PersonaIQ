@@ -52,14 +52,17 @@ export default function ChooseOutfitPage() {
       {/* 2. Top Grid Row: Upload Card + Main Hero Card */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 max-w-3xl mx-auto items-stretch">
         
-        {/* Upload Card */}
-        <div className="sm:col-span-4 bg-white border border-gray-200 rounded-[20px] p-6 text-center space-y-3 flex flex-col items-center justify-center min-h-[220px] shadow-xs cursor-pointer hover:border-gray-300 transition-all">
-          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        {/* VTO Studio Launch Card */}
+        <Link
+          href="/wardrobe/style-me"
+          className="sm:col-span-4 bg-red-50 border border-red-200 hover:border-red-300 rounded-[20px] p-6 text-center space-y-3 flex flex-col items-center justify-center min-h-[220px] shadow-xs cursor-pointer transition-all group"
+        >
+          <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </div>
-          <span className="text-[16px] font-bold text-gray-950 block font-sans">Upload Outfit</span>
-          <span className="text-[12px] text-gray-500 block font-medium">Analyze a new wardrobe item.</span>
-        </div>
+          <span className="text-[16px] font-bold text-red-950 block font-sans">VTO Studio</span>
+          <span className="text-[12px] text-red-800/80 block font-medium">Virtual Try-On & AI Stylist</span>
+        </Link>
 
         {/* Hero Current Selection Card */}
         <div

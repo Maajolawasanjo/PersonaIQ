@@ -44,15 +44,12 @@ class AuthService:
 
         # Auto-verify account immediately on signup for friction-free judge experience
         user.is_verified = True
-        import secrets
-        from app.services.email_service import EmailService
-
-        otp = f"{secrets.randbelow(900000) + 100000}"
-        user.otp_code = otp
-        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        user.otp_code = None
+        user.otp_expires_at = None
         await self.repo.db.commit()
 
         # Send welcome email via FastAPI BackgroundTasks (non-blocking)
+        from app.services.email_service import EmailService
         user_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
         email_service = EmailService()
         email_service.dispatch(
