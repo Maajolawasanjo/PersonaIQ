@@ -136,7 +136,7 @@ class AuthService:
         otp = f"{secrets.randbelow(900000) + 100000}"
         user.otp_code = otp
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
-        await self.repo.db.flush()
+        await self.repo.db.commit()
 
         email_service = EmailService()
         email_service.dispatch(
@@ -157,7 +157,7 @@ class AuthService:
         token = secrets.token_urlsafe(32)
         user.reset_token = token
         user.reset_expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
-        await self.repo.db.flush()
+        await self.repo.db.commit()
 
         email_service = EmailService()
         email_service.dispatch(
