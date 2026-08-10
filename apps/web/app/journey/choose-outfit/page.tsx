@@ -333,24 +333,43 @@ export default function ChooseOutfitPage() {
           {/* 2. Select Avatar / Fitting Model */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3 shadow-xs">
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">
-              2. Select Model / Fitting Avatar
+              2. Select Fitting Model / Avatar
             </h2>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              {AVATARS.map((av) => (
-                <button
-                  key={av.id}
-                  onClick={() => setSelectedAvatar(av.id)}
-                  className={`p-2.5 rounded-xl border text-left flex items-center space-x-2.5 transition-all ${
-                    selectedAvatar === av.id
-                      ? 'border-red-600 bg-red-50/50 text-gray-950 font-bold'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                  }`}
-                >
-                  <User className="w-4 h-4 text-red-600 shrink-0" />
-                  <span className="text-xs truncate">{av.label}</span>
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-3">
+              {AVATARS.map((av) => {
+                const isSelected = selectedAvatar === av.id;
+                return (
+                  <button
+                    key={av.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAvatar(av.id);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('personaiq_vto_avatar_id', av.id);
+                        localStorage.setItem('personaiq_vto_avatar_image', av.image);
+                      }
+                    }}
+                    className={`p-2 rounded-xl border text-left flex items-center space-x-3 transition-all cursor-pointer overflow-hidden ${
+                      isSelected
+                        ? 'border-2 border-red-600 bg-red-50/60 ring-2 ring-red-100 shadow-xs'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-900 shrink-0 border border-gray-200">
+                      <img src={av.image} alt={av.label} className="w-full h-full object-cover object-top" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-[12px] block truncate font-sans ${isSelected ? 'font-bold text-gray-950' : 'font-medium text-gray-700'}`}>
+                        {av.label}
+                      </span>
+                      <span className="text-[10px] font-mono text-gray-400 block">
+                        {isSelected ? 'Active Model' : 'Select'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

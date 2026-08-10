@@ -162,20 +162,26 @@ export default function StyleMePage() {
             </h2>
 
             <div className="grid grid-cols-2 gap-3">
-              {AVATARS.map((av) => (
-                <button
-                  key={av.id}
-                  onClick={() => setSelectedAvatar(av.id)}
-                  className={`p-3 rounded-xl border text-left flex items-center space-x-3 transition-all ${
-                    selectedAvatar === av.id
-                      ? 'border-red-600 bg-red-50/40 text-gray-950 font-bold'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                  }`}
-                >
-                  <User className="w-4 h-4 text-red-600" />
-                  <span className="text-xs">{av.label}</span>
-                </button>
-              ))}
+              {AVATARS.map((av) => {
+                const isSelected = selectedAvatar === av.id;
+                return (
+                  <button
+                    key={av.id}
+                    type="button"
+                    onClick={() => setSelectedAvatar(av.id)}
+                    className={`p-2 rounded-xl border text-left flex items-center space-x-3 transition-all cursor-pointer overflow-hidden ${
+                      isSelected
+                        ? 'border-2 border-red-600 bg-red-50/50 text-gray-950 font-bold shadow-xs'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-900 shrink-0 border border-gray-200">
+                      <img src={av.image} alt={av.label} className="w-full h-full object-cover object-top" />
+                    </div>
+                    <span className="text-xs truncate font-medium">{av.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
