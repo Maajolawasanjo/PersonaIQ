@@ -41,10 +41,11 @@ export default function VirtualTryOnPage() {
     VTO_CATALOG.find((c) => c.category === 'style_references') || null
   );
 
+  const [userUploads, setUserUploads] = useState<VTOAsset[]>([]);
   const [productUrl, setProductUrl] = useState<string>('');
   const [vtoResult, setVtoResult] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [presenceScore, setPresenceScore] = useState<number>(94);
+  const [presenceScore, setPresenceScore] = useState<number>(96);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -52,6 +53,11 @@ export default function VirtualTryOnPage() {
       if (savedPhoto) {
         setUserPhoto(savedPhoto);
       }
+      const savedAvatarId = localStorage.getItem('personaiq_vto_avatar_id');
+      if (savedAvatarId) {
+        setSelectedAvatarId(savedAvatarId);
+      }
+
       const completeLookRaw = localStorage.getItem('personaiq_complete_look');
       if (completeLookRaw) {
         try {
@@ -65,11 +71,30 @@ export default function VirtualTryOnPage() {
         }
       } else {
         const savedOutfitUrl = localStorage.getItem('personaiq_user_outfit_preview');
+        const savedOutfitTitle = localStorage.getItem('personaiq_selected_outfit_title') || 'Selected Attire';
         if (savedOutfitUrl) {
           const found = VTO_CATALOG.find((item) => item.image_url === savedOutfitUrl);
-          if (found) setSelectedGarment(found);
+          if (found) {
+            setSelectedGarment(found);
+          } else {
+            // Dynamically construct asset from user outfit choice
+            setSelectedGarment({
+              id: `user_outfit_${Date.now()}`,
+              name: savedOutfitTitle,
+              category: 'clothing',
+              subcategory: 'professional',
+              gender: 'unisex',
+              asset_type: 'product',
+              image_url: savedOutfitUrl,
+              occasions: ['all'],
+              is_active: true,
+            });
+          }
         }
       }
+
+      const savedScore = localStorage.getItem('personaiq_active_presence_score');
+      if (savedScore) setPresenceScore(parseInt(savedScore, 10));
     }
   }, []);
 
@@ -104,9 +129,9 @@ export default function VirtualTryOnPage() {
     setIsGenerating(true);
 
     // Compute deterministic presence telemetry score based on items cohesion
-    let baseScore = 90;
+    let baseScore = 91;
     if (garment.subcategory === 'professional') baseScore += 4;
-    if (shoe.subcategory === 'formal' || shoe.subcategory === 'business') baseScore += 3;
+    if (shoe?.subcategory === 'formal' || shoe?.subcategory === 'business') baseScore += 3;
     if (acc) baseScore += 1;
     if (hair) baseScore += 1;
     const finalScore = Math.min(99, baseScore);
@@ -114,38 +139,77 @@ export default function VirtualTryOnPage() {
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('personaiq_active_presence_score', finalScore.toString());
+      localStorage.setItem('personaiq_user_outfit_preview', garment.image_url);
+      localStorage.setItem('personaiq_selected_outfit_title', garment.name);
     }
 
     try {
-      const res = await stylistApi.vtoPreview({
-        user_id: 'active_session',
-        garment_url: item.image_url,
-      });
-      if (res?.preview_url) {
-        setVtoResult(res.preview_url);
+      const res = await stylistApi.vtoPreview(selectedAvatarId, [garment, shoe, acc, hair], activeModelImage);
+      if (res?.preview_url || res?.data?.preview_url) {
+        setVtoResult(res.preview_url || res.data.preview_url);
       }
     } catch (e) {
-      console.warn('VTO endpoint preview fallback:', e);
+      console.warn('VTO endpoint preview notice, using local dynamic compositing canvas:', e);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleImportProduct = (e: React.FormEvent) => {
+  const handleImportProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productUrl) return;
+
+    let fallbackCategory: 'clothing' | 'footwear' | 'accessories' = 'clothing';
+    let fallbackName = 'Imported Garment';
+    const lower = productUrl.toLowerCase();
+
+    if (lower.includes('shoe') || lower.includes('boot') || lower.includes('sneaker') || lower.includes('loafer')) {
+      fallbackCategory = 'footwear';
+      fallbackName = 'Imported Shoes';
+    } else if (lower.includes('watch') || lower.includes('belt') || lower.includes('bag')) {
+      fallbackCategory = 'accessories';
+      fallbackName = 'Imported Accessory';
+    } else if (lower.includes('suit') || lower.includes('dress') || lower.includes('blazer')) {
+      fallbackCategory = 'clothing';
+      fallbackName = 'Imported Apparel';
+    }
+
+    try {
+      const res = await stylistApi.importProduct(productUrl);
+      if (res?.data) {
+        const newItem: VTOAsset = {
+          id: res.data.id || `imported_${Date.now()}`,
+          name: res.data.name || fallbackName,
+          category: res.data.category || fallbackCategory,
+          subcategory: 'online_store',
+          gender: 'unisex',
+          asset_type: 'product',
+          image_url: res.data.photo_url || productUrl,
+          occasions: ['all'],
+          is_active: true,
+        };
+        setUserUploads((prev) => [newItem, ...prev]);
+        handleAssetSelect(newItem);
+        setProductUrl('');
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend product import service notice, using direct URL import:', err);
+    }
+
     const importedItem: VTOAsset = {
       id: `imported_${Date.now()}`,
-      name: 'Imported Garment',
-      category: 'clothing',
+      name: fallbackName,
+      category: fallbackCategory,
       subcategory: 'online_store',
       gender: 'unisex',
       asset_type: 'product',
-      image_url: '/vto/clothing/professional/01_navy_suit.jpg',
+      image_url: productUrl, // Uses direct pasted URL
       occasions: ['all'],
       is_active: true,
     };
-    setSelectedGarment(importedItem);
+    setUserUploads((prev) => [importedItem, ...prev]);
+    handleAssetSelect(importedItem);
     setProductUrl('');
   };
 
@@ -156,7 +220,10 @@ export default function VirtualTryOnPage() {
     router.push('/journey/presence-index');
   };
 
-  const catalogItems = VTO_CATALOG.filter((item) => item.category === activeCatalogTab);
+  const catalogItems = [
+    ...userUploads.filter((u) => u.category === activeCatalogTab),
+    ...VTO_CATALOG.filter((item) => item.category === activeCatalogTab),
+  ];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn py-2">
@@ -164,7 +231,7 @@ export default function VirtualTryOnPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-4">
         <div>
           <span className="text-[11px] font-mono font-bold text-red-600 uppercase tracking-widest block">
-            PRESENCE JOURNEY STAGE • STEP 6 OF 6
+            PRESENCE JOURNEY STAGE • VIRTUAL TRY-ON
           </span>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-950 font-sans mt-0.5">
             Virtual Try-On™ Interactive Studio
@@ -177,7 +244,7 @@ export default function VirtualTryOnPage() {
         <button
           type="button"
           onClick={handleNext}
-          className="h-11 px-6 bg-[#5c0612] hover:bg-[#4a050e] text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 shadow-md transition-all cursor-pointer shrink-0"
+          className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 shadow-md transition-all cursor-pointer shrink-0"
         >
           <span>Finalize Presence Index</span>
           <ArrowRight className="w-4 h-4" />
@@ -221,7 +288,12 @@ export default function VirtualTryOnPage() {
                   <button
                     key={model.id}
                     type="button"
-                    onClick={() => setSelectedAvatarId(model.id)}
+                    onClick={() => {
+                      setSelectedAvatarId(model.id);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('personaiq_vto_avatar_id', model.id);
+                      }
+                    }}
                     className={`p-2 rounded-xl border text-left flex items-center space-x-2 transition-all cursor-pointer ${
                       isSelected
                         ? 'border-2 border-red-600 bg-red-50/60 font-bold shadow-xs'
@@ -251,12 +323,12 @@ export default function VirtualTryOnPage() {
                 type="url"
                 value={productUrl}
                 onChange={(e) => setProductUrl(e.target.value)}
-                placeholder="Paste store URL..."
+                placeholder="Paste store or image URL..."
                 className="flex-1 px-3 py-1.5 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-red-500"
               />
               <button
                 type="submit"
-                className="px-3.5 py-1.5 bg-gray-950 text-white font-bold text-xs rounded-xl cursor-pointer"
+                className="px-3.5 py-1.5 bg-red-600 text-white font-bold text-xs rounded-xl hover:bg-red-700 cursor-pointer transition-colors"
               >
                 Import
               </button>
@@ -334,8 +406,8 @@ export default function VirtualTryOnPage() {
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-900 shrink-0">
-                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-950 shrink-0 border border-gray-200">
+                      <img src={item.image_url} alt={item.name} className="w-full h-full object-contain p-1" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-[11.5px] font-bold text-gray-950 truncate font-sans">{item.name}</h4>
@@ -379,14 +451,25 @@ export default function VirtualTryOnPage() {
 
           {/* Model Canvas Composite Centerpiece */}
           <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">
-            <div className="relative w-full max-w-sm aspect-[3/4] rounded-[20px] overflow-hidden border border-white/20 shadow-2xl">
+            <div className="relative w-full max-w-sm aspect-[3/4] rounded-[20px] overflow-hidden border border-white/20 shadow-2xl bg-gray-900">
               
               {/* Model Base Image */}
               <img
                 src={vtoResult || activeModelImage}
                 alt="Fitting Canvas Model"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-2"
               />
+
+              {/* Live Garment Preview Overlay Badge */}
+              <div className="absolute top-4 right-4 bg-gray-950/90 border border-white/20 p-2.5 rounded-[14px] shadow-lg flex items-center space-x-3 pointer-events-auto">
+                <div className="w-12 h-12 rounded-lg bg-gray-900 overflow-hidden border border-red-500/50">
+                  <img src={selectedGarment.image_url} alt={selectedGarment.name} className="w-full h-full object-contain p-1" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-bold text-red-400 block uppercase">TRIED-ON ATTIRE</span>
+                  <span className="text-[12px] font-bold text-white block max-w-[130px] truncate">{selectedGarment.name}</span>
+                </div>
+              </div>
 
               {/* Applied Layer Badges */}
               <div className="absolute bottom-4 left-4 right-4 bg-gray-950/85 backdrop-blur-md border border-white/10 p-3 rounded-[14px] space-y-2">
@@ -394,7 +477,7 @@ export default function VirtualTryOnPage() {
                   <img
                     src={selectedGarment.image_url}
                     alt={selectedGarment.name}
-                    className="w-10 h-10 rounded-lg object-cover border border-white/20 shrink-0"
+                    className="w-10 h-10 rounded-lg object-contain bg-gray-900 border border-white/20 shrink-0 p-1"
                   />
                   <div className="min-w-0">
                     <span className="text-[11.5px] font-bold text-white block truncate">{selectedGarment.name}</span>
