@@ -190,13 +190,23 @@ export default function DashboardHomePage() {
             <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <Link
+                  href="/wardrobe/style-me"
+                  className="bg-[#5c0612] text-white border border-red-800 rounded-[16px] p-3.5 text-center space-y-2 hover:bg-[#4a050e] hover:shadow-sm transition-all flex flex-col items-center justify-center min-h-[98px] group shadow-2xs"
+                >
+                  <div className="w-8 h-8 rounded-full bg-white/15 text-white flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                  </div>
+                  <span className="text-[12.5px] font-bold text-white block leading-tight">AI Style Me</span>
+                </Link>
+
+                <Link
                   href="/journey/start"
                   className="bg-white border border-gray-200 rounded-[16px] p-3.5 text-center space-y-2 hover:border-red-600/40 hover:shadow-xs transition-all flex flex-col items-center justify-center min-h-[98px] group"
                 >
                   <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
                     <Play className="w-4 h-4 text-red-600" />
                   </div>
-                  <span className="text-[12.5px] font-bold text-gray-950 block leading-tight">Start New</span>
+                  <span className="text-[12.5px] font-bold text-gray-950 block leading-tight">Start Journey</span>
                 </Link>
 
                 <Link
