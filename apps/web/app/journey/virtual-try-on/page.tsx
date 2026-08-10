@@ -79,13 +79,43 @@ export default function VirtualTryOnPage() {
       : VTO_MODELS.find((m) => m.id === selectedAvatarId)?.image_url || userPhoto;
 
   const handleAssetSelect = async (item: VTOAsset) => {
-    if (item.category === 'clothing') setSelectedGarment(item);
-    if (item.category === 'footwear') setSelectedShoe(item);
-    if (item.category === 'accessories') setSelectedAccessory(item);
-    if (item.category === 'style_references') setSelectedHairstyle(item);
+    let garment = selectedGarment;
+    let shoe = selectedShoe;
+    let acc = selectedAccessory;
+    let hair = selectedHairstyle;
+
+    if (item.category === 'clothing') {
+      setSelectedGarment(item);
+      garment = item;
+    }
+    if (item.category === 'footwear') {
+      setSelectedShoe(item);
+      shoe = item;
+    }
+    if (item.category === 'accessories') {
+      setSelectedAccessory(item);
+      acc = item;
+    }
+    if (item.category === 'style_references') {
+      setSelectedHairstyle(item);
+      hair = item;
+    }
 
     setIsGenerating(true);
-    setPresenceScore(Math.floor(Math.random() * 8) + 91);
+
+    // Compute deterministic presence telemetry score based on items cohesion
+    let baseScore = 90;
+    if (garment.subcategory === 'professional') baseScore += 4;
+    if (shoe.subcategory === 'formal' || shoe.subcategory === 'business') baseScore += 3;
+    if (acc) baseScore += 1;
+    if (hair) baseScore += 1;
+    const finalScore = Math.min(99, baseScore);
+    setPresenceScore(finalScore);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('personaiq_active_presence_score', finalScore.toString());
+    }
+
     try {
       const res = await stylistApi.vtoPreview({
         user_id: 'active_session',

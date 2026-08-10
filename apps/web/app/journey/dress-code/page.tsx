@@ -65,10 +65,24 @@ export default function DressCodePage() {
     },
   ];
 
+  const handleSelectCode = (id: string) => {
+    setSelectedCode(id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('personaiq_active_dress_code', id);
+    }
+  };
+
+  const handleContinue = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('personaiq_active_dress_code', selectedCode);
+      localStorage.setItem('personaiq_active_draft_step', '/journey/capture-look');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn text-center py-6">
       {/* 1. Top Badge */}
-      <span className="text-[11px] font-mono font-extrabold text-primary tracking-widest uppercase block">
+      <span className="text-[11px] font-mono font-extrabold text-red-600 tracking-widest uppercase block">
         PRESENCE JOURNEY
       </span>
 
@@ -90,14 +104,14 @@ export default function DressCodePage() {
             <button
               key={code.id}
               type="button"
-              onClick={() => setSelectedCode(code.id)}
-              className={`bg-white rounded-[20px] p-6 text-center space-y-3 transition-all flex flex-col items-center justify-center min-h-[140px] shadow-xs ${
+              onClick={() => handleSelectCode(code.id)}
+              className={`bg-white rounded-[20px] p-6 text-center space-y-3 transition-all flex flex-col items-center justify-center min-h-[140px] shadow-xs cursor-pointer ${
                 isSelected
-                  ? 'border-2 border-primary shadow-sm'
+                  ? 'border-2 border-red-600 shadow-sm'
                   : 'border border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div className="w-12 h-12 rounded-full bg-gray-100/80 flex items-center justify-center text-gray-800 shrink-0">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'bg-red-50 text-red-600' : 'bg-gray-100/80 text-gray-800'}`}>
                 {code.icon}
               </div>
               <span className="text-[14px] font-bold text-gray-950 block font-sans">
@@ -112,7 +126,8 @@ export default function DressCodePage() {
       <div className="pt-6">
         <Link
           href="/journey/capture-look"
-          className="inline-flex items-center justify-center space-x-2 h-12 px-8 bg-primary hover:bg-primary/95 text-white font-bold text-[14px] rounded-[12px] shadow-sm transition-all active:scale-[0.98]"
+          onClick={handleContinue}
+          className="inline-flex items-center justify-center space-x-2 h-12 px-8 bg-red-600 hover:bg-red-700 text-white font-bold text-[14px] rounded-[12px] shadow-sm transition-all active:scale-[0.98]"
         >
           <span>Continue to Capture Your Look</span>
           <span>→</span>

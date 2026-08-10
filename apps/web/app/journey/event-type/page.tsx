@@ -72,6 +72,20 @@ export default function EventTypePage() {
     },
   ];
 
+  const handleSelectEvent = (id: string) => {
+    setSelectedType(id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('personaiq_active_occasion', id);
+    }
+  };
+
+  const handleContinue = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('personaiq_active_occasion', selectedType);
+      localStorage.setItem('personaiq_active_draft_step', '/journey/dress-code');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn text-center py-6">
       {/* 1. Header */}
@@ -92,21 +106,21 @@ export default function EventTypePage() {
             <button
               key={event.id}
               type="button"
-              onClick={() => setSelectedType(event.id)}
-              className={`bg-white rounded-[20px] p-6 text-center space-y-3 transition-all flex flex-col items-center justify-center min-h-[140px] shadow-xs relative ${
+              onClick={() => handleSelectEvent(event.id)}
+              className={`bg-white rounded-[20px] p-6 text-center space-y-3 transition-all flex flex-col items-center justify-center min-h-[140px] shadow-xs relative cursor-pointer ${
                 isSelected
-                  ? 'border-2 border-primary shadow-sm'
+                  ? 'border-2 border-red-600 shadow-sm'
                   : 'border border-gray-200 hover:border-gray-300'
               }`}
             >
-              {/* Red Checkmark Badge for Active Card */}
+              {/* Checkmark Badge for Active Card */}
               {isSelected && (
-                <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">
+                <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold">
                   ✓
                 </div>
               )}
 
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'text-primary' : 'text-gray-700'}`}>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'text-red-600' : 'text-gray-700'}`}>
                 {event.icon}
               </div>
               <span className="text-[14px] font-bold text-gray-950 block font-sans">
@@ -120,10 +134,11 @@ export default function EventTypePage() {
       {/* 3. Bottom Primary CTA */}
       <div className="pt-6">
         <Link
-          href="/journey/event-details"
-          className="inline-flex items-center justify-center space-x-2 h-12 px-8 bg-primary hover:bg-primary/95 text-white font-bold text-[14px] rounded-[12px] shadow-sm transition-all active:scale-[0.98]"
+          href="/journey/dress-code"
+          onClick={handleContinue}
+          className="inline-flex items-center justify-center space-x-2 h-12 px-8 bg-red-600 hover:bg-red-700 text-white font-bold text-[14px] rounded-[12px] shadow-sm transition-all active:scale-[0.98]"
         >
-          <span>Continue</span>
+          <span>Continue to Dress Code</span>
           <span>→</span>
         </Link>
       </div>
