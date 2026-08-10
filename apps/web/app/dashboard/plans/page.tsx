@@ -1,46 +1,58 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import { plansApi, dashboardApi } from '@/lib/api/services';
 
 export default function SavedPlansPage() {
-  const plans = [
-    {
-      id: 1,
-      image: '/images/brown-peaked-lapel-suit.jpg',
-      tag: 'INTERVIEW',
-      score: '95% PRESENCE INDEX',
-      title: 'VP Strategy Final Round',
-      description: 'Charcoal tailored suit with a white poplin shirt. Authoritative yet...',
-      requiredItems: [
-        { name: 'Charcoal Wool Suit', checked: true },
-        { name: 'Crisp White Poplin Shirt', checked: true },
-      ],
-    },
-    {
-      id: 2,
-      image: '/images/ascot-knit-polo-tan.jpg',
-      tag: 'KEYNOTE',
-      score: '94% PRESENCE INDEX',
-      title: 'MIT AI Summit',
-      description: 'Elevated casual. Navy structured blazer over pristine crew neck...',
-      requiredItems: [
-        { name: 'Navy Unstructured Blazer', checked: true },
-        { name: 'Minimalist Leather Sneakers', checked: false },
-      ],
-    },
-    {
-      id: 3,
-      image: '/images/kaftan-3piece.jpg',
-      tag: 'GALA',
-      score: '99% PRESENCE INDEX',
-      title: 'Industry Awards Dinner',
-      description: 'Midnight blue formalwear with subtle contrasting lapels. Optimize...',
-      requiredItems: [
-        { name: 'Midnight Blue Tuxedo', checked: false },
-        { name: 'Black Silk Bowtie', checked: false },
-      ],
-    },
-  ];
+  const [plans, setPlans] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState<boolean>(true);
+
+  React.useEffect(() => {
+    async function loadPlans() {
+      try {
+        const res = await plansApi.listPlans();
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((p: any) => ({
+            id: p.id,
+            image: p.selected_outfit_url || '/images/brown-peaked-lapel-suit.jpg',
+            tag: p.vibe_category || 'EXECUTIVE',
+            score: `${p.overall_presence_score || 88}% PRESENCE INDEX`,
+            title: p.title || 'Executive Session Strategy',
+            description: p.executive_summary || 'Custom presence plan optimized for executive decision making.',
+            requiredItems: p.checklist ? p.checklist.map((c: any) => ({ name: c.task, checked: c.is_completed })) : [
+              { name: 'Tailored Blazer / Suit', checked: true },
+              { name: 'High-contrast Crisp Shirt', checked: true },
+            ],
+          }));
+          setPlans(mapped);
+        } else {
+          // Fallback to overview recent plans if available
+          const overview = await dashboardApi.getOverview();
+          if (overview?.recent_plans && overview.recent_plans.length > 0) {
+            const mapped = overview.recent_plans.map((p: any) => ({
+              id: p.id,
+              image: '/images/brown-peaked-lapel-suit.jpg',
+              tag: 'STRATEGY',
+              score: `${p.overall_presence_score || 85}% PRESENCE INDEX`,
+              title: p.executive_summary ? p.executive_summary.substring(0, 30) + '...' : 'Presence Session',
+              description: p.vibe_analysis || 'AI-generated presence alignment strategy.',
+              requiredItems: [
+                { name: 'Posture alignment review', checked: true },
+                { name: 'Color contrast check', checked: true },
+              ],
+            }));
+            setPlans(mapped);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load presence plans from API:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadPlans();
+  }, []);
 
   return (
     <div className="space-y-8 animate-fadeIn max-w-5xl mx-auto">

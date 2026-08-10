@@ -2,14 +2,40 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { presenceDnaApi, dashboardApi } from '@/lib/api/services';
 
 export default function PersonalProgressPage() {
-  const metrics = [
-    { label: 'Avg Presence Index', val: '88', sub: 'Top Tier' },
-    { label: 'Top Outfit Style', val: 'Executive Charcoal', sub: '96% Match Rate' },
+  const [metrics, setMetrics] = React.useState([
+    { label: 'Avg Presence Index', val: '--', sub: 'Calculated' },
+    { label: 'Top Outfit Style', val: 'Executive Formal', sub: 'High Alignment' },
     { label: 'Avg AI Confidence', val: '94%', sub: 'High Precision' },
-    { label: 'Completed Journeys', val: '14', sub: 'Lifetime Total' },
-  ];
+    { label: 'Completed Journeys', val: '0', sub: 'Lifetime Total' },
+  ]);
+
+  React.useEffect(() => {
+    async function loadProgress() {
+      try {
+        const [dna, overview] = await Promise.all([
+          presenceDnaApi.getDna().catch(() => null),
+          dashboardApi.getOverview().catch(() => null),
+        ]);
+
+        const avgScore = dna?.avg_presence_index || overview?.presence_index_avg || 0;
+        const totalJourneys = dna?.total_journeys_completed || overview?.total_journeys_count || 0;
+        const topStyle = dna?.top_style || 'Executive Formal';
+
+        setMetrics([
+          { label: 'Avg Presence Index', val: avgScore > 0 ? avgScore.toString() : '--', sub: avgScore > 80 ? 'Top Tier' : 'Active Baseline' },
+          { label: 'Top Outfit Style', val: topStyle, sub: 'Optimal Match Rate' },
+          { label: 'Avg AI Confidence', val: avgScore > 0 ? '94%' : 'Pending', sub: 'High Precision' },
+          { label: 'Completed Journeys', val: totalJourneys.toString(), sub: 'Lifetime Total' },
+        ]);
+      } catch (err) {
+        console.warn('Could not fetch personal progress metrics:', err);
+      }
+    }
+    loadProgress();
+  }, []);
 
   return (
     <div className="space-y-6 animate-fadeIn py-2">
