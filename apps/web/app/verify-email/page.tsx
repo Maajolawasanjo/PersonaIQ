@@ -17,11 +17,17 @@ export default function VerifyEmailPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Parse query param email if available
+    // Parse query param email if available, fallback to localStorage
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const emailParam = params.get('email');
-      if (emailParam) setEmail(emailParam);
+      const stored = localStorage.getItem('pending_email');
+      if (emailParam) {
+        setEmail(emailParam);
+        localStorage.setItem('pending_email', emailParam);
+      } else if (stored) {
+        setEmail(stored);
+      }
     }
   }, []);
 
