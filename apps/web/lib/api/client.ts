@@ -17,12 +17,16 @@ class ApiClient {
     if (typeof window === 'undefined') return;
     localStorage.setItem('access_token', accessToken);
     localStorage.setItem('refresh_token', refreshToken);
+    document.cookie = `personaiq_access_token=${accessToken}; path=/; max-age=2592000; SameSite=Lax`;
+    document.cookie = `token=${accessToken}; path=/; max-age=2592000; SameSite=Lax`;
   }
 
   public clearTokens(): void {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    document.cookie = 'personaiq_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
 
   private async refreshTokens(): Promise<boolean> {

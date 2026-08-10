@@ -20,7 +20,7 @@ const AUTH_PAGES = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const token = request.cookies.get('personaiq_access_token')?.value || request.cookies.get('token')?.value
+  const token = request.cookies.get('personaiq_access_token')?.value || request.cookies.get('access_token')?.value || request.cookies.get('token')?.value
 
   const isProtectedPath = PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix))
   const isAuthPath = AUTH_PAGES.some(page => pathname.startsWith(page))
