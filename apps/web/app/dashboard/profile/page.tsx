@@ -104,15 +104,15 @@ export default function ProfileSettingsPage() {
 
       {/* Executive Hero Profile Card */}
       <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-xs flex items-center space-x-5">
-        <div className="w-20 h-20 rounded-full overflow-hidden border border-gray-200 shrink-0 bg-gray-100 flex items-center justify-center font-bold text-gray-700 text-xl">
-          {profile?.avatar_url ? (
+        <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-red-600/30 shrink-0 bg-red-650 text-white flex items-center justify-center font-mono font-bold text-2xl shadow-xs">
+          {profile?.avatar_url || (typeof window !== 'undefined' && localStorage.getItem('personaiq_user_selfie_preview')) ? (
             <img
-              src={profile.avatar_url}
+              src={profile?.avatar_url || localStorage.getItem('personaiq_user_selfie_preview')!}
               alt={displayName}
               className="w-full h-full object-cover"
             />
           ) : (
-            <span>{(firstName[0] || email[0] || 'U').toUpperCase()}</span>
+            <span>{((firstName[0] || '') + (lastName[0] || '' || email[0] || 'U')).toUpperCase()}</span>
           )}
         </div>
         <div className="space-y-1.5">

@@ -139,7 +139,7 @@ export default function PresenceDNAAnalysisPage() {
         <div className="bg-white border border-gray-200 rounded-[20px] p-4 shadow-xs flex items-center space-x-3">
           <div className="w-16 h-16 rounded-[14px] overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
             <img
-              src="/images/brown-peaked-lapel-suit.jpg"
+              src="/vto/clothing/professional/01_navy_suit.jpg"
               alt={dnaData?.top_style || 'Executive Baseline'}
               className="w-full h-full object-cover"
             />

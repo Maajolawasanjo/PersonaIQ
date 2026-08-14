@@ -19,7 +19,7 @@ import {
 import { VTO_MODELS } from '@/lib/catalog/vtoCatalog';
 
 export default function JourneyCompletePage() {
-  const [userPhoto, setUserPhoto] = useState<string>('/vto/models/male/black/male_black_base.jpg');
+  const [userPhoto, setUserPhoto] = useState<string>('/vto/looks/male/M01_job_interview.png');
   const [score, setScore] = useState<number>(95);
   const [occasion, setOccasion] = useState<string>('Job Interview');
 
@@ -37,8 +37,39 @@ export default function JourneyCompletePage() {
         if (found) setUserPhoto(found.image_url);
       }
 
-      if (savedScore) setScore(parseInt(savedScore, 10));
+      const calculatedScore = savedScore ? parseInt(savedScore, 10) : 93;
+      if (savedScore) setScore(calculatedScore);
       setOccasion(savedOccasion.toUpperCase());
+
+      // Save journey session to persistent state
+      const savedJourneysRaw = localStorage.getItem('personaiq_saved_journeys');
+      const existingJourneys: any[] = savedJourneysRaw ? JSON.parse(savedJourneysRaw) : [];
+
+      const outfitTitle = localStorage.getItem('personaiq_selected_outfit_title') || 'Executive Outfit';
+      const newJourney = {
+        id: `journey-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        title: `${savedOccasion.charAt(0).toUpperCase() + savedOccasion.slice(1)} Session`,
+        occasion: savedOccasion,
+        dress_code: localStorage.getItem('personaiq_dress_code') || 'Business Formal',
+        target_vibe: localStorage.getItem('personaiq_target_vibe') || 'Confident',
+        presence_score: calculatedScore,
+        outfit_name: outfitTitle,
+        outfit_image: savedPhoto || '/vto/clothing/professional/01_navy_suit.jpg',
+        status: 'COMPLETED',
+      };
+
+      // Deduplicate if already saved in this session
+      const alreadySaved = existingJourneys.some(
+        (j) => j.outfit_name === outfitTitle && Date.now() - new Date(j.created_at).getTime() < 300000
+      );
+
+      if (!alreadySaved) {
+        const updated = [newJourney, ...existingJourneys];
+        localStorage.setItem('personaiq_saved_journeys', JSON.stringify(updated));
+        localStorage.setItem('personaiq_completed_journey_count', updated.length.toString());
+        localStorage.setItem('personaiq_active_presence_score', calculatedScore.toString());
+      }
     }
   }, []);
 
@@ -64,11 +95,11 @@ export default function JourneyCompletePage() {
 
       {/* Middle Milestone Card */}
       <div className="bg-white border border-gray-200 rounded-[24px] p-6 shadow-xs text-left max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
-        <div className="sm:col-span-5 h-44 rounded-[18px] overflow-hidden bg-gray-950 border border-gray-200">
+        <div className="sm:col-span-5 h-48 rounded-[18px] overflow-hidden bg-gray-950 border border-gray-200 shadow-inner">
           <img
             src={userPhoto}
             alt="Validated Preparation Milestone"
-            className="w-full h-full object-contain p-2"
+            className="w-full h-full object-cover object-top"
           />
         </div>
         <div className="sm:col-span-7 space-y-2">

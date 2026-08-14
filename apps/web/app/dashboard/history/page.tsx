@@ -32,32 +32,50 @@ export default function JourneyArchivePage() {
 
   React.useEffect(() => {
     async function loadJourneys() {
+      let serverJourneys: any[] = [];
       try {
         const res = await journeyApi.listJourneys(1, 20);
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped = res.data.map((j: any, index: number) => ({
-            id: j.id,
-            date: j.created_at ? new Date(j.created_at).toLocaleDateString().toUpperCase() : 'RECENT',
-            title: j.title || 'Executive Presence Session',
-            target: j.event?.dress_code || 'General Audience',
-            score: j.presence_score || 85,
-            isLatest: index === 0,
-            outfitName: j.event?.target_vibe ? `${j.event.target_vibe} Suit` : 'Navy Executive Suit',
-            outfitDesc: 'Analyzed for high executive authority and visual presence.',
-            image: '/images/brown-peaked-lapel-suit.jpg',
-            category: 'Presentation',
-            archived: j.status === 'ARCHIVED',
-          }));
-          setJourneys(mapped);
-          setIsEmptyArchive(false);
-        } else {
-          setIsEmptyArchive(true);
+        if (res?.data && Array.isArray(res.data)) {
+          serverJourneys = res.data;
         }
       } catch (err) {
-        console.warn('Could not fetch journeys from API, using default history list:', err);
-      } finally {
-        setIsLoading(false);
+        console.warn('Could not fetch journeys from API, checking local history:', err);
       }
+
+      let localSaved: any[] = [];
+      if (typeof window !== 'undefined') {
+        const savedJourneysRaw = localStorage.getItem('personaiq_saved_journeys');
+        if (savedJourneysRaw) {
+          try {
+            localSaved = JSON.parse(savedJourneysRaw);
+          } catch (e) {
+            console.error('Error parsing local journeys:', e);
+          }
+        }
+      }
+
+      // Combine server + local journeys
+      const combined = [...serverJourneys, ...localSaved];
+      if (combined.length > 0) {
+        const mapped = combined.map((j: any, index: number) => ({
+          id: j.id || `local-${index}`,
+          date: j.created_at ? new Date(j.created_at).toLocaleDateString().toUpperCase() : 'RECENT',
+          title: j.title || j.occasion ? `${j.occasion.charAt(0).toUpperCase() + j.occasion.slice(1)} Session` : 'Executive Presence Session',
+          target: j.dress_code || j.event?.dress_code || 'Business Formal',
+          score: j.presence_score || j.score || 93,
+          isLatest: index === 0,
+          outfitName: j.outfit_name || (j.event?.target_vibe ? `${j.event.target_vibe} Suit` : 'Executive Navy Suit'),
+          outfitDesc: 'Analyzed for high executive authority and visual presence.',
+          image: j.outfit_image || '/vto/clothing/professional/01_navy_suit.jpg',
+          category: j.occasion?.toLowerCase().includes('interview') ? 'Interview' : 'Presentation',
+          archived: j.status === 'ARCHIVED',
+        }));
+        setJourneys(mapped);
+        setIsEmptyArchive(false);
+      } else {
+        setIsEmptyArchive(true);
+      }
+      setIsLoading(false);
     }
     loadJourneys();
   }, []);

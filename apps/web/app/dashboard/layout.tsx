@@ -103,6 +103,49 @@ const MOBILE_NAV = [
   { label: 'Profile',   href: '/dashboard/profile',      icon: <IconProfile /> },
 ];
 
+function AvatarImage() {
+  const [userPhoto, setUserPhoto] = React.useState<string | null>(null);
+  const [initials, setInitials] = React.useState<string>('EX');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedSelfie = localStorage.getItem('personaiq_user_selfie_preview');
+      const customAvatar = localStorage.getItem('personaiq_custom_avatar_url');
+
+      if (savedSelfie && savedSelfie.length > 10) {
+        setUserPhoto(savedSelfie);
+      } else if (customAvatar && customAvatar.length > 10) {
+        setUserPhoto(customAvatar);
+      }
+
+      // Compute initials from stored session or fallback
+      const storedFirstName = localStorage.getItem('personaiq_user_firstname') || '';
+      const storedLastName = localStorage.getItem('personaiq_user_lastname') || '';
+      const storedEmail = localStorage.getItem('personaiq_user_email') || '';
+
+      if (storedFirstName || storedLastName) {
+        const firstLetter = storedFirstName ? storedFirstName[0] : '';
+        const lastLetter = storedLastName ? storedLastName[0] : '';
+        setInitials((firstLetter + lastLetter).toUpperCase() || 'EX');
+      } else if (storedEmail) {
+        setInitials(storedEmail[0].toUpperCase());
+      } else {
+        setInitials('EX');
+      }
+    }
+  }, []);
+
+  if (userPhoto) {
+    return <img src={userPhoto} alt="User Profile" className="w-full h-full object-cover" />;
+  }
+
+  return (
+    <div className="w-full h-full bg-red-650 text-white font-mono font-extrabold text-[12px] flex items-center justify-center tracking-wider selection:bg-none">
+      {initials}
+    </div>
+  );
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -151,13 +194,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* User Avatar */}
           <Link
             href="/dashboard/profile"
-            className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/20 hover:border-primary transition-all shrink-0"
+            className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/20 hover:border-primary transition-all shrink-0 bg-gray-800 flex items-center justify-center text-white text-xs font-bold"
           >
-            <img
-              src="/images/professional-female-headshot.jpg"
-              alt="User Profile"
-              className="w-full h-full object-cover"
-            />
+            <AvatarImage />
           </Link>
         </div>
       </header>

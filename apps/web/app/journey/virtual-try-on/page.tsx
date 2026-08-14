@@ -25,7 +25,7 @@ export default function VirtualTryOnPage() {
   const router = useRouter();
 
   // Baseline photo or avatar model selection
-  const [userPhoto, setUserPhoto] = useState<string>('/vto/models/female/black/female_black_base.jpg');
+  const [userPhoto, setUserPhoto] = useState<string>('/vto/looks/female/F01_job_interview.png');
   const [selectedAvatarId, setSelectedAvatarId] = useState<string>('user_selfie');
   const [activeCatalogTab, setActiveCatalogTab] = useState<'clothing' | 'footwear' | 'accessories' | 'style_references'>('clothing');
 
@@ -49,7 +49,7 @@ export default function VirtualTryOnPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedPhoto = localStorage.getItem('personaiq_user_selfie_preview');
+      const savedPhoto = localStorage.getItem('personaiq_user_outfit_preview') || localStorage.getItem('personaiq_user_selfie_preview');
       if (savedPhoto) {
         setUserPhoto(savedPhoto);
       }

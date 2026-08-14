@@ -15,9 +15,9 @@ export default function SavedPlansPage() {
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
           const mapped = res.data.map((p: any) => ({
             id: p.id,
-            image: p.selected_outfit_url || '/images/brown-peaked-lapel-suit.jpg',
+            image: p.selected_outfit_url || p.outfit_image || '/vto/clothing/professional/01_navy_suit.jpg',
             tag: p.vibe_category || 'EXECUTIVE',
-            score: `${p.overall_presence_score || 88}% PRESENCE INDEX`,
+            score: `${p.overall_presence_score || p.presence_score || 88}% PRESENCE INDEX`,
             title: p.title || 'Executive Session Strategy',
             description: p.executive_summary || 'Custom presence plan optimized for executive decision making.',
             requiredItems: p.checklist ? p.checklist.map((c: any) => ({ name: c.task, checked: c.is_completed })) : [
@@ -27,22 +27,47 @@ export default function SavedPlansPage() {
           }));
           setPlans(mapped);
         } else {
-          // Fallback to overview recent plans if available
-          const overview = await dashboardApi.getOverview();
-          if (overview?.recent_plans && overview.recent_plans.length > 0) {
-            const mapped = overview.recent_plans.map((p: any) => ({
-              id: p.id,
-              image: '/images/brown-peaked-lapel-suit.jpg',
-              tag: 'STRATEGY',
-              score: `${p.overall_presence_score || 85}% PRESENCE INDEX`,
-              title: p.executive_summary ? p.executive_summary.substring(0, 30) + '...' : 'Presence Session',
-              description: p.vibe_analysis || 'AI-generated presence alignment strategy.',
+          // Check locally saved journeys if server returns empty
+          let localSaved: any[] = [];
+          if (typeof window !== 'undefined') {
+            const raw = localStorage.getItem('personaiq_saved_journeys');
+            if (raw) {
+              try { localSaved = JSON.parse(raw); } catch (e) {}
+            }
+          }
+
+          if (localSaved.length > 0) {
+            const mapped = localSaved.map((j: any) => ({
+              id: j.id,
+              image: j.outfit_image || '/vto/clothing/professional/01_navy_suit.jpg',
+              tag: j.occasion ? j.occasion.toUpperCase() : 'STRATEGY',
+              score: `${j.presence_score || 92}% PRESENCE INDEX`,
+              title: j.title || `${j.outfit_name || 'Executive'} Plan`,
+              description: `Analyzed for ${j.dress_code || 'Business Formal'} attire with ${j.target_vibe || 'Confident'} tone.`,
               requiredItems: [
-                { name: 'Posture alignment review', checked: true },
-                { name: 'Color contrast check', checked: true },
+                { name: `${j.outfit_name || 'Tailored Suit'}`, checked: true },
+                { name: 'High-contrast Crisp Shirt', checked: true },
               ],
             }));
             setPlans(mapped);
+          } else {
+            // Fallback to overview recent plans if available
+            const overview = await dashboardApi.getOverview().catch(() => null);
+            if (overview?.recent_plans && overview.recent_plans.length > 0) {
+              const mapped = overview.recent_plans.map((p: any) => ({
+                id: p.id,
+                image: p.outfit_image || '/vto/clothing/professional/01_navy_suit.jpg',
+                tag: 'STRATEGY',
+                score: `${p.overall_presence_score || 85}% PRESENCE INDEX`,
+                title: p.executive_summary ? p.executive_summary.substring(0, 30) + '...' : 'Presence Session',
+                description: p.vibe_analysis || 'AI-generated presence alignment strategy.',
+                requiredItems: [
+                  { name: 'Posture alignment review', checked: true },
+                  { name: 'Color contrast check', checked: true },
+                ],
+              }));
+              setPlans(mapped);
+            }
           }
         }
       } catch (err) {

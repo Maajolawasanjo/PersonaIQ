@@ -151,8 +151,8 @@ export default function JourneyDetailsHubPage() {
 
             <div className="relative aspect-[4/3] w-full rounded-[16px] overflow-hidden bg-gray-100 border border-gray-200">
               <img
-                src="/images/brown-peaked-lapel-suit.jpg"
-                alt="Navy Unstructured Blazer & Grey Trousers"
+                src="/vto/clothing/professional/01_navy_suit.jpg"
+                alt="Executive Navy Tailored Suit"
                 className="w-full h-full object-cover"
               />
             </div>

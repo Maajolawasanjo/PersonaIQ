@@ -10,7 +10,7 @@ import { analyzeImageFidelity } from '@/lib/utils/imageAnalysis';
 
 export default function SkinIntelligencePage() {
   const router = useRouter();
-  const [userPhoto, setUserPhoto] = useState<string>('/images/professional-female-headshot.jpg');
+  const [userPhoto, setUserPhoto] = useState<string>('/vto/models/male/black/male_black_base.jpg');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(true);
   
   // Dynamic AI Telemetry State
