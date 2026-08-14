@@ -288,7 +288,7 @@ export default function MarketingHomePage() {
 
           {/* Centered CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link href="/onboarding">
+            <Link href="/login">
               <Button className="h-12 px-8 bg-[#FF1323] hover:bg-[#E00010] text-white font-bold text-[14.5px] rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-[0.98]">
                 Start Your Journey
               </Button>
@@ -699,7 +699,7 @@ export default function MarketingHomePage() {
             Eliminate visual uncertainty and present yourself with absolute confidence.
           </p>
           <div className="pt-4">
-            <Link href="/signup">
+            <Link href="/login">
               <Button className="h-12 px-8 bg-primary hover:bg-primary/90 text-white font-bold text-[15px] rounded-md transition-all active:scale-[0.98] shadow-sm">
                 Start Your Presence Journey
               </Button>

@@ -16,7 +16,8 @@ import {
   TrendingUp, 
   Bell, 
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/providers/auth-provider';
 import { dashboardApi } from '@/lib/api/services';
@@ -26,7 +27,7 @@ export default function DashboardHomePage() {
   const { user } = useAuth();
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
+  const [resumeStep, setResumeStep] = useState<string>('/journey/start');
   const [localJourneys, setLocalJourneys] = useState<any[]>([]);
 
   useEffect(() => {
