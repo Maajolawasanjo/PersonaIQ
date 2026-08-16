@@ -55,13 +55,13 @@ export default function VirtualTryOnPage() {
   const router = useRouter();
 
   // Baseline photo & context state
-  const [userPhoto, setUserPhoto] = useState<string>('/vto/looks/male/M01_job_interview.png');
+  const [userPhoto, setUserPhoto] = useState<string>('/vto/looks/female/F01_job_interview.png');
   const [userSelfieAvailable, setUserSelfieAvailable] = useState<boolean>(false);
   const [selectedAvatarId, setSelectedAvatarId] = useState<string>('user_selfie');
 
   // Journey context loaded from localStorage
-  const [occasion, setOccasion] = useState<string>('Job Interview');
-  const [dressCode, setDressCode] = useState<string>('Business Formal');
+  const [occasion, setOccasion] = useState<string>('Date Night');
+  const [dressCode, setDressCode] = useState<string>('Casual');
   const [targetVibe, setTargetVibe] = useState<string>('Confident');
 
   // Studio tabs & filters
@@ -159,13 +159,13 @@ export default function VirtualTryOnPage() {
         localStorage.getItem('personaiq_event_title') ||
         localStorage.getItem('personaiq_event_type') ||
         localStorage.getItem('personaiq_active_occasion') ||
-        'Job Interview';
+        'Date Night';
       setOccasion(savedOccasion);
 
       const savedDressCode =
         localStorage.getItem('personaiq_dress_code') ||
         localStorage.getItem('personaiq_active_dress_code') ||
-        'Business Formal';
+        'Casual';
       setDressCode(savedDressCode);
 
       const savedVibe = localStorage.getItem('personaiq_target_vibe') || 'Confident';
@@ -189,7 +189,7 @@ export default function VirtualTryOnPage() {
       }
 
       // Initial YouCam VTO AI composite call
-      const activeImage = savedSelfie || outfitPreview || '/vto/looks/male/M01_job_interview.png';
+      const activeImage = savedSelfie || outfitPreview || '/vto/looks/female/F01_job_interview.png';
       stylistApi.vtoPreview('user_selfie', [selectedGarment, selectedShoe], activeImage)
         .then((res) => {
           const resultUrl = res?.data?.result_image_url || res?.data?.result_url || res?.preview_url || res?.data?.preview_url;
@@ -360,53 +360,59 @@ export default function VirtualTryOnPage() {
   });
 
   return (
-    <div className="bg-[#0B0F17] text-white min-h-screen -mx-4 -mt-6 p-4 sm:p-6 lg:p-8 font-sans space-y-6">
+    <div className="space-y-8 animate-fadeIn py-2">
       
-      {/* ── TOP HEADER BAR (BRANDED STUDIO NAV) ─────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-800 pb-5">
-        
-        {/* Left: Studio Title */}
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shadow-2xs">
-              <Sparkles className="w-4 h-4" />
+      {/* ── TOP STEP & BRANDED TITLE HEADER ────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono font-bold text-gray-500 uppercase tracking-widest border-t-2 border-red-600 pt-3">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+            <span>PRESENCE JOURNEY STAGE</span>
+          </div>
+          <span>STEP 10 OF 15 — VIRTUAL TRY-ON STUDIO</span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-950 font-sans">
+                AI Virtual Try-On Studio
+              </h1>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-sans text-white">
-              AI Virtual Try-On Studio
-            </h1>
+            <p className="text-base text-gray-600 mt-1 max-w-3xl pl-12">
+              See your looks. Own your presence. Powered by Perfect Corp YouCam AI engine.
+            </p>
           </div>
-          <p className="text-xs text-gray-400 font-medium pl-10">
-            See your looks. Own your presence. Powered by Perfect Corp YouCam AI.
-          </p>
+
+          {/* Context Badges & Edit Context Shortcut */}
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <div className="bg-white border border-gray-250 rounded-xl px-3.5 py-1.5 shadow-2xs">
+              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase block">OCCASION</span>
+              <span className="text-xs font-bold text-gray-950 block">{occasion}</span>
+            </div>
+
+            <div className="bg-white border border-gray-250 rounded-xl px-3.5 py-1.5 shadow-2xs">
+              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase block">DRESS CODE</span>
+              <span className="text-xs font-bold text-gray-950 block">{dressCode}</span>
+            </div>
+
+            <div className="bg-white border border-gray-250 rounded-xl px-3.5 py-1.5 shadow-2xs">
+              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase block">VIBE</span>
+              <span className="text-xs font-bold text-red-600 block">{targetVibe}</span>
+            </div>
+
+            <Link
+              href="/journey/event-type"
+              className="h-10 px-3.5 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl border border-gray-250 shadow-2xs transition-colors flex items-center space-x-1.5"
+            >
+              <Pencil className="w-3.5 h-3.5 text-red-600" />
+              <span>Edit Context</span>
+            </Link>
+          </div>
         </div>
-
-        {/* Center/Right: Context Badges & Edit Button */}
-        <div className="flex flex-wrap items-center gap-3">
-          
-          <div className="bg-[#131927] border border-gray-800 rounded-xl px-3.5 py-1.5 flex items-center space-x-2">
-            <span className="text-[11px] font-mono text-gray-400 uppercase">Occasion</span>
-            <span className="text-xs font-bold text-white">{occasion}</span>
-          </div>
-
-          <div className="bg-[#131927] border border-gray-800 rounded-xl px-3.5 py-1.5 flex items-center space-x-2">
-            <span className="text-[11px] font-mono text-gray-400 uppercase">Dress Code</span>
-            <span className="text-xs font-bold text-white">{dressCode}</span>
-          </div>
-
-          <div className="bg-[#131927] border border-gray-800 rounded-xl px-3.5 py-1.5 flex items-center space-x-2">
-            <span className="text-[11px] font-mono text-gray-400 uppercase">Vibe</span>
-            <span className="text-xs font-bold text-purple-300">{targetVibe}</span>
-          </div>
-
-          <Link
-            href="/journey/event-type"
-            className="h-8 px-3 bg-[#1A2234] hover:bg-[#232D45] text-gray-300 font-bold text-xs rounded-xl border border-gray-700 transition-colors flex items-center space-x-1.5 shrink-0"
-          >
-            <Pencil className="w-3 h-3 text-purple-400" />
-            <span>Edit Context</span>
-          </Link>
-        </div>
-
       </div>
 
       {/* ── MAIN STUDIO GRID (LEFT 7 COLS CANVAS + RIGHT 5 COLS WARDROBE) ───────── */}
@@ -421,7 +427,7 @@ export default function VirtualTryOnPage() {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            className={`bg-[#0F1420] rounded-2xl overflow-hidden border border-gray-800 shadow-2xl relative aspect-[4/3] sm:aspect-[16/11] select-none group transition-transform ${
+            className={`bg-gray-950 rounded-2xl overflow-hidden border border-gray-800 shadow-xl relative aspect-[4/3] sm:aspect-[16/11] select-none group transition-transform ${
               isZoomed ? 'scale-105 z-30' : ''
             }`}
           >
@@ -435,7 +441,7 @@ export default function VirtualTryOnPage() {
                   backgroundEffect === 'blur' ? 'backdrop-blur-md' : ''
                 }`}
               />
-              <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-gray-300 text-[10px] font-mono font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-white/10 z-10 shadow-md">
+              <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-white text-[10px] font-mono font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-white/10 z-10 shadow-md">
                 YOUR PHOTO
               </div>
             </div>
@@ -454,8 +460,8 @@ export default function VirtualTryOnPage() {
                   left: `-${(sliderPosition / 100) * (sliderRef.current ? sliderRef.current.clientWidth : 800)}px`,
                 }}
               />
-              <div className="absolute top-4 right-4 bg-purple-900/90 backdrop-blur-md text-purple-200 text-[10px] font-mono font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-purple-500/40 z-10 shadow-md flex items-center space-x-1">
-                <Sparkles className="w-3 h-3 text-purple-300" />
+              <div className="absolute top-4 right-4 bg-red-600 text-white text-[10px] font-mono font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-red-400 z-10 shadow-md flex items-center space-x-1">
+                <Sparkles className="w-3 h-3 text-white" />
                 <span>VTO RESULT</span>
               </div>
             </div>
@@ -463,10 +469,10 @@ export default function VirtualTryOnPage() {
             {/* INTERACTIVE SPLIT SLIDER DIVIDER BAR */}
             <div
               onMouseDown={handleMouseDown}
-              className="absolute top-0 bottom-0 w-1 bg-white/80 cursor-ew-resize z-20 flex items-center justify-center hover:w-1.5 transition-all"
+              className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize z-20 flex items-center justify-center shadow-lg hover:w-1.5 transition-all"
               style={{ left: `${sliderPosition}%` }}
             >
-              <div className="w-9 h-9 rounded-full bg-white text-gray-950 shadow-xl border-2 border-purple-600 flex items-center justify-center font-bold text-xs shrink-0 cursor-ew-resize hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-full bg-red-600 text-white shadow-xl border-2 border-white flex items-center justify-center font-bold text-xs shrink-0 cursor-ew-resize hover:scale-110 transition-transform">
                 ↔
               </div>
             </div>
@@ -478,7 +484,7 @@ export default function VirtualTryOnPage() {
                 onClick={() => setIsZoomed(!isZoomed)}
                 className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center text-[9px] font-mono transition-all backdrop-blur-md border ${
                   isZoomed
-                    ? 'bg-purple-600 text-white border-purple-400 shadow-lg'
+                    ? 'bg-red-600 text-white border-red-400 shadow-lg'
                     : 'bg-black/60 hover:bg-black/80 text-gray-300 border-white/10'
                 }`}
                 title="Toggle Zoom"
@@ -511,7 +517,7 @@ export default function VirtualTryOnPage() {
             {/* SPINNER OVERLAY DURING YOUCAM RENDER */}
             {isGenerating && (
               <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2 bg-black/70 backdrop-blur-xs z-30">
-                <RefreshCw className="w-8 h-8 text-purple-400 animate-spin" />
+                <RefreshCw className="w-8 h-8 text-red-500 animate-spin" />
                 <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
                   YouCam AI Rendering Garment...
                 </span>
@@ -521,15 +527,15 @@ export default function VirtualTryOnPage() {
           </div>
 
           {/* SAVED LOOKS CAROUSEL BAR (UNDER CANVAS) */}
-          <div className="bg-[#131927] border border-gray-800 rounded-2xl p-4 space-y-3">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono font-bold text-gray-400 uppercase tracking-wider">
+              <span className="text-xs font-mono font-bold text-gray-600 uppercase tracking-wider">
                 SAVED OUTFIT LOOKS
               </span>
               <button
                 type="button"
                 onClick={handleSaveCurrentLook}
-                className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center space-x-1 cursor-pointer"
+                className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center space-x-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Save Current Composition</span>
@@ -543,10 +549,10 @@ export default function VirtualTryOnPage() {
                   <div
                     key={look.id}
                     onClick={() => handleSelectSavedLook(look)}
-                    className={`bg-[#182032] rounded-xl p-2 border transition-all cursor-pointer relative group flex flex-col justify-between ${
+                    className={`bg-gray-50 rounded-xl p-2 border transition-all cursor-pointer relative group flex flex-col justify-between ${
                       isActive
-                        ? 'border-2 border-purple-500 ring-2 ring-purple-500/30 bg-purple-950/20'
-                        : 'border-gray-800 hover:border-gray-700'
+                        ? 'border-2 border-red-600 ring-4 ring-red-100 bg-red-50/20'
+                        : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="aspect-[4/3] bg-gray-900 rounded-lg overflow-hidden relative mb-2">
@@ -555,14 +561,14 @@ export default function VirtualTryOnPage() {
                         {look.score}
                       </div>
                       {isActive && (
-                        <div className="absolute top-1 left-1 bg-purple-600 text-white rounded-full p-0.5 shadow-md">
+                        <div className="absolute top-1 left-1 bg-red-600 text-white rounded-full p-0.5 shadow-md">
                           <Check className="w-3 h-3 stroke-[3]" />
                         </div>
                       )}
                     </div>
 
                     <div className="space-y-0.5">
-                      <span className="text-xs font-extrabold text-white block truncate">{look.title}</span>
+                      <span className="text-xs font-extrabold text-gray-950 block truncate">{look.title}</span>
                     </div>
                   </div>
                 );
@@ -572,10 +578,10 @@ export default function VirtualTryOnPage() {
               <button
                 type="button"
                 onClick={handleSaveCurrentLook}
-                className="bg-[#182032] hover:bg-[#20293D] rounded-xl border border-dashed border-gray-700 hover:border-purple-500 p-4 transition-all cursor-pointer flex flex-col items-center justify-center space-y-1.5 text-gray-400 hover:text-purple-300 min-h-[100px]"
+                className="bg-gray-50 hover:bg-gray-100 rounded-xl border border-dashed border-gray-300 hover:border-red-600 p-4 transition-all cursor-pointer flex flex-col items-center justify-center space-y-1.5 text-gray-500 hover:text-red-600 min-h-[100px]"
               >
-                <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center">
-                  <Plus className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                  <Plus className="w-4 h-4 text-gray-700" />
                 </div>
                 <span className="text-xs font-bold">Save Look</span>
               </button>
@@ -583,18 +589,18 @@ export default function VirtualTryOnPage() {
           </div>
 
           {/* PRESENCE IMPACT METRICS BAR (UNDER CAROUSEL) */}
-          <div className="bg-[#131927] border border-gray-800 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
               <div className="flex items-center space-x-2">
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-mono font-bold text-gray-800 uppercase tracking-wider">
                   PRESENCE IMPACT ANALYSIS
                 </span>
               </div>
 
               <Link
                 href="/journey/explanation"
-                className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center space-x-1"
+                className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center space-x-1"
               >
                 <span>View Full Analysis</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -604,36 +610,36 @@ export default function VirtualTryOnPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 items-center">
               
               {/* Main Score Bar */}
-              <div className="sm:col-span-2 space-y-1.5 bg-[#182032] p-3 rounded-xl border border-gray-800">
-                <span className="text-[11px] font-mono text-gray-400 uppercase block font-bold">Overall Presence Impact</span>
+              <div className="sm:col-span-2 space-y-1.5 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                <span className="text-[11px] font-mono text-gray-500 uppercase block font-bold">Overall Presence Impact</span>
                 <div className="flex items-baseline space-x-2">
-                  <span className="text-2xl font-black text-white">{presenceScore}</span>
-                  <span className="text-xs font-bold text-gray-500">/ 100</span>
+                  <span className="text-2xl font-black text-gray-950">{presenceScore}</span>
+                  <span className="text-xs font-bold text-gray-400">/ 100</span>
                 </div>
-                <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-emerald-400 rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-red-600 to-emerald-500 rounded-full transition-all duration-500"
                     style={{ width: `${presenceScore}%` }}
                   />
                 </div>
               </div>
 
               {/* Metric 1 */}
-              <div className="bg-[#182032] p-3 rounded-xl border border-gray-800 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-400 uppercase block font-bold">Confidence</span>
-                <span className="text-lg font-extrabold text-emerald-400">92</span>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
+                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Confidence</span>
+                <span className="text-lg font-extrabold text-emerald-600">92</span>
               </div>
 
               {/* Metric 2 */}
-              <div className="bg-[#182032] p-3 rounded-xl border border-gray-800 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-400 uppercase block font-bold">Authority</span>
-                <span className="text-lg font-extrabold text-emerald-400">91</span>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
+                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Authority</span>
+                <span className="text-lg font-extrabold text-emerald-600">91</span>
               </div>
 
               {/* Metric 3 */}
-              <div className="bg-[#182032] p-3 rounded-xl border border-gray-800 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-400 uppercase block font-bold">Style Fit</span>
-                <span className="text-lg font-extrabold text-emerald-400">94</span>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
+                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Style Fit</span>
+                <span className="text-lg font-extrabold text-emerald-600">94</span>
               </div>
 
             </div>
@@ -645,10 +651,10 @@ export default function VirtualTryOnPage() {
         <div className="lg:col-span-5 space-y-6">
 
           {/* MAIN CATALOG & CATEGORY TABS CONTAINER */}
-          <div className="bg-[#131927] border border-gray-800 rounded-2xl p-5 space-y-4 shadow-xl">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-5 shadow-2xs">
             
             {/* Category Tabs Header */}
-            <div className="grid grid-cols-4 gap-1.5 bg-[#182032] p-1 rounded-xl border border-gray-800">
+            <div className="grid grid-cols-4 gap-1.5 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
               <button
                 type="button"
                 onClick={() => {
@@ -657,8 +663,8 @@ export default function VirtualTryOnPage() {
                 }}
                 className={`py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   activeTab === 'clothing'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-950'
                 }`}
               >
                 <Shirt className="w-3.5 h-3.5" />
@@ -673,8 +679,8 @@ export default function VirtualTryOnPage() {
                 }}
                 className={`py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   activeTab === 'footwear'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-950'
                 }`}
               >
                 <Footprints className="w-3.5 h-3.5" />
@@ -689,8 +695,8 @@ export default function VirtualTryOnPage() {
                 }}
                 className={`py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   activeTab === 'accessories'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-950'
                 }`}
               >
                 <Watch className="w-3.5 h-3.5" />
@@ -705,8 +711,8 @@ export default function VirtualTryOnPage() {
                 }}
                 className={`py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   activeTab === 'style_references'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-950'
                 }`}
               >
                 <Scissors className="w-3.5 h-3.5" />
@@ -723,8 +729,8 @@ export default function VirtualTryOnPage() {
                   onClick={() => setActiveSubFilter(filter.id)}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                     activeSubFilter === filter.id
-                      ? 'bg-purple-950 text-purple-300 border border-purple-500/50'
-                      : 'bg-[#182032] text-gray-400 border border-gray-800 hover:text-gray-200'
+                      ? 'bg-red-50 text-red-700 border border-red-200'
+                      : 'bg-gray-100 text-gray-600 border border-gray-200 hover:text-gray-900'
                   }`}
                 >
                   {filter.label}
@@ -734,8 +740,8 @@ export default function VirtualTryOnPage() {
 
             {/* Imported Online Store Items Notice */}
             {importedItems.length > 0 && (
-              <div className="space-y-2 pt-1 border-b border-gray-800 pb-3">
-                <span className="text-[10px] font-mono font-bold text-purple-400 uppercase tracking-wider block">
+              <div className="space-y-2 pt-1 border-b border-gray-200 pb-3">
+                <span className="text-[10px] font-mono font-bold text-red-600 uppercase tracking-wider block">
                   MY IMPORTED GARMENTS ({importedItems.length})
                 </span>
                 <div className="grid grid-cols-2 gap-2">
@@ -743,24 +749,24 @@ export default function VirtualTryOnPage() {
                     <div
                       key={item.id}
                       onClick={() => handleAssetSelect(item)}
-                      className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center space-x-2 bg-purple-950/20 ${
+                      className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center space-x-2 bg-red-50/40 ${
                         selectedGarment.id === item.id || selectedShoe?.id === item.id
-                          ? 'border-2 border-purple-500'
-                          : 'border-purple-800/40 hover:border-purple-700'
+                          ? 'border-2 border-red-600 ring-2 ring-red-100'
+                          : 'border-red-200 hover:border-red-300'
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-900 shrink-0 border border-gray-800">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
                         <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
                       </div>
-                      <span className="text-xs font-bold text-white truncate">{item.name}</span>
+                      <span className="text-xs font-bold text-gray-900 truncate">{item.name}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* PRODUCT CATALOG CARDS GRID (2 COLUMNS) */}
-            <div className="grid grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+            {/* PRODUCT CATALOG CARDS GRID (2 COLUMNS, SPACIOUS CARDS) */}
+            <div className="grid grid-cols-2 gap-4 max-h-[440px] overflow-y-auto pr-1">
               {filteredCatalogItems.map((item) => {
                 const isSelected =
                   selectedGarment.id === item.id ||
@@ -775,24 +781,24 @@ export default function VirtualTryOnPage() {
                   <div
                     key={item.id}
                     onClick={() => handleAssetSelect(item)}
-                    className={`bg-[#182032] border rounded-xl overflow-hidden p-3 transition-all cursor-pointer group flex flex-col justify-between relative ${
+                    className={`bg-white border rounded-2xl overflow-hidden p-3.5 transition-all cursor-pointer group flex flex-col justify-between relative ${
                       isSelected
-                        ? 'border-2 border-purple-500 ring-2 ring-purple-500/30 bg-purple-950/20 shadow-lg'
-                        : 'border-gray-800 hover:border-gray-700'
+                        ? 'border-2 border-red-600 ring-4 ring-red-100 shadow-md bg-red-50/10 scale-[1.01]'
+                        : 'border-gray-200 hover:border-gray-300 shadow-2xs'
                     }`}
                   >
-                    {/* Top Image Box */}
-                    <div className="aspect-square bg-[#0F1420] rounded-lg overflow-hidden relative mb-2.5 border border-gray-800">
+                    {/* Top Image Container — Clean Light Background for Isolated Garments */}
+                    <div className="aspect-[4/3] bg-gray-50 rounded-xl overflow-hidden relative mb-3 border border-gray-200 flex items-center justify-center p-1">
                       <img
                         src={item.image_url}
                         alt={item.name}
-                        className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                        className="w-full h-full object-contain object-center transition-transform duration-300 group-hover:scale-105"
                       />
 
                       {/* Selected Checkmark Badge */}
                       {isSelected && (
-                        <div className="absolute top-2 left-2 bg-purple-600 text-white rounded-full p-1 shadow-md z-10">
-                          <Check className="w-3 h-3 stroke-[3]" />
+                        <div className="absolute top-2 left-2 bg-red-600 text-white rounded-full p-1 shadow-md z-10">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
                         </div>
                       )}
 
@@ -803,7 +809,7 @@ export default function VirtualTryOnPage() {
                         className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all z-10 ${
                           isFav
                             ? 'bg-red-600 text-white shadow-md'
-                            : 'bg-black/60 hover:bg-black/80 text-gray-300 backdrop-blur-md'
+                            : 'bg-white/80 hover:bg-white text-gray-700 shadow-2xs border border-gray-200'
                         }`}
                       >
                         <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
@@ -811,18 +817,18 @@ export default function VirtualTryOnPage() {
                     </div>
 
                     {/* Card Text & Price Info */}
-                    <div className="space-y-1.5 flex-1 flex flex-col justify-between">
-                      <h4 className="text-xs font-extrabold text-white font-sans line-clamp-2 leading-snug">
+                    <div className="space-y-2 flex-1 flex flex-col justify-between">
+                      <h4 className="text-xs font-extrabold text-gray-950 font-sans line-clamp-2 leading-snug">
                         {item.name}
                       </h4>
 
-                      <div className="flex items-center justify-between pt-1 border-t border-gray-800/80">
-                        <span className="text-xs font-mono font-extrabold text-gray-300">
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-150">
+                        <span className="text-xs font-mono font-extrabold text-gray-900">
                           ${itemPrice}
                         </span>
 
                         {/* Circular Score Meter Badge */}
-                        <div className="bg-[#0F1420] border border-emerald-500/40 text-emerald-400 font-mono font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center space-x-1">
+                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center space-x-1">
                           <span>{itemScore}</span>
                         </div>
                       </div>
@@ -835,41 +841,41 @@ export default function VirtualTryOnPage() {
           </div>
 
           {/* IMPORT FROM ONLINE STORE BANNER */}
-          <div className="bg-gradient-to-r from-purple-950/60 via-[#131927] to-purple-950/40 border border-purple-800/50 rounded-2xl p-4 shadow-md space-y-3">
+          <div className="bg-gradient-to-r from-red-50/80 via-white to-red-50/40 border border-red-200 rounded-2xl p-4.5 shadow-2xs space-y-3">
             <button
               type="button"
               onClick={() => setIsImportOpen(!isImportOpen)}
               className="w-full flex items-center justify-between text-left cursor-pointer"
             >
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-8.5 h-8.5 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                   <Globe className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-extrabold text-white font-sans">
+                  <h3 className="text-xs font-extrabold text-gray-950 font-sans">
                     Import from Online Store
                   </h3>
-                  <span className="text-[11px] font-mono text-gray-400">
+                  <span className="text-[11px] font-mono text-gray-500">
                     Paste any product link (Zara, ASOS, Nordstrom, etc.)
                   </span>
                 </div>
               </div>
 
-              <ChevronRight className={`w-4 h-4 text-purple-400 transition-transform ${isImportOpen ? 'rotate-90' : ''}`} />
+              <ChevronRight className={`w-4 h-4 text-red-600 transition-transform ${isImportOpen ? 'rotate-90' : ''}`} />
             </button>
 
             {isImportOpen && (
-              <form onSubmit={handleImportProduct} className="flex items-center space-x-2 pt-2 border-t border-gray-800">
+              <form onSubmit={handleImportProduct} className="flex items-center space-x-2 pt-2 border-t border-red-150">
                 <input
                   type="url"
                   value={productUrl}
                   onChange={(e) => setProductUrl(e.target.value)}
                   placeholder="Paste store product URL..."
-                  className="flex-1 h-10 px-3 bg-[#0F1420] border border-gray-700 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 transition-colors"
+                  className="flex-1 h-10 px-3.5 bg-white border border-gray-300 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-red-600 transition-colors"
                 />
                 <button
                   type="submit"
-                  className="h-10 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
+                  className="h-10 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
                 >
                   Import
                 </button>
@@ -878,9 +884,9 @@ export default function VirtualTryOnPage() {
           </div>
 
           {/* AI STYLIST RECOMMENDATION BOX */}
-          <div className="bg-[#131927] border border-gray-800 rounded-2xl p-5 space-y-3 shadow-xl">
-            <div className="flex items-center space-x-2 text-purple-400">
-              <Sparkles className="w-4 h-4" />
+          <div className="bg-gray-950 text-white border border-gray-800 rounded-2xl p-5 space-y-3 shadow-md">
+            <div className="flex items-center space-x-2.5 text-red-500">
+              <Sparkles className="w-4.5 h-4.5" />
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
                 AI STYLIST RECOMMENDATION
               </h3>
@@ -890,18 +896,18 @@ export default function VirtualTryOnPage() {
               {aiStylistText}
             </p>
 
-            {/* 4 Vibe Pills */}
+            {/* 4 Red Brand Vibe Pills */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-[11px] font-medium bg-purple-950/80 text-purple-300 border border-purple-800/60 px-3 py-1 rounded-full">
+              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
                 Clean Silhouette
               </span>
-              <span className="text-[11px] font-medium bg-purple-950/80 text-purple-300 border border-purple-800/60 px-3 py-1 rounded-full">
+              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
                 Power Color
               </span>
-              <span className="text-[11px] font-medium bg-purple-950/80 text-purple-300 border border-purple-800/60 px-3 py-1 rounded-full">
+              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
                 Interview Ready
               </span>
-              <span className="text-[11px] font-medium bg-purple-950/80 text-purple-300 border border-purple-800/60 px-3 py-1 rounded-full">
+              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
                 Executive Presence
               </span>
             </div>
@@ -912,15 +918,15 @@ export default function VirtualTryOnPage() {
             <button
               type="button"
               onClick={handleSaveCurrentLook}
-              className="h-12 px-4 bg-[#182032] hover:bg-[#20293D] text-gray-200 font-bold text-xs rounded-xl border border-gray-800 transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-2xs"
+              className="h-12 px-4 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs rounded-xl border border-gray-250 transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-2xs"
             >
-              <Bookmark className="w-4 h-4 text-gray-400" />
+              <Bookmark className="w-4 h-4 text-gray-500" />
               <span>Save to Wardrobe</span>
             </button>
 
             <Link
               href="/journey/grooming-checklist"
-              className="h-12 px-5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              className="h-12 px-5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer"
             >
               <span>Complete My Look</span>
               <ArrowRight className="w-4 h-4" />
