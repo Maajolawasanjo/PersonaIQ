@@ -30,7 +30,6 @@ export interface AuthTokens {
   refresh_token?: string;
   token_type?: string;
   expires_in?: number;
-  requires_2fa?: boolean;
   email?: string;
 }
 
@@ -146,10 +145,17 @@ export interface PresencePlan {
 }
 
 export interface DashboardOverview {
-  user_id: string;
-  total_journeys: number;
-  average_presence_score: number;
-  highest_score: number;
-  active_journey?: Journey;
-  recent_journeys: Journey[];
+  // Backend DTO fields
+  active_journey?: Journey | null;
+  presence_index_avg?: number;
+  completed_journeys_count?: number;
+  total_journeys_count?: number;
+  recent_plans?: PresencePlan[];
+  quick_stats?: Record<string, string>;
+
+  // Legacy / local-fallback aliases (kept for merge logic in dashboard/page.tsx)
+  total_journeys?: number;
+  average_presence_score?: number;
+  highest_score?: number;
+  recent_journeys?: Journey[];
 }

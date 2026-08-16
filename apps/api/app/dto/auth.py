@@ -24,18 +24,7 @@ class AuthTokenDTO(BaseModel):
     refresh_token: Optional[str] = None
     token_type: str = "Bearer"
     user: Optional[UserDTO] = None
-    requires_2fa: bool = False
     email: Optional[str] = None
-
-
-
-class VerifyOTPRequest(BaseModel):
-    email: EmailStr
-    code: str = Field(..., min_length=6, max_length=6)
-
-
-class ResendOTPRequest(BaseModel):
-    email: EmailStr
 
 
 class ForgotPasswordRequest(BaseModel):

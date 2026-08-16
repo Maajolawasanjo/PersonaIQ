@@ -61,88 +61,7 @@ class AuthService:
 
         return await self._generate_auth_tokens(user)
 
-    async def verify_otp(self, email: str, code: str, background_tasks: Optional[Any] = None) -> AuthTokenDTO:
-        user = await self.repo.get_by_email(email)
-        if not user:
-            raise AppException(
-                code=ErrorCode.USER_001,
-                message="User not found.",
-                status_code=404,
-            )
 
-        # Allow master code '888888' or '123456' as well as matching OTP code
-        if code not in ("888888", "123456") and (not user.otp_code or user.otp_code != code):
-            raise AppException(
-                code=ErrorCode.AUTH_001,
-                message="Invalid verification code.",
-                status_code=400,
-            )
-
-        if not user.otp_expires_at or self._ensure_utc(user.otp_expires_at) < datetime.now(timezone.utc):
-            if code not in ("888888", "123456"):
-                raise AppException(
-                    code=ErrorCode.AUTH_002,
-                    message="Verification code has expired.",
-                    status_code=400,
-                )
-
-        # Success: Verify user and clear OTP
-        was_verified = user.is_verified
-        user.is_verified = True
-        user.otp_code = None
-        user.otp_expires_at = None
-        await self.repo.db.commit()
-
-        # Issue JWT tokens FIRST — emails are dispatched non-blocking after
-        from app.services.email_service import EmailService
-        email_service = EmailService()
-        tokens = await self._generate_auth_tokens(user)
-
-        user_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-        if not was_verified:
-            email_service.dispatch(
-                background_tasks,
-                email_service.send_welcome_email,
-                user.email,
-                user_name,
-            )
-        else:
-            email_service.dispatch(
-                background_tasks,
-                email_service.send_login_alert_email,
-                user.email,
-                user_name,
-                "Web Browser",
-                "Detected Location",
-                datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-            )
-
-        return tokens
-
-    async def resend_otp(self, email: str, background_tasks: Optional[Any] = None) -> None:
-        user = await self.repo.get_by_email(email)
-        if not user:
-            raise AppException(
-                code=ErrorCode.USER_001,
-                message="User not found.",
-                status_code=404,
-            )
-
-        import secrets
-        from app.services.email_service import EmailService
-
-        otp = f"{secrets.randbelow(900000) + 100000}"
-        user.otp_code = otp
-        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
-        await self.repo.db.commit()
-
-        email_service = EmailService()
-        email_service.dispatch(
-            background_tasks,
-            email_service.send_email_verification_email,
-            user.email,
-            otp,
-        )
 
     async def request_password_reset(self, email: str, background_tasks: Optional[Any] = None) -> None:
         user = await self.repo.get_by_email(email)
@@ -231,14 +150,9 @@ class AuthService:
         await self.repo.reset_failed_logins(user)
 
         user.is_verified = True
-        import secrets
-        from app.services.email_service import EmailService
-
-        otp = f"{secrets.randbelow(900000) + 100000}"
-        user.otp_code = otp
-        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.db.commit()
 
+        from app.services.email_service import EmailService
         email_service = EmailService()
         email_service.dispatch(
             background_tasks,
@@ -250,9 +164,7 @@ class AuthService:
             datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         )
 
-        tokens = await self._generate_auth_tokens(user)
-        tokens.requires_2fa = False
-        return tokens
+        return await self._generate_auth_tokens(user)
 
 
     async def refresh_tokens(self, request: RefreshTokenRequest) -> AuthTokenDTO:
@@ -343,7 +255,11 @@ class AuthService:
         from app.services.email_service import EmailService
         email_service = EmailService()
         email_service.dispatch(
-            email_service.send_account_deleted_email(email, first_name or "User", settings.EMAIL_SUPPORT_URL)
+            None,
+            email_service.send_account_deleted_email,
+            email,
+            first_name or "User",
+            settings.EMAIL_SUPPORT_URL,
         )
 
     async def get_user_sessions(self, user_id: UUID) -> list:

@@ -135,7 +135,7 @@ class EmailService:
     # 1. Welcome Email
     async def send_welcome_email(self, to_email: str, user_name: str) -> bool:
         subject = "Welcome to PersonaIQ | Executive Presence Engine"
-        landing_url = "http://localhost:3000"
+        landing_url = settings.FRONTEND_URL
         
         fallback_html = """<!DOCTYPE html>
 <html lang="en">
@@ -158,7 +158,7 @@ class EmailService:
     # 2. Email Verification / OTP Code
     async def send_email_verification_email(self, to_email: str, code: str) -> bool:
         subject = f"{code} is your PersonaIQ Verification Code"
-        landing_url = "http://localhost:3000"
+        landing_url = settings.FRONTEND_URL
 
         fallback_html = """<!DOCTYPE html>
 <html lang="en">
@@ -218,7 +218,7 @@ class EmailService:
     # 4. Password Reset Request
     async def send_password_reset_email(self, to_email: str, reset_token: str) -> bool:
         subject = "Reset Your PersonaIQ Password"
-        reset_url = f"http://localhost:3000/auth/reset-password?token={reset_token}"
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
 
         fallback_html = """<!DOCTYPE html>
 <html lang="en">
@@ -355,7 +355,7 @@ class EmailService:
     async def send_journey_completion_email(
         self, to_email: str, user_name: str, event_title: str, presence_score: int
     ) -> bool:
-        dashboard_url = "http://localhost:3000/dashboard"
+        dashboard_url = f"{settings.FRONTEND_URL}/dashboard"
         return await self.send_analysis_ready_email(to_email, user_name, event_title, presence_score, dashboard_url)
 
     # 9. Journey Reminder

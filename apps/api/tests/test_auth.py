@@ -60,7 +60,6 @@ async def test_sign_in_success(client: AsyncClient, db_session: AsyncSession):
 
     data = response.json()
     assert data["success"] is True
-    assert data["data"]["requires_2fa"] is False
     assert "access_token" in data["data"]
     assert "refresh_token" in data["data"]
 

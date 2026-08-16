@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { AuthLayout } from '../../components/auth/AuthLayout';
 import { PasswordField } from '../../components/auth/PasswordField';
-
 import { useAuth } from '@/providers/auth-provider';
 
 export default function LoginPage() {
@@ -14,6 +13,24 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [warmingUp, setWarmingUp] = useState(false);
+  const [warmingSeconds, setWarmingSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Warming-up countdown timer
+  useEffect(() => {
+    if (warmingUp) {
+      setWarmingSeconds(0);
+      timerRef.current = setInterval(() => {
+        setWarmingSeconds((s) => s + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [warmingUp]);
 
   const validateEmail = (val: string) => {
     const trimmed = val.trim().toLowerCase();
@@ -23,6 +40,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setWarmingUp(false);
 
     const formattedEmail = email.trim().toLowerCase();
 
@@ -34,16 +52,40 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await signIn(formattedEmail, password);
-      if (res && res.requires_2fa) {
-        window.location.href = `/2fa?email=${encodeURIComponent(formattedEmail)}`;
-        return;
-      }
+      await signIn(formattedEmail, password);
       window.location.href = '/dashboard';
     } catch (err: any) {
-      setErrorMessage(err.message || 'Invalid email or password.');
+      const msg: string = err?.message || '';
+
+      if (msg.includes('BACKEND_WARMING')) {
+        // Backend was sleeping — show warm-up state and auto-retry
+        setWarmingUp(true);
+        setTimeout(async () => {
+          setWarmingUp(false);
+          try {
+            await signIn(formattedEmail, password);
+            window.location.href = '/dashboard';
+          } catch (retryErr: any) {
+            const retryMsg: string = retryErr?.message || '';
+            setErrorMessage(
+              retryMsg.includes('BACKEND_WARMING') || retryMsg.includes('NETWORK_ERROR')
+                ? 'The server is taking longer than expected to wake up. Please try again in 30 seconds.'
+                : retryMsg.replace(/^(SESSION_EXPIRED|NETWORK_ERROR|BACKEND_WARMING):\s*/, '') ||
+                  'Invalid email or password.'
+            );
+          } finally {
+            setIsLoading(false);
+          }
+        }, 10000); // wait 10s then auto-retry
+        return; // keep isLoading true during warmup
+      }
+
+      setErrorMessage(
+        msg.replace(/^(SESSION_EXPIRED|NETWORK_ERROR|BACKEND_WARMING):\s*/, '') ||
+          'Invalid email or password.'
+      );
     } finally {
-      setIsLoading(false);
+      if (!warmingUp) setIsLoading(false);
     }
   };
 
@@ -66,10 +108,29 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* Warming-Up Banner */}
+        {warmingUp && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[13px] font-medium p-4 rounded-[10px] space-y-2 animate-fadeIn">
+            <div className="flex items-center space-x-2.5">
+              <svg className="w-4 h-4 shrink-0 animate-spin text-amber-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="font-bold">Server warming up…</span>
+            </div>
+            <p className="text-[12.5px] text-amber-700 pl-6 leading-relaxed">
+              PersonaIQ's backend was in sleep mode. We're waking it up and will sign you in automatically.{' '}
+              <span className="font-mono font-bold">{warmingSeconds}s</span>
+            </p>
+          </div>
+        )}
+
         {/* Global Error Banner */}
-        {errorMessage && (
+        {errorMessage && !warmingUp && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-[13px] font-medium p-3.5 rounded-[10px] flex items-center space-x-2.5 animate-fadeIn">
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="shrink-0 text-red-600"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="shrink-0 text-red-600">
+              <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
+            </svg>
             <span>{errorMessage}</span>
           </div>
         )}
@@ -89,7 +150,8 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value.trim().toLowerCase())}
               placeholder="name@organization.com"
               autoComplete="email"
-              className="w-full h-12 bg-white border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-[10px] px-4 text-[15px] text-gray-900 font-medium placeholder:text-gray-400 outline-none transition-all shadow-sm"
+              disabled={isLoading}
+              className="w-full h-12 bg-white border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-[10px] px-4 text-[15px] text-gray-900 font-medium placeholder:text-gray-400 outline-none transition-all shadow-sm disabled:opacity-60"
             />
           </div>
 
@@ -126,7 +188,12 @@ export default function LoginPage() {
             className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold text-[15px] rounded-[10px] shadow-sm hover:shadow transition-all flex items-center justify-center space-x-2 mt-4 active:scale-[0.99] disabled:opacity-60"
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="flex items-center space-x-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span className="text-[14px]">
+                  {warmingUp ? 'Warming up server…' : 'Signing in…'}
+                </span>
+              </div>
             ) : (
               <>
                 <span>Sign In to Workspace</span>

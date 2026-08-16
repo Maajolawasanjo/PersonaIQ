@@ -26,18 +26,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const refetchUser = useCallback(async (): Promise<UserProfile | null> => {
+  const refetchUser = useCallback(async (retryCount = 0): Promise<UserProfile | null> => {
     try {
       const token = localStorage.getItem('access_token');
-      if (token) {
-        const profile = await authApi.getMe();
-        setUser(profile);
-        return profile;
+      if (!token) {
+        setUser(null);
+        return null;
       }
-      setUser(null);
-      return null;
-    } catch {
-      apiClient.clearTokens();
+      const profile = await authApi.getMe();
+      setUser(profile);
+      return profile;
+    } catch (err: any) {
+      const msg = err?.message || '';
+
+      // Backend is cold-starting on Render — preserve session, retry after 5s
+      if ((msg.includes('BACKEND_WARMING') || msg.includes('NETWORK_ERROR')) && retryCount < 3) {
+        console.warn(`[Auth] Backend warming up, retrying in 5s (attempt ${retryCount + 1}/3)...`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        return refetchUser(retryCount + 1);
+      }
+
+      // Confirmed auth failure (401) — session is invalid, clear everything
+      if (msg.includes('SESSION_EXPIRED') || msg.includes('session has expired')) {
+        apiClient.clearTokens();
+        setUser(null);
+        return null;
+      }
+
+      // Any other error (parse errors, 5xx, etc.) — preserve session, just return null user
+      // Don't touch tokens — the backend may just be temporarily unhealthy
+      console.warn('[Auth] Could not fetch user profile, preserving session:', msg);
       setUser(null);
       return null;
     }
@@ -80,11 +98,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // 2. Proactive Session Token Refresh (Every 12 minutes)
   useEffect(() => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://personaiq-3suq.onrender.com/api/v1';
     const interval = setInterval(async () => {
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
-          const res = await fetch('/api/v1/auth/refresh', {
+          const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refresh_token: refreshToken }),
@@ -106,9 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const tokens = await authApi.signIn(email, pass);
-      if (tokens.requires_2fa) {
-        return tokens;
-      }
       if (tokens.access_token && tokens.refresh_token) {
         apiClient.setTokens(tokens.access_token, tokens.refresh_token);
         const profile = await authApi.getMe();

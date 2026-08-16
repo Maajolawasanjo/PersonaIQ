@@ -8,8 +8,6 @@ from app.dto.auth import (
     RefreshTokenRequest,
     SignInRequest,
     SignUpRequest,
-    VerifyOTPRequest,
-    ResendOTPRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest
 )
@@ -103,56 +101,6 @@ async def refresh_tokens(
     )
 
 
-@router.post(
-    "/verify-otp",
-    response_model=StandardResponse[AuthTokenDTO],
-    status_code=status.HTTP_200_OK,
-    summary="Verify Email OTP Code",
-    dependencies=[Depends(auth_limiter)],
-)
-async def verify_otp(
-    request_data: VerifyOTPRequest,
-    request: Request,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-):
-    request_id = getattr(request.state, "request_id", "req_verify_otp")
-    service = AuthService(db)
-    tokens = await service.verify_otp(request_data.email, request_data.code, background_tasks=background_tasks)
-
-    meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
-    return StandardResponse(
-        success=True,
-        message="Email verified successfully.",
-        data=tokens,
-        meta=meta,
-    )
-
-
-@router.post(
-    "/resend-otp",
-    response_model=StandardResponse[dict],
-    status_code=status.HTTP_200_OK,
-    summary="Resend Email OTP Code",
-    dependencies=[Depends(auth_limiter)],
-)
-async def resend_otp(
-    request_data: ResendOTPRequest,
-    request: Request,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-):
-    request_id = getattr(request.state, "request_id", "req_resend_otp")
-    service = AuthService(db)
-    await service.resend_otp(request_data.email, background_tasks=background_tasks)
-
-    meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
-    return StandardResponse(
-        success=True,
-        message="Verification code resent successfully.",
-        data={},
-        meta=meta,
-    )
 
 
 @router.post(

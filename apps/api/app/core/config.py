@@ -59,17 +59,21 @@ class Settings(BaseSettings):
     ENABLE_EMAIL_NOTIFICATIONS: bool = True
 
     # Email SMTP Configuration
+    # NOTE: For Gmail, EMAILS_FROM_EMAIL MUST equal SMTP_USER to pass SPF and avoid bounces.
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    EMAILS_FROM_EMAIL: str = ""
-    EMAILS_FROM_NAME: str = "PersonaIQ Executive"
+    EMAILS_FROM_EMAIL: str = ""   # Leave blank — email_service.py enforces SMTP_USER for Gmail
+    EMAILS_FROM_NAME: str = "PersonaIQ"
+
+    # Frontend URL — used in email CTAs and password reset links
+    # Local dev: http://localhost:3000
+    # Production: https://personaiq-web.vercel.app
+    FRONTEND_URL: str = "http://localhost:3000"
 
     # Email: Dev/Test settings
-    # Set this to your own inbox to receive real test emails via POST /auth/test-email
-    EMAIL_TEST_RECIPIENT: str = ""
-    # Used in account-deleted and two-factor-code templates
+    EMAIL_TEST_RECIPIENT: str = ""   # Set in Render env vars to your inbox
     EMAIL_SUPPORT_URL: str = "https://personaiq.com/support"
 
 

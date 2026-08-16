@@ -75,12 +75,18 @@ class ApiClient {
       headers['Content-Type'] = 'application/json';
     }
 
+    // 25-second timeout — prevents silent hangs during Render cold-starts
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         credentials: 'include',
         headers,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       const PUBLIC_ENDPOINTS = [
         '/auth/sign-up',
@@ -109,7 +115,7 @@ class ApiClient {
 
       if (!response.ok || !resData.success) {
         if (response.status === 401 && !isPublicEndpoint && token) {
-          throw new Error('Your session has expired. Please log in again.');
+          throw new Error('SESSION_EXPIRED: Your session has expired. Please log in again.');
         }
         const serverErrorMessage = resData.message || (resData as any).error?.message;
         if (response.status === 423) {
@@ -120,8 +126,14 @@ class ApiClient {
 
       return resData.data;
     } catch (err: any) {
+      clearTimeout(timeoutId);
+      // Render cold-start timeout (AbortError after 25s)
+      if (err.name === 'AbortError') {
+        throw new Error('BACKEND_WARMING: The PersonaIQ server is warming up after a period of inactivity. Please wait a moment and try again.');
+      }
+      // General network failure
       if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-        throw new Error("Unable to connect to PersonaIQ services right now. Please try again in a few moments or contact support if the issue persists.");
+        throw new Error('NETWORK_ERROR: Unable to connect to PersonaIQ services. Please check your connection and try again.');
       }
       throw err;
     }
@@ -157,6 +169,10 @@ class ApiClient {
       method: 'POST',
       body: formData,
     });
+  }
+
+  public delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
   }
 }
 

@@ -13,12 +13,18 @@ export default function ProfileSettingsPage() {
   const [occupation, setOccupation] = useState('');
   const [country, setCountry] = useState('');
   const [timezone, setTimezone] = useState('UTC');
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
+    // Safe client-only localStorage read — avoids SSR hydration mismatch
+    if (typeof window !== 'undefined') {
+      setSelfiePreview(localStorage.getItem('personaiq_user_selfie_preview'));
+    }
+
     async function loadProfile() {
       try {
         setLoading(true);
@@ -105,9 +111,9 @@ export default function ProfileSettingsPage() {
       {/* Executive Hero Profile Card */}
       <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-xs flex items-center space-x-5">
         <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-red-600/30 shrink-0 bg-red-650 text-white flex items-center justify-center font-mono font-bold text-2xl shadow-xs">
-          {profile?.avatar_url || (typeof window !== 'undefined' && localStorage.getItem('personaiq_user_selfie_preview')) ? (
+          {profile?.avatar_url || selfiePreview ? (
             <img
-              src={profile?.avatar_url || localStorage.getItem('personaiq_user_selfie_preview')!}
+              src={profile?.avatar_url || selfiePreview!}
               alt={displayName}
               className="w-full h-full object-cover"
             />

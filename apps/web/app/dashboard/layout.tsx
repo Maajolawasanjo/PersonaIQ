@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/providers/auth-provider';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const IconDashboard = () => (
@@ -148,7 +149,20 @@ function AvatarImage() {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+      router.push('/login');
+    }
+  };
 
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === href : pathname.startsWith(href);
@@ -246,13 +260,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <IconHelp />
               <span>Help</span>
             </Link>
-            <Link
-              href="/login"
-              className="flex items-center space-x-3 px-3 py-3 rounded-[10px] text-[15px] font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/8 transition-all group"
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="w-full flex items-center space-x-3 px-3 py-3 rounded-[10px] text-[15px] font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/8 transition-all group disabled:opacity-50 cursor-pointer"
             >
               <span className="group-hover:text-red-400"><IconLogout /></span>
-              <span>Logout</span>
-            </Link>
+              <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+            </button>
           </div>
         </aside>
 

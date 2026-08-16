@@ -159,7 +159,7 @@ export default function WardrobePage() {
   useEffect(() => {
     async function loadWardrobe() {
       try {
-        const res = await wardrobeApi.getItems();
+        const res = await wardrobeApi.listItems();
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
           const mapped: Outfit[] = res.data.map((item: any) => ({
             id: item.id,

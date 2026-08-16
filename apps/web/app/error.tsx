@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CloudLightning, RotateCw, ArrowLeft } from 'lucide-react';
 
 export default function GlobalErrorPage({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -49,11 +50,11 @@ export default function GlobalErrorPage({
             <span>Try Again</span>
           </button>
           <Link
-            href="/dashboard"
+            href="/"
             className="w-full sm:w-auto h-11 px-6 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-bold text-[13.5px] rounded-[10px] transition-colors flex items-center justify-center space-x-1.5"
           >
             <ArrowLeft className="w-4 h-4 text-gray-500 shrink-0" />
-            <span>Return to Safety</span>
+            <span>Return to Home</span>
           </Link>
         </div>
 
@@ -69,8 +70,9 @@ export default function GlobalErrorPage({
           </button>
 
           {showHash && (
-            <div className="mt-2 p-3 bg-gray-950 text-emerald-400 font-mono text-[11px] rounded-[8px] text-left overflow-x-auto">
-              <code>0x98A1F_ERR_NEURAL_PIPELINE_TIMEOUT_500</code>
+            <div className="mt-2 p-3 bg-gray-950 text-emerald-400 font-mono text-[11px] rounded-[8px] text-left overflow-x-auto space-y-1">
+              <code className="block text-gray-400"># digest: {error?.digest || '0x98A1F_ERR_500'}</code>
+              <code className="block text-red-400 whitespace-pre-wrap break-all">{error?.message || 'ERR_NEURAL_PIPELINE_TIMEOUT'}</code>
             </div>
           )}
         </div>
