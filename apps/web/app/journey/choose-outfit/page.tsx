@@ -19,7 +19,9 @@ import {
   Layers,
   Award,
   Cpu,
-  RefreshCw
+  RefreshCw,
+  Camera,
+  UserCheck
 } from 'lucide-react';
 import { stylistApi, userApi } from '@/lib/api/services';
 import { getRecommendedLooksForSession, VTOLookDefinition } from '@/lib/catalog/looksCatalog';
@@ -41,6 +43,7 @@ export default function ChooseOutfitPage() {
   const [eventDetails, setEventDetails] = useState<string>('Corporate, On-site');
   const [skinAnalysis, setSkinAnalysis] = useState<string>('Warm Neutral');
   const [bodyProfile, setBodyProfile] = useState<string>('Athletic Build');
+  const [userSelfiePreview, setUserSelfiePreview] = useState<string | null>(null);
 
   // Featherless AI Live Reasoning State
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
@@ -53,6 +56,9 @@ export default function ChooseOutfitPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const savedSelfie = localStorage.getItem('personaiq_user_selfie_preview');
+      if (savedSelfie) setUserSelfiePreview(savedSelfie);
+
       const savedAvatarId = localStorage.getItem('personaiq_vto_avatar_id') || '';
       const isFemale = savedAvatarId.includes('female') || localStorage.getItem('personaiq_user_gender') === 'female';
       const currentGender: 'male' | 'female' = isFemale ? 'female' : 'male';
@@ -182,7 +188,12 @@ export default function ChooseOutfitPage() {
             imageUrl: chosenLook.imageUrl,
             vibeMatch: chosenLook.vibeMatch,
             colorPalette: chosenLook.colorPalette,
-            items: chosenLook.items,
+            items: chosenLook.items.map((item) => ({
+              category: item.category,
+              name: item.name,
+              image_url: item.image,
+              image: item.image,
+            })),
             aiReasoning: aiReasoning || chosenLook.description,
             clothing: { name: chosenLook.items[0]?.name || chosenLook.title, image_url: chosenLook.items[0]?.image || chosenLook.imageUrl, category: 'clothing' },
             footwear: { name: chosenLook.items[3]?.name || 'Matching Footwear', image_url: chosenLook.items[3]?.image || chosenLook.imageUrl, category: 'footwear' },
@@ -246,10 +257,10 @@ export default function ChooseOutfitPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-950 font-sans">
-              Choose Your Outfit
+              Choose Your Outfit Concept
             </h1>
             <p className="text-base text-gray-600 mt-1 max-w-3xl">
-              We’ve curated top outfit recommendations tailored precisely to your occasion, body profile, and target vibe.
+              We’ve curated top AI outfit concepts tailored precisely for your <span className="font-bold text-gray-950">{occasion}</span>. Select a look below to try on your uploaded selfie in the Virtual Studio.
             </p>
           </div>
 
@@ -318,23 +329,32 @@ export default function ChooseOutfitPage() {
         {/* LEFT 8 COLS: AI RECOMMENDED OUTFITS & WARDROBE BANNER */}
         <div className="lg:col-span-8 space-y-6">
 
-          {/* Section Header */}
-          <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+          {/* Section Header with User Selfie Indicator */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 pb-3 gap-2">
             <div className="flex items-center space-x-2.5">
               <Cpu className="w-5 h-5 text-red-600" />
               <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-gray-900">
-                FEATHERLESS AI STYLIST RECOMMENDATIONS ({recommendedLooks.length})
+                AI RECOMMENDED OUTFIT CONCEPTS ({recommendedLooks.length})
               </h2>
             </div>
             
-            {isLoadingAi ? (
-              <span className="text-xs text-red-600 font-mono font-bold flex items-center space-x-1.5 animate-pulse">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>CONNECTING FEATHERLESS LLM...</span>
-              </span>
-            ) : (
-              <span className="text-xs text-gray-500 font-medium">Click any look to select</span>
-            )}
+            <div className="flex items-center space-x-3">
+              {userSelfiePreview && (
+                <div className="flex items-center space-x-1.5 bg-red-50 border border-red-150 px-2.5 py-1 rounded-full text-xs font-bold text-red-700 shadow-2xs">
+                  <div className="w-4 h-4 rounded-full overflow-hidden shrink-0 border border-red-300">
+                    <img src={userSelfiePreview} alt="User selfie preview" className="w-full h-full object-cover" />
+                  </div>
+                  <span>Previewing for Your Selfie</span>
+                </div>
+              )}
+
+              {isLoadingAi && (
+                <span className="text-xs text-red-600 font-mono font-bold flex items-center space-x-1.5 animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>FEATHERLESS AI ACTIVE...</span>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* 3 SPACIOUS AI RECOMMENDED OUTFIT CARDS (3-COLUMN GRID) */}
@@ -395,6 +415,12 @@ export default function ChooseOutfitPage() {
                         <span>SELECTED</span>
                       </div>
                     )}
+
+                    {/* Try On My Photo CTA Badge */}
+                    <div className="absolute bottom-3 right-3 bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg shadow-md flex items-center space-x-1 z-10 transition-transform group-hover:scale-105">
+                      <span>Try On My Photo</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
                   </div>
 
                   {/* Card Body */}
@@ -458,7 +484,7 @@ export default function ChooseOutfitPage() {
 
                       {/* Constituent Item Swatches */}
                       <div className="space-y-1">
-                        <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider block">INCLUDED GARMENTS</span>
+                        <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider block">SUGGESTED GARMENTS</span>
                         <div className="flex items-center space-x-1.5 pt-0.5">
                           {look.items.map((item, idx) => (
                             <div
@@ -487,10 +513,10 @@ export default function ChooseOutfitPage() {
               </div>
               <div className="space-y-0.5 text-center sm:text-left">
                 <h3 className="text-base font-extrabold text-gray-950 font-sans">
-                  Build from My Wardrobe
+                  Build from My Digital Wardrobe
                 </h3>
                 <p className="text-xs text-gray-600 max-w-md leading-relaxed">
-                  Prefer to assemble your own outfit? Pick items directly from your digital wardrobe to try in the Virtual Try-On studio.
+                  Prefer to assemble your own outfit? Pick items directly from your digital wardrobe to try on your photo in the Virtual Studio.
                 </p>
               </div>
             </div>
@@ -569,7 +595,7 @@ export default function ChooseOutfitPage() {
                   <ArrowRight className="w-4 h-4" />
                 </div>
                 <span className="text-[11px] font-normal text-red-100 block mt-0.5">
-                  See your selected look on your model or photo
+                  Loads selected AI concept directly onto your photo in the Virtual Studio
                 </span>
               </div>
             </button>
@@ -672,7 +698,7 @@ export default function ChooseOutfitPage() {
               You’re all set!
             </h4>
             <p className="text-xs text-red-800 font-medium">
-              Select your favorite outfit above to proceed to Virtual Try-On.
+              Select your favorite outfit concept above to proceed to Virtual Try-On.
             </p>
           </div>
 
