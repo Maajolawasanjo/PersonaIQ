@@ -91,7 +91,7 @@ export default function JourneyLayout({ children }: { children: React.ReactNode 
 
       {/* ── COMPACT DARK TOP BAR ──────────────────────────────────────────────── */}
       <header className="w-full bg-gray-950/95 backdrop-blur-md text-white border-b border-white/10 sticky top-0 z-30 shadow-md">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
 
           {/* Logo */}
           <Link href="/dashboard" className="inline-flex items-center space-x-2.5 group">
@@ -125,7 +125,7 @@ export default function JourneyLayout({ children }: { children: React.ReactNode 
       </header>
 
       {/* ── MAIN STEP CONTENT ─────────────────────────────────────────────────── */}
-      <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-6 pb-24 lg:pb-6 flex flex-col justify-center">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-6 flex flex-col justify-center">
         {children}
       </main>
 
@@ -153,7 +153,7 @@ export default function JourneyLayout({ children }: { children: React.ReactNode 
       </nav>
 
       {/* ── DESKTOP FOOTER SECURITY NOTE ─────────────────────────────────────── */}
-      <footer className="w-full max-w-5xl mx-auto px-6 py-3 border-t border-gray-200/60 hidden lg:flex items-center justify-between text-[11.5px] font-mono text-gray-500">
+      <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-3 border-t border-gray-200/60 hidden lg:flex items-center justify-between text-[11.5px] font-mono text-gray-500">
         <div className="flex items-center space-x-2">
           <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
