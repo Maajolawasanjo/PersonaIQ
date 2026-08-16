@@ -17,9 +17,11 @@ import {
   ArrowLeft,
   Sliders,
   Layers,
-  Award
+  Award,
+  Cpu,
+  RefreshCw
 } from 'lucide-react';
-import { stylistApi } from '@/lib/api/services';
+import { stylistApi, userApi } from '@/lib/api/services';
 import { getRecommendedLooksForSession, VTOLookDefinition } from '@/lib/catalog/looksCatalog';
 
 export default function ChooseOutfitPage() {
@@ -39,6 +41,12 @@ export default function ChooseOutfitPage() {
   const [eventDetails, setEventDetails] = useState<string>('Corporate, On-site');
   const [skinAnalysis, setSkinAnalysis] = useState<string>('Warm Neutral');
   const [bodyProfile, setBodyProfile] = useState<string>('Athletic Build');
+
+  // Featherless AI Live Reasoning State
+  const [aiReasoning, setAiReasoning] = useState<string | null>(null);
+  const [aiScore, setAiScore] = useState<number | null>(null);
+  const [aiStrengths, setAiStrengths] = useState<string[]>([]);
+  const [isLoadingAi, setIsLoadingAi] = useState<boolean>(false);
 
   // Dynamic 30-Look dataset state
   const [recommendedLooks, setRecommendedLooks] = useState<VTOLookDefinition[]>([]);
@@ -62,10 +70,29 @@ export default function ChooseOutfitPage() {
       const savedGoal = localStorage.getItem('personaiq_presence_goal');
       if (savedGoal) setPresenceGoal(savedGoal);
 
+      const savedDetails = localStorage.getItem('personaiq_event_details');
+      if (savedDetails) setEventDetails(savedDetails);
+
       const savedSkin = localStorage.getItem('personaiq_skin_undertone');
       if (savedSkin) setSkinAnalysis(savedSkin);
 
-      // Compute dynamic 30-look recommendations
+      const savedBody = localStorage.getItem('personaiq_body_profile');
+      if (savedBody) setBodyProfile(savedBody);
+
+      // Check computer vision telemetry cache
+      const cachedTelemetry = localStorage.getItem('personaiq_image_telemetry');
+      if (cachedTelemetry) {
+        try {
+          const parsed = JSON.parse(cachedTelemetry);
+          if (parsed.skinTone?.undertone) {
+            setSkinAnalysis(`${parsed.skinTone.undertone} (${parsed.skinTone.lumaCategory || 'Medium'})`);
+          }
+        } catch (e) {
+          // ignore error
+        }
+      }
+
+      // Compute dynamic catalog recommendations
       const { primary, alternatives } = getRecommendedLooksForSession({
         gender: currentGender,
         occasion: savedOccasion,
@@ -81,6 +108,44 @@ export default function ChooseOutfitPage() {
       } else {
         setSelectedLookId(primary.id);
       }
+
+      // Fetch User DB Profile if available
+      userApi.getProfile()
+        .then((profile) => {
+          if (profile.first_name) {
+            // Logged in user profile active
+          }
+        })
+        .catch(() => {
+          // Anonymous or session-based journey
+        });
+
+      // Dispatch Featherless AI LLM reasoning request
+      setIsLoadingAi(true);
+      stylistApi.recommendLook(savedOccasion, savedVibe, savedDressCode)
+        .then((res) => {
+          if (res?.reasoning?.summary) {
+            setAiReasoning(res.reasoning.summary);
+          }
+          if (res?.reasoning?.strengths && Array.isArray(res.reasoning.strengths)) {
+            setAiStrengths(res.reasoning.strengths);
+          }
+          if (res?.total_score || res?.analysis?.occasion_fit) {
+            const fitScore = res.total_score || res.analysis?.occasion_fit;
+            setAiScore(fitScore);
+
+            // Update top recommendation score with live Featherless AI rating
+            setRecommendedLooks((prev) =>
+              prev.map((l, idx) => (idx === 0 ? { ...l, score: fitScore } : l))
+            );
+          }
+        })
+        .catch((err) => {
+          console.warn('Backend Featherless AI sync notice, using local dynamic reasoning canvas:', err);
+        })
+        .finally(() => {
+          setIsLoadingAi(false);
+        });
     }
   }, []);
 
@@ -106,6 +171,7 @@ export default function ChooseOutfitPage() {
       if (typeof window !== 'undefined' && chosenLook) {
         localStorage.setItem('personaiq_selected_outfit_title', chosenLook.title);
         localStorage.setItem('personaiq_user_outfit_preview', chosenLook.imageUrl);
+        localStorage.setItem('personaiq_active_presence_score', String(chosenLook.score));
         localStorage.setItem(
           'personaiq_complete_look',
           JSON.stringify({
@@ -117,6 +183,7 @@ export default function ChooseOutfitPage() {
             vibeMatch: chosenLook.vibeMatch,
             colorPalette: chosenLook.colorPalette,
             items: chosenLook.items,
+            aiReasoning: aiReasoning || chosenLook.description,
             clothing: { name: chosenLook.items[0]?.name || chosenLook.title, image_url: chosenLook.items[0]?.image || chosenLook.imageUrl, category: 'clothing' },
             footwear: { name: chosenLook.items[3]?.name || 'Matching Footwear', image_url: chosenLook.items[3]?.image || chosenLook.imageUrl, category: 'footwear' },
             occasion,
@@ -127,7 +194,7 @@ export default function ChooseOutfitPage() {
         localStorage.setItem('personaiq_active_draft_step', '/journey/virtual-try-on');
       }
 
-      // Backend sync
+      // Live Backend Featherless AI Sync
       await stylistApi.recommendLook(occasion, targetVibe, dressCode);
     } catch (e) {
       console.warn('Backend sync notice, carrying forward local choice:', e);
@@ -144,6 +211,24 @@ export default function ChooseOutfitPage() {
     }
     router.push('/journey/virtual-try-on');
   };
+
+  // Dynamic Color Swatches derived from skin undertone
+  const isCool = skinAnalysis.toLowerCase().includes('cool');
+  const colorSwatches = isCool
+    ? [
+        { color: '#1B263B', label: 'Midnight Blue' },
+        { color: '#4A5568', label: 'Charcoal' },
+        { color: '#A0AEC0', label: 'Ice Grey' },
+        { color: '#2B6CB0', label: 'Sapphire' },
+        { color: '#742A2A', label: 'Deep Plum' },
+      ]
+    : [
+        { color: '#0F4C81', label: 'Dark Navy' },
+        { color: '#708090', label: 'Slate Grey' },
+        { color: '#D2B48C', label: 'Tan' },
+        { color: '#8B4513', label: 'Cognac' },
+        { color: '#58111A', label: 'Burgundy' },
+      ];
 
   return (
     <div className="space-y-8 animate-fadeIn py-2">
@@ -164,7 +249,7 @@ export default function ChooseOutfitPage() {
               Choose Your Outfit
             </h1>
             <p className="text-base text-gray-600 mt-1 max-w-3xl">
-              We’ve curated the top outfit recommendations tailored precisely to your occasion, body profile, and target vibe.
+              We’ve curated top outfit recommendations tailored precisely to your occasion, body profile, and target vibe.
             </p>
           </div>
 
@@ -236,12 +321,20 @@ export default function ChooseOutfitPage() {
           {/* Section Header */}
           <div className="flex items-center justify-between border-b border-gray-200 pb-3">
             <div className="flex items-center space-x-2.5">
-              <Sparkles className="w-5 h-5 text-red-600" />
+              <Cpu className="w-5 h-5 text-red-600" />
               <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-gray-900">
-                AI RECOMMENDED OUTFITS ({recommendedLooks.length})
+                FEATHERLESS AI STYLIST RECOMMENDATIONS ({recommendedLooks.length})
               </h2>
             </div>
-            <span className="text-xs text-gray-500 font-medium">Click any look to select</span>
+            
+            {isLoadingAi ? (
+              <span className="text-xs text-red-600 font-mono font-bold flex items-center space-x-1.5 animate-pulse">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>CONNECTING FEATHERLESS LLM...</span>
+              </span>
+            ) : (
+              <span className="text-xs text-gray-500 font-medium">Click any look to select</span>
+            )}
           </div>
 
           {/* 3 SPACIOUS AI RECOMMENDED OUTFIT CARDS (3-COLUMN GRID) */}
@@ -323,7 +416,7 @@ export default function ChooseOutfitPage() {
                       </h3>
                       
                       <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">
-                        {look.description}
+                        {isBestMatch && aiReasoning ? aiReasoning : look.description}
                       </p>
                     </div>
 
@@ -412,27 +505,46 @@ export default function ChooseOutfitPage() {
             </button>
           </div>
 
-          {/* RATIONALE BANNER */}
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start space-x-3.5">
-              <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 mt-0.5">
-                <Lightbulb className="w-5 h-5" />
+          {/* DYNAMIC RATIONALE BANNER: FEATHERLESS AI REASONING */}
+          <div className="bg-gray-900 text-white border border-gray-800 rounded-2xl p-5 space-y-3 shadow-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Cpu className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold font-sans text-white">Featherless AI Personal Stylist Analysis</h4>
+                  <span className="text-[11px] font-mono text-red-400 block">LLM Meta Llama Reasoning Engine Active</span>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-gray-950 font-sans">Why these looks?</h4>
-                <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
-                  These recommendations synthesize your skin undertone, body profile, color season, and the specific goals of your occasion.
-                </p>
-              </div>
+
+              <Link
+                href="/journey/explanation"
+                className="text-xs font-bold text-gray-300 hover:text-white border border-gray-700 bg-gray-800 hover:bg-gray-700 px-3.5 py-1.5 rounded-xl transition-colors shrink-0 flex items-center space-x-1.5 shadow-2xs"
+              >
+                <span>View Full Analysis</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
 
-            <Link
-              href="/journey/explanation"
-              className="text-xs font-bold text-red-700 hover:text-red-900 border border-red-200 bg-white hover:bg-red-50 px-4 py-2 rounded-xl transition-colors shrink-0 flex items-center space-x-1.5 shadow-2xs"
-            >
-              <span>View Full Analysis</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <p className="text-xs text-gray-300 leading-relaxed font-sans">
+              {aiReasoning ? (
+                aiReasoning
+              ) : (
+                `Recommendations synthesize your ${skinAnalysis} skin undertone, ${bodyProfile} profile, and your goal to "${presenceGoal}" for a high-impact presentation.`
+              )}
+            </p>
+
+            {aiStrengths.length > 0 && (
+              <div className="pt-2 border-t border-gray-800 flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider">AI STRENGTHS:</span>
+                {aiStrengths.map((str, i) => (
+                  <span key={i} className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-2.5 py-0.5 rounded-full">
+                    ✓ {str}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* BOTTOM NAVIGATION ACTION BAR */}
@@ -517,18 +629,20 @@ export default function ChooseOutfitPage() {
               </div>
             </div>
 
-            {/* Best Colors Swatches */}
+            {/* Best Colors Swatches - Dynamic based on Skin Undertone */}
             <div className="flex items-start space-x-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
               <div className="space-y-1.5">
-                <span className="text-xs text-gray-500 font-medium block">Best Colors</span>
+                <span className="text-xs text-gray-500 font-medium block">Best Colors ({isCool ? 'Cool Season' : 'Warm Season'})</span>
                 <div className="flex items-center space-x-2">
-                  <span className="w-5 h-5 rounded-full bg-[#0F4C81] border border-gray-300 shadow-2xs" title="Dark Navy" />
-                  <span className="w-5 h-5 rounded-full bg-[#708090] border border-gray-300 shadow-2xs" title="Slate Grey" />
-                  <span className="w-5 h-5 rounded-full bg-[#D2B48C] border border-gray-300 shadow-2xs" title="Tan" />
-                  <span className="w-5 h-5 rounded-full bg-[#8B4513] border border-gray-300 shadow-2xs" title="Cognac" />
-                  <span className="w-5 h-5 rounded-full bg-[#58111A] border border-gray-300 shadow-2xs" title="Burgundy" />
-                  <span className="text-xs font-mono font-bold text-gray-500">+3</span>
+                  {colorSwatches.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="w-5 h-5 rounded-full border border-gray-300 shadow-2xs transition-transform hover:scale-125 cursor-pointer"
+                      style={{ backgroundColor: item.color }}
+                      title={item.label}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
