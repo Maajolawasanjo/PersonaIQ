@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function DressCodePage() {
@@ -65,16 +65,31 @@ export default function DressCodePage() {
     },
   ];
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedCode = localStorage.getItem('personaiq_active_dress_code');
+      if (savedCode) {
+        setSelectedCode(savedCode);
+      }
+    }
+  }, []);
+
   const handleSelectCode = (id: string) => {
     setSelectedCode(id);
+    const codeObj = dressCodes.find((c) => c.id === id);
+    const title = codeObj ? codeObj.title : id;
     if (typeof window !== 'undefined') {
       localStorage.setItem('personaiq_active_dress_code', id);
+      localStorage.setItem('personaiq_dress_code', title);
     }
   };
 
   const handleContinue = () => {
+    const codeObj = dressCodes.find((c) => c.id === selectedCode);
+    const title = codeObj ? codeObj.title : selectedCode;
     if (typeof window !== 'undefined') {
       localStorage.setItem('personaiq_active_dress_code', selectedCode);
+      localStorage.setItem('personaiq_dress_code', title);
       localStorage.setItem('personaiq_active_draft_step', '/journey/capture-look');
     }
   };

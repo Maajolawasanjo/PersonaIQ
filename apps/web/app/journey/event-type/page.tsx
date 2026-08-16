@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function EventTypePage() {
@@ -44,7 +44,7 @@ export default function EventTypePage() {
     },
     {
       id: 'wedding',
-      title: 'Wedding',
+      title: 'Wedding Guest',
       icon: (
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5.8 11.3L2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/></svg>
       ),
@@ -58,30 +58,47 @@ export default function EventTypePage() {
     },
     {
       id: 'date',
-      title: 'Date',
+      title: 'Date Night',
       icon: (
         <svg width="22" height="22" fill="currentColor" className="text-gray-700" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
       ),
     },
     {
-      id: 'other',
-      title: 'Other',
+      id: 'traditional',
+      title: 'Traditional Ceremony',
       icon: (
-        <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="3" y1="21" x2="21" y2="21"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 3 2 10 22 10 12 3"/></svg>
       ),
     },
   ];
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedOccasion = localStorage.getItem('personaiq_active_occasion');
+      if (savedOccasion) {
+        setSelectedType(savedOccasion);
+      }
+    }
+  }, []);
+
   const handleSelectEvent = (id: string) => {
     setSelectedType(id);
+    const eventObj = eventTypes.find((e) => e.id === id);
+    const title = eventObj ? eventObj.title : id;
     if (typeof window !== 'undefined') {
       localStorage.setItem('personaiq_active_occasion', id);
+      localStorage.setItem('personaiq_event_type', title);
+      localStorage.setItem('personaiq_event_title', title);
     }
   };
 
   const handleContinue = () => {
+    const eventObj = eventTypes.find((e) => e.id === selectedType);
+    const title = eventObj ? eventObj.title : selectedType;
     if (typeof window !== 'undefined') {
       localStorage.setItem('personaiq_active_occasion', selectedType);
+      localStorage.setItem('personaiq_event_type', title);
+      localStorage.setItem('personaiq_event_title', title);
       localStorage.setItem('personaiq_active_draft_step', '/journey/dress-code');
     }
   };

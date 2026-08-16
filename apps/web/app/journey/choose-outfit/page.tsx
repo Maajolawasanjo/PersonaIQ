@@ -29,6 +29,47 @@ import {
 import { stylistApi, userApi } from '@/lib/api/services';
 import { getRecommendedLooksForSession, VTOLookDefinition, LookConstituentItem } from '@/lib/catalog/looksCatalog';
 
+function resolveOccasionLabel(raw: string | null): string {
+  if (!raw) return 'Job Interview';
+  const l = raw.toLowerCase().trim();
+  if (l === 'date' || l.includes('date')) return 'Date Night';
+  if (l === 'wedding' || l.includes('wedding')) return 'Wedding Guest';
+  if (l === 'interview' || l.includes('interview')) return 'Job Interview';
+  if (l === 'meeting' || l.includes('meeting')) return 'Business Meeting';
+  if (l === 'networking' || l.includes('network')) return 'Professional Networking';
+  if (l === 'keynote' || l.includes('keynote')) return 'Keynote Presentation';
+  if (l === 'presentation' || l.includes('presentation')) return 'Executive Presentation';
+  if (l === 'graduation' || l.includes('graduation')) return 'Graduation Ceremony';
+  if (l === 'traditional' || l.includes('traditional') || l.includes('cultural')) return 'Traditional Ceremony';
+  if (l === 'church' || l.includes('church') || l.includes('worship')) return 'Sunday Worship';
+  if (l === 'funeral' || l.includes('memorial')) return 'Funeral / Memorial Service';
+  if (l === 'gala' || l.includes('party')) return 'Black-Tie Gala';
+  return raw.length > 2 ? raw : 'Job Interview';
+}
+
+function resolveDressCodeLabel(raw: string | null): string {
+  if (!raw) return 'Business Formal';
+  const l = raw.toLowerCase().trim();
+  if (l === 'formal' || l.includes('formal')) return 'Business Formal';
+  if (l === 'casual' || l.includes('business casual')) return 'Business Casual';
+  if (l === 'smart' || l.includes('smart casual')) return 'Smart Casual';
+  if (l === 'cocktail' || l.includes('cocktail')) return 'Cocktail Attire';
+  if (l === 'traditional' || l.includes('traditional')) return 'Traditional Attire';
+  if (l === 'blacktie' || l.includes('black tie')) return 'Black Tie Formal';
+  if (l === 'casual_free') return 'Casual Attire';
+  return raw.length > 2 ? raw : 'Business Formal';
+}
+
+function resolveVibeLabel(raw: string | null): string {
+  if (!raw) return 'Confident & Trustworthy';
+  const l = raw.toLowerCase().trim();
+  if (l.includes('authoritative') || l.includes('executive')) return 'Authoritative & Composed';
+  if (l.includes('approachable') || l.includes('friendly')) return 'Warm & Approachable';
+  if (l.includes('charismatic') || l.includes('romantic')) return 'Charismatic & Refined';
+  if (l.includes('creative') || l.includes('modern')) return 'Creative & Innovative';
+  return raw.length > 2 ? raw : 'Confident & Trustworthy';
+}
+
 // Isolated Garment Swatch Component — Ensures NO human faces ever appear under Suggested Garments
 function GarmentSwatch({ item }: { item: LookConstituentItem }) {
   const lowerImg = (item.image || '').toLowerCase();
@@ -96,8 +137,8 @@ export default function ChooseOutfitPage() {
   const [occasion, setOccasion] = useState<string>('Job Interview');
   const [dressCode, setDressCode] = useState<string>('Business Formal');
   const [targetVibe, setTargetVibe] = useState<string>('Confident');
-  const [presenceGoal, setPresenceGoal] = useState<string>('Make a strong, trustworthy first impression');
-  const [eventDetails, setEventDetails] = useState<string>('Corporate, On-site');
+  const [presenceGoal, setPresenceGoal] = useState<string>('Make a strong, charismatic first impression');
+  const [eventDetails, setEventDetails] = useState<string>('Social, Evening Engagement');
   const [skinAnalysis, setSkinAnalysis] = useState<string>('Warm Neutral');
   const [bodyProfile, setBodyProfile] = useState<string>('Athletic Build');
   const [userSelfiePreview, setUserSelfiePreview] = useState<string | null>(null);
@@ -121,14 +162,27 @@ export default function ChooseOutfitPage() {
       const currentGender: 'male' | 'female' = isFemale ? 'female' : 'male';
       setUserGender(currentGender);
 
-      const savedOccasion = localStorage.getItem('personaiq_event_type') || 'Job Interview';
-      setOccasion(savedOccasion);
+      // Multi-key resilient lookup for occasion & dress code
+      const rawOccasion =
+        localStorage.getItem('personaiq_event_title') ||
+        localStorage.getItem('personaiq_event_type') ||
+        localStorage.getItem('personaiq_active_occasion') ||
+        'Job Interview';
 
-      const savedDressCode = localStorage.getItem('personaiq_dress_code') || 'Business Formal';
-      setDressCode(savedDressCode);
+      const resolvedOccasion = resolveOccasionLabel(rawOccasion);
+      setOccasion(resolvedOccasion);
 
-      const savedVibe = localStorage.getItem('personaiq_target_vibe') || 'Confident';
-      setTargetVibe(savedVibe);
+      const rawDressCode =
+        localStorage.getItem('personaiq_dress_code') ||
+        localStorage.getItem('personaiq_active_dress_code') ||
+        'Business Formal';
+
+      const resolvedDressCode = resolveDressCodeLabel(rawDressCode);
+      setDressCode(resolvedDressCode);
+
+      const rawVibe = localStorage.getItem('personaiq_target_vibe') || '';
+      const resolvedVibe = resolveVibeLabel(rawVibe);
+      setTargetVibe(resolvedVibe);
 
       const savedGoal = localStorage.getItem('personaiq_presence_goal');
       if (savedGoal) setPresenceGoal(savedGoal);
@@ -142,11 +196,11 @@ export default function ChooseOutfitPage() {
       const savedBody = localStorage.getItem('personaiq_body_profile');
       if (savedBody) setBodyProfile(savedBody);
 
-      // Compute dynamic catalog recommendations
+      // Compute dynamic catalog recommendations matching user's exact occasion choice
       const { primary, alternatives } = getRecommendedLooksForSession({
         gender: currentGender,
-        occasion: savedOccasion,
-        targetVibe: savedVibe,
+        occasion: rawOccasion || resolvedOccasion,
+        targetVibe: resolvedVibe,
       });
 
       // Assign initial dynamic score hierarchy
@@ -181,7 +235,7 @@ export default function ChooseOutfitPage() {
 
       // Dispatch Featherless AI LLM reasoning request
       setIsLoadingAi(true);
-      stylistApi.recommendLook(savedOccasion, savedVibe, savedDressCode)
+      stylistApi.recommendLook(resolvedOccasion, resolvedVibe, resolvedDressCode)
         .then((res) => {
           if (res?.reasoning?.summary) {
             setAiReasoning(res.reasoning.summary);
@@ -223,7 +277,7 @@ export default function ChooseOutfitPage() {
 
   const handleSelectLook = (id: string) => {
     setSelectedLookId(id);
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'defined') {
       localStorage.setItem('personaiq_selected_look_id', id);
     }
   };
