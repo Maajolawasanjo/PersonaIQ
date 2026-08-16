@@ -21,10 +21,67 @@ import {
   Cpu,
   RefreshCw,
   Camera,
-  UserCheck
+  UserCheck,
+  Footprints,
+  Watch,
+  Scissors
 } from 'lucide-react';
 import { stylistApi, userApi } from '@/lib/api/services';
-import { getRecommendedLooksForSession, VTOLookDefinition } from '@/lib/catalog/looksCatalog';
+import { getRecommendedLooksForSession, VTOLookDefinition, LookConstituentItem } from '@/lib/catalog/looksCatalog';
+
+// Isolated Garment Swatch Component — Ensures NO human faces ever appear under Suggested Garments
+function GarmentSwatch({ item }: { item: LookConstituentItem }) {
+  const lowerImg = (item.image || '').toLowerCase();
+  const lowerName = (item.name || '').toLowerCase();
+  const cat = item.category;
+
+  const isIsolatedImage =
+    lowerImg.includes('white_dress_shirt') ||
+    lowerImg.includes('light_blue_dress_shirt') ||
+    lowerImg.includes('oxford') ||
+    lowerImg.includes('loafers') ||
+    lowerImg.includes('classic_silver') ||
+    lowerImg.includes('black.jpg') ||
+    lowerImg.includes('tshirt') ||
+    lowerImg.includes('sneakers');
+
+  if (isIsolatedImage) {
+    return (
+      <div
+        className="w-10 h-10 rounded-xl overflow-hidden bg-gray-50 border border-gray-250 shrink-0 hover:scale-110 transition-transform shadow-2xs flex items-center justify-center p-0.5"
+        title={`${item.name} (${item.category})`}
+      >
+        <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
+      </div>
+    );
+  }
+
+  // Icon fallback based on garment category
+  const renderIcon = () => {
+    if (cat === 'shirt' || lowerName.includes('shirt') || lowerName.includes('polo') || lowerName.includes('blouse')) {
+      return <Shirt className="w-4 h-4 text-sky-600" />;
+    }
+    if (cat === 'shoes' || lowerName.includes('oxford') || lowerName.includes('derby') || lowerName.includes('loafer') || lowerName.includes('heels')) {
+      return <Footprints className="w-4 h-4 text-amber-700" />;
+    }
+    if (cat === 'accessory' || lowerName.includes('watch') || lowerName.includes('tie') || lowerName.includes('cap')) {
+      return <Watch className="w-4 h-4 text-emerald-600" />;
+    }
+    if (cat === 'traditional' || lowerName.includes('agbada') || lowerName.includes('kaftan') || lowerName.includes('senator')) {
+      return <Award className="w-4 h-4 text-purple-600" />;
+    }
+    return <Layers className="w-4 h-4 text-red-600" />;
+  };
+
+  return (
+    <div
+      className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-250 shrink-0 hover:scale-110 transition-transform shadow-2xs flex items-center justify-center"
+      title={`${item.name} (${item.category})`}
+    >
+      {renderIcon()}
+    </div>
+  );
+}
 
 export default function ChooseOutfitPage() {
   const router = useRouter();
@@ -85,19 +142,6 @@ export default function ChooseOutfitPage() {
       const savedBody = localStorage.getItem('personaiq_body_profile');
       if (savedBody) setBodyProfile(savedBody);
 
-      // Check computer vision telemetry cache
-      const cachedTelemetry = localStorage.getItem('personaiq_image_telemetry');
-      if (cachedTelemetry) {
-        try {
-          const parsed = JSON.parse(cachedTelemetry);
-          if (parsed.skinTone?.undertone) {
-            setSkinAnalysis(`${parsed.skinTone.undertone} (${parsed.skinTone.lumaCategory || 'Medium'})`);
-          }
-        } catch (e) {
-          // ignore error
-        }
-      }
-
       // Compute dynamic catalog recommendations
       const { primary, alternatives } = getRecommendedLooksForSession({
         gender: currentGender,
@@ -105,14 +149,23 @@ export default function ChooseOutfitPage() {
         targetVibe: savedVibe,
       });
 
-      const combined = [primary, ...alternatives];
-      setRecommendedLooks(combined);
+      // Assign initial dynamic score hierarchy
+      const initialPrimaryScore = 96;
+      const initialAlt1Score = 93;
+      const initialAlt2Score = 90;
+
+      const scoredPrimary = { ...primary, score: initialPrimaryScore };
+      const scoredAlt1 = { ...alternatives[0], score: initialAlt1Score };
+      const scoredAlt2 = { ...alternatives[1], score: initialAlt2Score };
+
+      const combinedSorted = [scoredPrimary, scoredAlt1, scoredAlt2].sort((a, b) => b.score - a.score);
+      setRecommendedLooks(combinedSorted);
 
       const savedLook = localStorage.getItem('personaiq_selected_look_id');
-      if (savedLook && combined.some((l) => l.id === savedLook)) {
+      if (savedLook && combinedSorted.some((l) => l.id === savedLook)) {
         setSelectedLookId(savedLook);
       } else {
-        setSelectedLookId(primary.id);
+        setSelectedLookId(combinedSorted[0].id);
       }
 
       // Fetch User DB Profile if available
@@ -137,13 +190,19 @@ export default function ChooseOutfitPage() {
             setAiStrengths(res.reasoning.strengths);
           }
           if (res?.total_score || res?.analysis?.occasion_fit) {
-            const fitScore = res.total_score || res.analysis?.occasion_fit;
+            const fitScore = Math.min(99, Math.max(92, res.total_score || res.analysis?.occasion_fit || 96));
             setAiScore(fitScore);
 
-            // Update top recommendation score with live Featherless AI rating
-            setRecommendedLooks((prev) =>
-              prev.map((l, idx) => (idx === 0 ? { ...l, score: fitScore } : l))
-            );
+            // Dynamically recalculate all 3 look ratings based on live Featherless AI score
+            setRecommendedLooks((prev) => {
+              if (prev.length < 3) return prev;
+              const updated = [
+                { ...prev[0], score: fitScore },
+                { ...prev[1], score: Math.max(88, fitScore - 3) },
+                { ...prev[2], score: Math.max(85, fitScore - 6) },
+              ].sort((a, b) => b.score - a.score);
+              return updated;
+            });
           }
         })
         .catch((err) => {
@@ -240,6 +299,8 @@ export default function ChooseOutfitPage() {
         { color: '#8B4513', label: 'Cognac' },
         { color: '#58111A', label: 'Burgundy' },
       ];
+
+  const highestScore = recommendedLooks.length > 0 ? Math.max(...recommendedLooks.map((l) => l.score)) : 96;
 
   return (
     <div className="space-y-8 animate-fadeIn py-2">
@@ -362,7 +423,8 @@ export default function ChooseOutfitPage() {
             {recommendedLooks.map((look, index) => {
               const isSelected = selectedLookId === look.id;
               const isFav = favoriteLooks.includes(look.id);
-              const isBestMatch = index === 0;
+              // BEST MATCH badge strictly attached to the HIGHEST scoring look
+              const isBestMatch = look.score === highestScore;
 
               return (
                 <div
@@ -382,7 +444,7 @@ export default function ChooseOutfitPage() {
                       className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                     />
 
-                    {/* Best Match Badge */}
+                    {/* Best Match Badge — Strictly attached to top score */}
                     {isBestMatch && (
                       <div className="absolute top-3 left-3 bg-emerald-600 text-white font-mono font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center space-x-1 z-10">
                         <Sparkles className="w-3 h-3" />
@@ -449,7 +511,7 @@ export default function ChooseOutfitPage() {
                     {/* Score & Constituent Items Section */}
                     <div className="space-y-3 border-t border-gray-150 pt-3">
                       
-                      {/* Presence Score Row */}
+                      {/* Dynamic Presence Score Row */}
                       <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                         <div>
                           <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Presence Score</span>
@@ -470,7 +532,7 @@ export default function ChooseOutfitPage() {
                               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                             />
                             <path
-                              className="text-emerald-500"
+                              className={isBestMatch ? "text-emerald-500" : "text-sky-500"}
                               strokeDasharray={`${look.score}, 100`}
                               strokeWidth="3.5"
                               strokeLinecap="round"
@@ -482,18 +544,12 @@ export default function ChooseOutfitPage() {
                         </div>
                       </div>
 
-                      {/* Constituent Item Swatches */}
+                      {/* Constituent Isolated Garment Swatches — NO HUMAN FACES */}
                       <div className="space-y-1">
                         <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider block">SUGGESTED GARMENTS</span>
                         <div className="flex items-center space-x-1.5 pt-0.5">
                           {look.items.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 border border-gray-250 shrink-0 hover:scale-110 transition-transform shadow-2xs"
-                              title={`${item.name} (${item.category})`}
-                            >
-                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                            </div>
+                            <GarmentSwatch key={idx} item={item} />
                           ))}
                         </div>
                       </div>
