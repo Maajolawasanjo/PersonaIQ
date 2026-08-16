@@ -16,7 +16,9 @@ import {
   Upload,
   RefreshCw,
   Zap,
-  Layers
+  Layers,
+  Camera,
+  Cpu
 } from 'lucide-react';
 import { stylistApi } from '@/lib/api/services';
 import { VTO_CATALOG, VTO_MODELS, VTOAsset, VTOModel, getRecommendedAssets } from '@/lib/catalog/vtoCatalog';
@@ -46,13 +48,20 @@ export default function VirtualTryOnPage() {
   const [vtoResult, setVtoResult] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [presenceScore, setPresenceScore] = useState<number>(96);
+  const [providerUsed, setProviderUsed] = useState<string>('YouCam AI VTO');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedPhoto = localStorage.getItem('personaiq_user_outfit_preview') || localStorage.getItem('personaiq_user_selfie_preview');
-      if (savedPhoto) {
-        setUserPhoto(savedPhoto);
+      // Prioritize uploaded selfie photo over generic outfit preview
+      const selfiePhoto = localStorage.getItem('personaiq_user_selfie_preview');
+      const outfitPreview = localStorage.getItem('personaiq_user_outfit_preview');
+      
+      if (selfiePhoto) {
+        setUserPhoto(selfiePhoto);
+      } else if (outfitPreview) {
+        setUserPhoto(outfitPreview);
       }
+
       const savedAvatarId = localStorage.getItem('personaiq_vto_avatar_id');
       if (savedAvatarId) {
         setSelectedAvatarId(savedAvatarId);
@@ -95,6 +104,22 @@ export default function VirtualTryOnPage() {
 
       const savedScore = localStorage.getItem('personaiq_active_presence_score');
       if (savedScore) setPresenceScore(parseInt(savedScore, 10));
+
+      // Trigger initial YouCam VTO Composite generation if selfie is active
+      const activeImage = selfiePhoto || outfitPreview || '/vto/looks/female/F01_job_interview.png';
+      stylistApi.vtoPreview('user_selfie', [selectedGarment, selectedShoe], activeImage)
+        .then((res) => {
+          const resultUrl = res?.data?.result_image_url || res?.data?.result_url || res?.preview_url || res?.data?.preview_url;
+          if (resultUrl) {
+            setVtoResult(resultUrl);
+          }
+          if (res?.data?.provider_used) {
+            setProviderUsed(res.data.provider_used === 'youcam' ? 'Perfect Corp YouCam AI' : 'PersonaIQ Composite Engine');
+          }
+        })
+        .catch((err) => {
+          console.warn('Initial YouCam VTO sync notice:', err);
+        });
     }
   }, []);
 
@@ -145,8 +170,12 @@ export default function VirtualTryOnPage() {
 
     try {
       const res = await stylistApi.vtoPreview(selectedAvatarId, [garment, shoe, acc, hair], activeModelImage);
-      if (res?.preview_url || res?.data?.preview_url) {
-        setVtoResult(res.preview_url || res.data.preview_url);
+      const resultUrl = res?.data?.result_image_url || res?.data?.result_url || res?.preview_url || res?.data?.preview_url;
+      if (resultUrl) {
+        setVtoResult(resultUrl);
+      }
+      if (res?.data?.provider_used) {
+        setProviderUsed(res.data.provider_used === 'youcam' ? 'Perfect Corp YouCam AI' : 'PersonaIQ Composite Engine');
       }
     } catch (e) {
       console.warn('VTO endpoint preview notice, using local dynamic compositing canvas:', e);
@@ -204,7 +233,7 @@ export default function VirtualTryOnPage() {
       subcategory: 'online_store',
       gender: 'unisex',
       asset_type: 'product',
-      image_url: productUrl, // Uses direct pasted URL
+      image_url: productUrl,
       occasions: ['all'],
       is_active: true,
     };
@@ -213,185 +242,275 @@ export default function VirtualTryOnPage() {
     setProductUrl('');
   };
 
-  const handleNext = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('personaiq_active_draft_step', '/journey/presence-index');
-    }
-    router.push('/journey/presence-index');
-  };
-
-  const catalogItems = [
-    ...userUploads.filter((u) => u.category === activeCatalogTab),
-    ...VTO_CATALOG.filter((item) => item.category === activeCatalogTab),
-  ];
+  const currentTabItems = VTO_CATALOG.filter((item) => item.category === activeCatalogTab);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn py-2">
-      {/* Header Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-4">
-        <div>
-          <span className="text-[11px] font-mono font-bold text-red-600 uppercase tracking-widest block">
-            PRESENCE JOURNEY STAGE • VIRTUAL TRY-ON
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-950 font-sans mt-0.5">
-            Virtual Try-On™ Interactive Studio
-          </h1>
-          <p className="text-sm text-gray-600">
-            Dress your selected fitting model or uploaded selfie live on the spot. Click clothes, shoes, accessories, or hairstyles to composite instantly.
-          </p>
+    <div className="space-y-8 animate-fadeIn py-2">
+      
+      {/* ── TOP STEP & TITLE HEADER ───────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono font-bold text-gray-500 uppercase tracking-widest border-t-2 border-red-600 pt-3">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+            <span>PRESENCE JOURNEY STAGE</span>
+          </div>
+          <span>STEP 10 OF 15 — VIRTUAL TRY-ON STUDIO</span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleNext}
-          className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 shadow-md transition-all cursor-pointer shrink-0"
-        >
-          <span>Finalize Presence Index</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-950 font-sans">
+              Virtual Try-On Studio
+            </h1>
+            <p className="text-base text-gray-600 mt-1 max-w-3xl">
+              Preview your AI-recommended outfit concept on your selfie photo or model avatar powered by Perfect Corp YouCam AI.
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Main Studio Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* Left Interactive Wardrobe Selector (5 Cols) */}
-        <div className="lg:col-span-5 bg-white border border-gray-200 rounded-[24px] p-5 shadow-xs space-y-5">
-          
-          {/* 1. Fitting Model / Baseline Toggle */}
-          <div className="space-y-3">
-            <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider block">
-              1. CHOOSE FITTING MODEL BASELINE
-            </span>
+      {/* ── MAIN STUDIO GRID (2 COLUMNS: FITTING CANVAS + ASSET CATALOG) ────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-            <div className="grid grid-cols-2 gap-2">
+        {/* LEFT 6 COLS: VTO CANVAS & MODEL SELECTION */}
+        <div className="lg:col-span-6 space-y-6">
+
+          {/* Model Selector Tabs */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-gray-600 uppercase tracking-wider">
+                SELECT FITTING MODEL
+              </span>
+              <span className="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-100 flex items-center space-x-1">
+                <Cpu className="w-3 h-3" />
+                <span>{providerUsed}</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              
+              {/* Option 1: User's Uploaded Selfie */}
               <button
                 type="button"
                 onClick={() => setSelectedAvatarId('user_selfie')}
-                className={`p-2 rounded-xl border text-left flex items-center space-x-2 transition-all cursor-pointer ${
+                className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-1 ${
                   selectedAvatarId === 'user_selfie'
-                    ? 'border-2 border-red-600 bg-red-50/60 font-bold shadow-xs'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    ? 'border-2 border-red-600 bg-red-50/40 text-red-950 ring-2 ring-red-100 font-bold'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
                 }`}
               >
-                <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-900 shrink-0 border border-gray-200">
-                  <img src={userPhoto} alt="My Uploaded Selfie" className="w-full h-full object-cover" />
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-300">
+                  <img src={userPhoto} alt="User Selfie" className="w-full h-full object-cover" />
                 </div>
-                <div className="truncate">
-                  <span className="text-[11.5px] block font-bold text-gray-950 truncate">My Photo</span>
-                  <span className="text-[9.5px] font-mono text-gray-400 block">Uploaded Selfie</span>
-                </div>
+                <span className="text-[11px] truncate w-full">My Photo</span>
               </button>
 
-              {VTO_MODELS.map((model) => {
-                const isSelected = selectedAvatarId === model.id;
-                return (
-                  <button
-                    key={model.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAvatarId(model.id);
-                      if (typeof window !== 'undefined') {
-                        localStorage.setItem('personaiq_vto_avatar_id', model.id);
-                      }
-                    }}
-                    className={`p-2 rounded-xl border text-left flex items-center space-x-2 transition-all cursor-pointer ${
-                      isSelected
-                        ? 'border-2 border-red-600 bg-red-50/60 font-bold shadow-xs'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-900 shrink-0 border border-gray-200">
-                      <img src={model.image_url} alt={model.name} className="w-full h-full object-cover object-top" />
-                    </div>
-                    <div className="truncate">
-                      <span className="text-[11.5px] block font-bold text-gray-950 truncate">{model.name}</span>
-                      <span className="text-[9.5px] font-mono text-gray-400 block">Built-in Model</span>
-                    </div>
-                  </button>
-                );
-              })}
+              {/* Stock Avatar Models */}
+              {VTO_MODELS.map((model) => (
+                <button
+                  key={model.id}
+                  type="button"
+                  onClick={() => setSelectedAvatarId(model.id)}
+                  className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-1 ${
+                    selectedAvatarId === model.id
+                      ? 'border-2 border-red-600 bg-red-50/40 text-red-950 ring-2 ring-red-100 font-bold'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                  }`}
+                >
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-300">
+                    <img src={model.image_url} alt={model.name} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="text-[11px] truncate w-full">{model.name}</span>
+                </button>
+              ))}
+
             </div>
           </div>
 
-          {/* 2. Import URL */}
-          <form onSubmit={handleImportProduct} className="space-y-2 border-t border-gray-100 pt-3">
-            <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider block">
-              2. IMPORT GARMENT STORE URL
-            </span>
-            <div className="flex gap-2">
+          {/* MAIN VTO CANVAS */}
+          <div className="bg-gray-950 rounded-2xl overflow-hidden border border-gray-800 shadow-xl relative aspect-[3/4] flex items-center justify-center group">
+            
+            {/* Background Model Image / YouCam Result */}
+            <img
+              src={vtoResult || activeModelImage}
+              alt="Virtual Try-On Model Canvas"
+              className={`w-full h-full object-cover object-top transition-opacity duration-300 ${
+                isGenerating ? 'opacity-40' : 'opacity-100'
+              }`}
+            />
+
+            {/* Spinner Overlay during YouCam AI render */}
+            {isGenerating && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2 bg-black/60 backdrop-blur-xs z-30">
+                <RefreshCw className="w-8 h-8 text-red-500 animate-spin" />
+                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                  YouCam AI Rendering Composite...
+                </span>
+              </div>
+            )}
+
+            {/* Top Badge: Provider Telemetry */}
+            <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-white px-3 py-1.5 rounded-xl border border-white/10 flex items-center space-x-2 z-20">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-mono font-bold uppercase tracking-wider">
+                {selectedAvatarId === 'user_selfie' ? 'MY SELFIE CANVAS' : 'MODEL CANVAS'}
+              </span>
+            </div>
+
+            {/* Top Right Badge: Presence Score Indicator */}
+            <div className="absolute top-4 right-4 bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 px-3 py-1.5 rounded-xl backdrop-blur-md flex items-center space-x-1.5 z-20 shadow-md">
+              <Zap className="w-4 h-4 text-emerald-400 fill-current" />
+              <span className="text-xs font-mono font-extrabold">{presenceScore} / 100 FIT</span>
+            </div>
+
+            {/* Bottom Floating Card: Currently Applied Garments */}
+            <div className="absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur-md text-white p-3.5 rounded-xl border border-white/10 flex items-center justify-between gap-3 z-20">
+              <div className="min-w-0">
+                <span className="text-[10px] font-mono text-red-400 font-bold uppercase tracking-wider block">
+                  APPLIED GARMENT
+                </span>
+                <span className="text-xs font-bold text-white truncate block mt-0.5">
+                  {selectedGarment.name}
+                </span>
+              </div>
+
+              <div className="flex items-center space-x-2 shrink-0">
+                <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/20 bg-gray-900">
+                  <img src={selectedGarment.image_url} alt={selectedGarment.name} className="w-full h-full object-cover" />
+                </div>
+                {selectedShoe && (
+                  <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/20 bg-gray-900">
+                    <img src={selectedShoe.image_url} alt={selectedShoe.name} className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* RIGHT 6 COLS: ASSET CATALOG & IMPORT TOOLS */}
+        <div className="lg:col-span-6 space-y-6">
+
+          {/* Import Product from URL Bar */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-gray-950 font-sans flex items-center space-x-2">
+                <Globe className="w-4 h-4 text-red-600" />
+                <span>Import Garment from Store URL</span>
+              </h3>
+              <span className="text-[10px] font-mono text-gray-400 uppercase">Zara / ASOS / Nike</span>
+            </div>
+
+            <form onSubmit={handleImportProduct} className="flex items-center space-x-2">
               <input
                 type="url"
                 value={productUrl}
                 onChange={(e) => setProductUrl(e.target.value)}
-                placeholder="Paste store or image URL..."
-                className="flex-1 px-3 py-1.5 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Paste store product URL (e.g. https://store.com/item)..."
+                className="flex-1 h-11 px-3.5 bg-gray-50 border border-gray-250 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-red-600 transition-colors"
               />
               <button
                 type="submit"
-                className="px-3.5 py-1.5 bg-red-600 text-white font-bold text-xs rounded-xl hover:bg-red-700 cursor-pointer transition-colors"
+                className="h-11 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0 flex items-center space-x-1.5 cursor-pointer"
               >
-                Import
+                <span>Import</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
-            </div>
-          </form>
+            </form>
+          </div>
 
-          {/* 3. On-The-Spot VTO Category Tabs */}
-          <div className="space-y-3 border-t border-gray-100 pt-3">
-            <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider block">
-              3. SELECT ITEMS TO DRESS MODEL
-            </span>
-
-            <div className="grid grid-cols-4 gap-1 bg-gray-100 p-1 rounded-xl">
+          {/* Catalog Categories Tabs */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs space-y-4">
+            
+            {/* Category Tab Buttons */}
+            <div className="flex items-center space-x-1 border-b border-gray-200 pb-3 overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setActiveCatalogTab('clothing')}
-                className={`py-1.5 px-2 rounded-lg font-bold text-[11px] flex items-center justify-center space-x-1 transition-all cursor-pointer ${
-                  activeCatalogTab === 'clothing' ? 'bg-white text-red-600 shadow-2xs' : 'text-gray-600'
+                className={`h-9 px-3.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center space-x-1.5 ${
+                  activeCatalogTab === 'clothing'
+                    ? 'bg-red-600 text-white shadow-2xs'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <Shirt className="w-3.5 h-3.5" />
-                <span>Clothes</span>
+                <span>Clothing</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveCatalogTab('footwear')}
-                className={`py-1.5 px-2 rounded-lg font-bold text-[11px] flex items-center justify-center space-x-1 transition-all cursor-pointer ${
-                  activeCatalogTab === 'footwear' ? 'bg-white text-red-600 shadow-2xs' : 'text-gray-600'
+                className={`h-9 px-3.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center space-x-1.5 ${
+                  activeCatalogTab === 'footwear'
+                    ? 'bg-red-600 text-white shadow-2xs'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <Footprints className="w-3.5 h-3.5" />
-                <span>Shoes</span>
+                <span>Footwear</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveCatalogTab('accessories')}
-                className={`py-1.5 px-2 rounded-lg font-bold text-[11px] flex items-center justify-center space-x-1 transition-all cursor-pointer ${
-                  activeCatalogTab === 'accessories' ? 'bg-white text-red-600 shadow-2xs' : 'text-gray-600'
+                className={`h-9 px-3.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center space-x-1.5 ${
+                  activeCatalogTab === 'accessories'
+                    ? 'bg-red-600 text-white shadow-2xs'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <Watch className="w-3.5 h-3.5" />
-                <span>Extras</span>
+                <span>Accessories</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveCatalogTab('style_references')}
-                className={`py-1.5 px-2 rounded-lg font-bold text-[11px] flex items-center justify-center space-x-1 transition-all cursor-pointer ${
-                  activeCatalogTab === 'style_references' ? 'bg-white text-red-600 shadow-2xs' : 'text-gray-600'
+                className={`h-9 px-3.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center space-x-1.5 ${
+                  activeCatalogTab === 'style_references'
+                    ? 'bg-red-600 text-white shadow-2xs'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <Scissors className="w-3.5 h-3.5" />
-                <span>Hair</span>
+                <span>Hairstyles</span>
               </button>
             </div>
 
-            {/* Item Gallery */}
-            <div className="grid grid-cols-2 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
-              {catalogItems.map((item) => {
+            {/* Custom User Uploads Section */}
+            {userUploads.length > 0 && (
+              <div className="space-y-2 pt-1 border-b border-gray-150 pb-3">
+                <span className="text-[10px] font-mono font-bold text-red-600 uppercase tracking-wider">
+                  MY IMPORTED ITEMS ({userUploads.length})
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {userUploads.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleAssetSelect(item)}
+                      className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center space-x-2 bg-red-50/30 ${
+                        selectedGarment.id === item.id || selectedShoe?.id === item.id
+                          ? 'border-2 border-red-600 ring-2 ring-red-100'
+                          : 'border-red-200 hover:border-red-300'
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-900 truncate">{item.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Standard Catalog Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto pr-1">
+              {currentTabItems.map((item) => {
                 const isSelected =
-                  selectedGarment?.id === item.id ||
+                  selectedGarment.id === item.id ||
                   selectedShoe?.id === item.id ||
                   selectedAccessory?.id === item.id ||
                   selectedHairstyle?.id === item.id;
@@ -400,125 +519,62 @@ export default function VirtualTryOnPage() {
                   <div
                     key={item.id}
                     onClick={() => handleAssetSelect(item)}
-                    className={`p-2 rounded-xl border text-left flex items-center space-x-2.5 transition-all cursor-pointer overflow-hidden ${
+                    className={`bg-white border rounded-xl overflow-hidden p-2.5 transition-all cursor-pointer group flex flex-col justify-between ${
                       isSelected
-                        ? 'border-2 border-red-600 bg-red-50/60 ring-2 ring-red-100 shadow-xs'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
+                        ? 'border-2 border-red-600 ring-2 ring-red-100 shadow-sm bg-red-50/10'
+                        : 'border-gray-200 hover:border-gray-300 shadow-2xs'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-950 shrink-0 border border-gray-200">
-                      <img src={item.image_url} alt={item.name} className="w-full h-full object-contain p-1" />
+                    <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative mb-2 border border-gray-150">
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      {isSelected && (
+                        <div className="absolute top-1.5 right-1.5 bg-red-600 text-white rounded-full p-1 shadow-md">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-[11.5px] font-bold text-gray-950 truncate font-sans">{item.name}</h4>
-                      <p className="text-[9.5px] font-mono text-gray-500 uppercase truncate">{item.subcategory}</p>
+
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-mono text-gray-400 uppercase block truncate">
+                        {item.subcategory}
+                      </span>
+                      <h4 className="text-xs font-bold text-gray-950 font-sans line-clamp-1">
+                        {item.name}
+                      </h4>
                     </div>
                   </div>
                 );
               })}
             </div>
+
           </div>
 
-          <button
-            type="button"
-            onClick={handleNext}
-            className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-bold text-[14px] rounded-xl shadow-sm transition-all flex items-center justify-center space-x-2 cursor-pointer"
-          >
-            <span>Proceed with Selection</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+          {/* Bottom Action Row */}
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+            <Link
+              href="/journey/choose-outfit"
+              className="h-12 px-6 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl border border-gray-250 transition-colors flex items-center space-x-2 shrink-0 shadow-2xs"
+            >
+              <span>Back to Outfits</span>
+            </Link>
 
-        {/* Right Interactive Fitting Canvas (7 Cols) */}
-        <div className="lg:col-span-7 bg-gray-950 border border-gray-800 rounded-[24px] overflow-hidden shadow-lg relative min-h-[620px] flex flex-col justify-between p-6">
-          
-          {/* Room Header */}
-          <div className="flex items-center justify-between text-[13px] font-sans text-gray-300 relative z-10">
-            <span className="font-bold flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>
-                {selectedAvatarId === 'user_selfie' ? 'Uploaded Photo Fitting Room' : 'Built-in Model Fitting Room'}
-              </span>
-            </span>
-
-            {isGenerating && (
-              <span className="text-xs font-mono font-bold text-red-400 flex items-center space-x-1">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>AI Compositing Garment...</span>
-              </span>
-            )}
-          </div>
-
-          {/* Model Canvas Composite Centerpiece */}
-          <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">
-            <div className="relative w-full max-w-sm aspect-[3/4] rounded-[20px] overflow-hidden border border-white/20 shadow-2xl bg-gray-900">
-              
-              {/* Model Base Image */}
-              <img
-                src={vtoResult || activeModelImage}
-                alt="Fitting Canvas Model"
-                className="w-full h-full object-contain p-2"
-              />
-
-              {/* Live Garment Preview Overlay Badge */}
-              <div className="absolute top-4 right-4 bg-gray-950/90 border border-white/20 p-2.5 rounded-[14px] shadow-lg flex items-center space-x-3 pointer-events-auto">
-                <div className="w-12 h-12 rounded-lg bg-gray-900 overflow-hidden border border-red-500/50">
-                  <img src={selectedGarment.image_url} alt={selectedGarment.name} className="w-full h-full object-contain p-1" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono font-bold text-red-400 block uppercase">TRIED-ON ATTIRE</span>
-                  <span className="text-[12px] font-bold text-white block max-w-[130px] truncate">{selectedGarment.name}</span>
-                </div>
-              </div>
-
-              {/* Applied Layer Badges */}
-              <div className="absolute bottom-4 left-4 right-4 bg-gray-950/85 backdrop-blur-md border border-white/10 p-3 rounded-[14px] space-y-2">
-                <div className="flex items-center space-x-2.5">
-                  <img
-                    src={selectedGarment.image_url}
-                    alt={selectedGarment.name}
-                    className="w-10 h-10 rounded-lg object-contain bg-gray-900 border border-white/20 shrink-0 p-1"
-                  />
-                  <div className="min-w-0">
-                    <span className="text-[11.5px] font-bold text-white block truncate">{selectedGarment.name}</span>
-                    <span className="text-[9.5px] font-mono text-gray-400 block uppercase">Garment: {selectedGarment.subcategory}</span>
-                  </div>
-                </div>
-
-                {selectedShoe && (
-                  <div className="flex items-center space-x-2 text-[10.5px] text-gray-300 border-t border-white/10 pt-1.5">
-                    <Footprints className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                    <span className="truncate">Shoe: {selectedShoe.name}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Presence Telemetry Overlay */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gray-900/90 backdrop-blur-md border border-white/10 p-3.5 rounded-[18px] shadow-sm text-white">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full border-2 border-red-500 flex items-center justify-center text-[15px] font-bold text-white font-sans bg-red-950/40">
-                {presenceScore}
-              </div>
-              <div>
-                <span className="text-[10px] font-mono font-bold text-gray-400 uppercase block">
-                  PRESENCE INDEX™ FITTING SCORE
-                </span>
-                <span className="text-[12.5px] font-bold text-white font-sans">
-                  High Executive Authority
-                </span>
-              </div>
-            </div>
-
-            <div className="text-[11px] font-mono text-gray-300 bg-white/5 px-3 py-1.5 rounded-[10px] border border-white/10">
-              Active Baseline: <span className="text-emerald-400 font-bold">{selectedAvatarId === 'user_selfie' ? 'User Selfie' : 'Selected Model'}</span>
-            </div>
+            <Link
+              href="/journey/grooming-checklist"
+              className="h-12 px-8 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-2 shrink-0"
+            >
+              <span>Continue to Grooming Checklist</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
         </div>
 
       </div>
+
     </div>
   );
 }
