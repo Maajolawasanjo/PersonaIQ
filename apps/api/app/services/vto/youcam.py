@@ -21,9 +21,9 @@ class YouCamVTOProvider(VTOProvider):
         if not self.api_key or not settings.ENABLE_YOUCAM_VTO:
             logger.info("YouCam credentials not configured or VTO disabled; using internal composite engine.")
             return {
-                "success": True,
-                "provider": "internal_composite",
-                "result_url": base_image_url,
+                "success": False,
+                "provider": "unavailable",
+                "result_url": None,
                 "applied_items": garment_items,
             }
 
@@ -57,16 +57,16 @@ class YouCamVTOProvider(VTOProvider):
                 else:
                     logger.warning("YouCam API error", status_code=response.status_code)
                     return {
-                        "success": True,
-                        "provider": "internal_composite_fallback",
-                        "result_url": base_image_url,
+                        "success": False,
+                        "provider": "provider_failed",
+                        "result_url": None,
                         "applied_items": garment_items,
                     }
         except Exception as e:
             logger.error("YouCam VTO request failed", error=str(e))
             return {
-                "success": True,
-                "provider": "internal_composite_fallback",
-                "result_url": base_image_url,
+                "success": False,
+                "provider": "provider_failed",
+                "result_url": None,
                 "applied_items": garment_items,
             }
