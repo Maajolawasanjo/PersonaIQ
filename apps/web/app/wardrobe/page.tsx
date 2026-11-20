@@ -233,7 +233,7 @@ export default function WardrobePage() {
             <span>AI Stylist & VTO Studio</span>
           </Link>
           <Link
-            href="/journey/choosing-outfit"
+            href="/journey/choose-outfit"
             className="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-[13px] rounded-[10px] flex items-center space-x-2 transition-all"
           >
             <span>+ Add Outfit</span>

@@ -99,7 +99,7 @@ export default function EventTypePage() {
       localStorage.setItem('personaiq_active_occasion', selectedType);
       localStorage.setItem('personaiq_event_type', title);
       localStorage.setItem('personaiq_event_title', title);
-      localStorage.setItem('personaiq_active_draft_step', '/journey/dress-code');
+      localStorage.setItem('personaiq_active_draft_step', '/journey/event-details');
     }
   };
 
@@ -151,11 +151,11 @@ export default function EventTypePage() {
       {/* 3. Bottom Primary CTA */}
       <div className="pt-6">
         <Link
-          href="/journey/dress-code"
+          href="/journey/event-details"
           onClick={handleContinue}
           className="inline-flex items-center justify-center space-x-2 h-12 px-8 bg-red-600 hover:bg-red-700 text-white font-bold text-[14px] rounded-[12px] shadow-sm transition-all active:scale-[0.98]"
         >
-          <span>Continue to Dress Code</span>
+          <span>Continue to Event Details</span>
           <span>→</span>
         </Link>
       </div>

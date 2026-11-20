@@ -1,9 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { journeyApi } from '@/lib/api/services';
 import Link from 'next/link';
 
 export default function DressCodePage() {
+  const router = useRouter();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedCode, setSelectedCode] = useState('formal');
 
   const dressCodes = [
@@ -84,13 +89,24 @@ export default function DressCodePage() {
     }
   };
 
-  const handleContinue = () => {
-    const codeObj = dressCodes.find((c) => c.id === selectedCode);
-    const title = codeObj ? codeObj.title : selectedCode;
-    if (typeof window !== 'undefined') {
+  const handleContinue = async () => {
+    if (isSaving) return;
+    const title = dressCodes.find((c) => c.id === selectedCode)?.title ?? selectedCode;
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      const journeyId = localStorage.getItem('personaiq_active_journey_id');
+      if (!journeyId) throw new Error('Missing active journey');
+      await journeyApi.updateEventContext(journeyId, { dress_code: title });
       localStorage.setItem('personaiq_active_dress_code', selectedCode);
       localStorage.setItem('personaiq_dress_code', title);
       localStorage.setItem('personaiq_active_draft_step', '/journey/capture-look');
+      router.push('/journey/capture-look');
+    } catch (error) {
+      console.error('Failed to save dress code:', error);
+      setSaveError('Dress code could not be saved. Please retry.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -139,14 +155,12 @@ export default function DressCodePage() {
 
       {/* 4. Bottom Primary CTA */}
       <div className="pt-6">
-        <Link
-          href="/journey/capture-look"
-          onClick={handleContinue}
-          className="inline-flex items-center justify-center space-x-2 h-12 px-8 bg-red-600 hover:bg-red-700 text-white font-bold text-[14px] rounded-[12px] shadow-sm transition-all active:scale-[0.98]"
-        >
-          <span>Continue to Capture Your Look</span>
+        {saveError && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</p>}
+        <button type="button" onClick={handleContinue} disabled={isSaving}
+          className="inline-flex items-center justify-center space-x-2 h-12 px-8 bg-red-600 hover:bg-red-700 text-white font-bold text-[14px] rounded-[12px] shadow-sm transition-all disabled:opacity-60">
+          <span>{isSaving ? 'Saving...' : 'Continue to Capture Your Look'}</span>
           <span>→</span>
-        </Link>
+        </button>
       </div>
     </div>
   );

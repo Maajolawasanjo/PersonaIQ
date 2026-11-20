@@ -925,7 +925,7 @@ export default function VirtualTryOnPage() {
             </button>
 
             <Link
-              href="/journey/grooming-checklist"
+              href="/journey/explanation"
               className="h-12 px-5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer"
             >
               <span>Complete My Look</span>
