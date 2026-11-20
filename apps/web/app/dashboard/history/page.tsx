@@ -1,354 +1,126 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { 
-  ArrowLeftRight, 
-  BarChart3, 
-  Eye, 
-  History, 
-  Info, 
-  Search, 
-  Sliders, 
-  Shirt,
-  ArrowRight,
-  CheckSquare,
-  FileText,
-  Download,
-  Share2,
-  Copy,
-  Trash2,
-  Archive
-} from 'lucide-react';
+import { ArrowRight, Archive, Search, History } from 'lucide-react';
 import { journeyApi } from '@/lib/api/services';
+import type { Journey } from '@/lib/api/types';
+
+type StatusFilter = 'ALL' | 'DRAFT' | 'COMPLETED' | 'ARCHIVED';
 
 export default function JourneyArchivePage() {
-  const [filter, setFilter] = useState<string>('All');
-  const [search, setSearch] = useState<string>('');
-  const [isEmptyArchive, setIsEmptyArchive] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  const [journeys, setJourneys] = useState<any[]>([]);
+  const [journeys, setJourneys] = React.useState<Journey[]>([]);
+  const [filter, setFilter] = React.useState<StatusFilter>('ALL');
+  const [search, setSearch] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [archivingId, setArchivingId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    async function loadJourneys() {
-      let serverJourneys: any[] = [];
+    let active = true;
+    async function load() {
       try {
-        const res = await journeyApi.listJourneys(1, 20);
-        if (res?.data && Array.isArray(res.data)) {
-          serverJourneys = res.data;
-        }
-      } catch (err) {
-        console.warn('Could not fetch journeys from API, checking local history:', err);
+        const items = await journeyApi.listJourneys(1, 50);
+        if (active) setJourneys(items);
+      } catch {
+        if (active) setError('Your saved journeys could not be loaded. Please try again later.');
+      } finally {
+        if (active) setLoading(false);
       }
-
-      let localSaved: any[] = [];
-      if (typeof window !== 'undefined') {
-        const savedJourneysRaw = localStorage.getItem('personaiq_saved_journeys');
-        if (savedJourneysRaw) {
-          try {
-            localSaved = JSON.parse(savedJourneysRaw);
-          } catch (e) {
-            console.error('Error parsing local journeys:', e);
-          }
-        }
-      }
-
-      // Combine server + local journeys
-      const combined = [...serverJourneys, ...localSaved];
-      if (combined.length > 0) {
-        const mapped = combined.map((j: any, index: number) => ({
-          id: j.id || `local-${index}`,
-          date: j.created_at ? new Date(j.created_at).toLocaleDateString().toUpperCase() : 'RECENT',
-          title: j.title || j.occasion ? `${j.occasion.charAt(0).toUpperCase() + j.occasion.slice(1)} Session` : 'Executive Presence Session',
-          target: j.dress_code || j.event?.dress_code || 'Business Formal',
-          score: j.presence_score || j.score || 93,
-          isLatest: index === 0,
-          outfitName: j.outfit_name || (j.event?.target_vibe ? `${j.event.target_vibe} Suit` : 'Executive Navy Suit'),
-          outfitDesc: 'Analyzed for high executive authority and visual presence.',
-          image: j.outfit_image || '/vto/clothing/professional/01_navy_suit.jpg',
-          category: j.occasion?.toLowerCase().includes('interview') ? 'Interview' : 'Presentation',
-          archived: j.status === 'ARCHIVED',
-        }));
-        setJourneys(mapped);
-        setIsEmptyArchive(false);
-      } else {
-        setIsEmptyArchive(true);
-      }
-      setIsLoading(false);
     }
-    loadJourneys();
+    void load();
+    return () => { active = false; };
   }, []);
 
-  const categories = ['All', 'Interview', 'Presentation', 'Networking'];
-
-  const handleDelete = (id: string) => {
-    setJourneys((prev) => prev.filter((j) => j.id !== id));
+  const archive = async (id: string) => {
+    if (archivingId) return;
+    setError(null);
+    setArchivingId(id);
+    try {
+      const saved = await journeyApi.archiveJourney(id);
+      setJourneys(previous => previous.map(j => j.id === id ? { ...j, status: saved.status } : j));
+    } catch {
+      setError('This journey could not be archived. No change was made.');
+    } finally {
+      setArchivingId(null);
+    }
   };
 
-  const handleArchive = (id: string) => {
-    setJourneys((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, archived: !j.archived } : j))
-    );
-  };
-
-  const filtered = journeys.filter((j) => {
-    const matchesFilter = filter === 'All' || j.category === filter;
-    const matchesSearch =
-      j.title.toLowerCase().includes(search.toLowerCase()) ||
-      j.target.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
+  const visible = journeys.filter(j => {
+    const label = [j.title, j.event?.event_type ?? '', j.status].join(' ').toLowerCase();
+    return (filter === 'ALL' || j.status === filter) && label.includes(search.trim().toLowerCase());
   });
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn py-2 bg-white p-6 sm:p-8 rounded-[24px] shadow-sm border border-gray-150">
-      
-      {/* Header & State Toggle */}
-      <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-        <div className="space-y-1">
-          <h1 className="text-[32px] sm:text-[36px] font-bold text-gray-950 font-sans leading-tight">
-            Journey Archive
-          </h1>
-          <p className="text-[13.5px] text-gray-500 font-normal">
-            A chronological record of your simulated presence evaluations and outfit analyses.
-          </p>
+    <div className="mx-auto max-w-5xl space-y-6 py-2">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-red-700">My Activity</p>
+          <h1 className="mt-2 text-3xl font-bold text-gray-950">Journey History</h1>
+          <p className="mt-2 text-sm text-gray-600">Your saved preparations, drafts, and completed journeys.</p>
         </div>
-
-        {/* Toggle Empty vs Populated State */}
-        <div className="flex items-center space-x-2 shrink-0 flex-wrap gap-2">
-          <Link
-            href="/journey/compare-looks"
-            className="h-9 px-4 bg-gray-950 hover:bg-gray-800 text-white font-bold text-[12px] rounded-[8px] flex items-center space-x-1.5 transition-colors"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5" />
-            <span>Compare Reports</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => setIsEmptyArchive(!isEmptyArchive)}
-            className="text-[11px] font-mono font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 border border-gray-250 px-3 py-1 rounded-full shrink-0 flex items-center space-x-1"
-          >
-            {isEmptyArchive ? (
-              <>
-                <BarChart3 className="w-3.5 h-3.5 text-gray-500" />
-                <span>Show Populated Archive</span>
-              </>
-            ) : (
-              <>
-                <Eye className="w-3.5 h-3.5 text-gray-500" />
-                <span>Show Empty History State</span>
-              </>
-            )}
-          </button>
-        </div>
+        <Link href="/journey/start" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">New journey <ArrowRight className="h-4 w-4" /></Link>
       </div>
 
-      {/* EMPTY ARCHIVE STATE */}
-      {isEmptyArchive ? (
-        <div className="bg-white border border-gray-200 rounded-[24px] p-10 text-center flex flex-col items-center justify-center space-y-6 min-h-[400px] shadow-xs">
-          
-          <div className="w-20 h-20 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
-            <ArrowLeftRight className="w-8 h-8 text-gray-400" />
-          </div>
-
-          <div className="space-y-2 max-w-md">
-            <h2 className="text-[32px] font-bold text-gray-950 font-sans leading-tight">
-              No Journey History
-            </h2>
-            <p className="text-[13.5px] text-gray-600 font-normal leading-relaxed">
-              Your archive is currently empty. The Presence Journey records your analytical pathways and cognitive models over time. Begin a new analysis to establish your baseline.
-            </p>
-          </div>
-
-          <Link
-            href="/journey/start"
-            className="h-11 px-7 bg-red-600 hover:bg-red-700 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm flex items-center justify-center space-x-2 transition-all"
-          >
-            <span>Create Your First Journey</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-
-          <div className="bg-gray-50/80 border border-gray-150 rounded-[16px] p-5 text-left max-w-lg w-full space-y-1.5 mt-4">
-            <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1">
-              <Info className="w-3.5 h-3.5 text-gray-550" />
-              <span>ABOUT THE ARCHIVE</span>
-            </span>
-            <p className="text-[12px] text-gray-600 font-normal leading-relaxed">
-              Historical data enables longitudinal tracking of your intelligence models. Once generated, your journey maps will be securely stored here.
-            </p>
-          </div>
-
-        </div>
-      ) : (
-        /* POPULATED ARCHIVE STATE */
-        <div className="space-y-6">
-          {/* Search & Filter Bar */}
-          <div className="bg-gray-50/80 border border-gray-200 rounded-[20px] p-4 space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-3 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search events, themes, or dates..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-white border border-gray-250 rounded-[10px] text-[13px] text-gray-800 focus:outline-none focus:border-red-600 font-sans"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setFilter(cat)}
-                  className={`px-4 py-1.5 rounded-full text-[12px] font-mono font-bold transition-all ${
-                    filter === cat
-                      ? 'bg-gray-950 text-white shadow-xs'
-                      : 'bg-white border border-gray-250 text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {cat}
+      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+      {loading ? <p role="status" className="text-sm text-gray-600">Loading history...</p> : journeys.length === 0 && !error ? (
+        <section className="rounded-3xl border border-gray-200 bg-white p-10 text-center">
+          <History className="mx-auto h-9 w-9 text-gray-400" />
+          <h2 className="mt-4 text-xl font-bold text-gray-950">Nothing saved yet</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">Start a Presence Journey to create your first saved preparation.</p>
+          <Link href="/journey/start" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-red-700">Start a journey <ArrowRight className="h-4 w-4"/></Link>
+        </section>
+      ) : !loading && journeys.length > 0 ? (
+        <>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+            <label className="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2">
+              <Search className="h-4 w-4 text-gray-500"/>
+              <span className="sr-only">Search journey history</span>
+              <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search journeys..." className="w-full bg-transparent text-sm text-gray-900 outline-none"/>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(['ALL', 'DRAFT', 'COMPLETED', 'ARCHIVED'] as const).map(status => (
+                <button type="button" key={status} onClick={() => setFilter(status)}
+                  aria-pressed={filter === status}
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold ${filter === status ? 'bg-gray-950 border-gray-950 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+                  {status === 'ALL' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Vertical Timeline List */}
-          <div className="relative pl-6 space-y-8 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-gray-200">
-            {filtered.map((j) => (
-              <div key={j.id} className="relative group">
-                <div
-                  className={`absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 bg-white transition-all ${
-                    j.isLatest ? 'border-red-600 bg-red-600 ring-4 ring-red-100' : 'border-gray-400'
-                  }`}
-                />
-
-                <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-xs space-y-4">
-                  <div className="flex items-start justify-between border-b border-gray-100 pb-3">
-                    <div className="space-y-0.5">
-                      <span className="text-[10.5px] font-mono text-gray-400 uppercase tracking-wider block">
-                        {j.date}
-                      </span>
-                      <h3 className="text-[22px] font-bold text-gray-950 font-sans leading-tight">
-                        {j.title}
-                      </h3>
-                      <p className="text-[12.5px] text-gray-500 font-mono">
-                        Target Audience: <span className="text-gray-800 font-medium">{j.target}</span>
-                      </p>
+          {visible.length === 0 ? (
+            <p className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600">No journeys match those filters.</p>
+          ) : (
+            <ul className="space-y-3">
+              {visible.map(journey => (
+                <li key={journey.id} className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-gray-500">{new Date(journey.created_at).toLocaleDateString()}</p>
+                      <h2 className="mt-1 text-lg font-semibold text-gray-950">{journey.title}</h2>
+                      <span className="mt-2 inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">{journey.status}</span>
                     </div>
-
-                    <div className="text-right">
-                      <span className="text-[32px] font-extrabold text-gray-950 font-sans leading-none block">
-                        {j.score}
-                      </span>
-                      <span className="text-[9.5px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
-                        PRESENCE INDEX
-                      </span>
-                    </div>
+                    {typeof journey.presence_score === 'number' && journey.status === 'COMPLETED' && (
+                      <p className="text-xl font-bold text-gray-950">{journey.presence_score}<span className="ml-1 text-xs font-normal text-gray-500">Presence Index</span></p>
+                    )}
                   </div>
-
-                  {!j.archived ? (
-                    <div className="bg-gray-50/70 border border-gray-150 rounded-[16px] p-4 space-y-2">
-                      <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1.5">
-                        <Shirt className="w-3.5 h-3.5 text-gray-500" />
-                        <span>SELECTED OUTFIT</span>
-                      </span>
-
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-1">
-                        <div className="w-16 h-16 rounded-[12px] overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
-                          <img src={j.image} alt={j.outfitName} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="space-y-1 flex-1">
-                          <h4 className="text-[14.5px] font-bold text-gray-950 font-sans">
-                            {j.outfitName}
-                          </h4>
-                          <p className="text-[12px] text-gray-600 font-normal leading-relaxed">
-                            {j.outfitDesc}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50/70 border border-gray-150 rounded-[16px] p-4 space-y-2">
-                      <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1.5">
-                        <History className="w-3.5 h-3.5 text-gray-500" />
-                        <span>ARCHIVED DATA</span>
-                      </span>
-                      <p className="text-[12px] text-gray-500 font-normal italic">
-                        Outfit imagery archived. Primary index metrics retained.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Priority 3 Action Buttons Toolbar */}
-                  <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/journey/${j.id}`}
-                      className="h-8 px-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Open Plan Hub</span>
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <Link href={`/journey/${journey.id}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+                      Open journey <ArrowRight className="h-4 w-4"/>
                     </Link>
-
-                    <Link
-                      href="/journey/checklist"
-                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <CheckSquare className="w-3.5 h-3.5" />
-                      <span>Checklist</span>
-                    </Link>
-
-                    <Link
-                      href="/journey/compare-looks"
-                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                      <span>Compare Looks</span>
-                    </Link>
-
-                    <Link
-                      href="/journey/export"
-                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Export</span>
-                    </Link>
-
-                    <Link
-                      href="/journey/share"
-                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span>Share</span>
-                    </Link>
-
-                    <div className="ml-auto flex items-center space-x-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleArchive(j.id)}
-                        className="h-8 px-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold text-[11.5px] rounded-[8px] border border-gray-200 flex items-center space-x-1"
-                        title="Archive/Unarchive"
-                      >
-                        <Archive className="w-3.5 h-3.5" />
+                    {journey.status !== 'ARCHIVED' && (
+                      <button type="button" disabled={archivingId === journey.id} onClick={() => archive(journey.id)}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50">
+                        <Archive className="h-4 w-4"/>{archivingId === journey.id ? 'Archiving...' : 'Archive'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(j.id)}
-                        className="h-8 px-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11.5px] rounded-[8px] border border-red-200 flex items-center space-x-1"
-                        title="Delete Journey"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    )}
                   </div>
-
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      )}
-
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

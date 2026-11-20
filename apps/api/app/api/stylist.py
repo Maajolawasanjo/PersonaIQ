@@ -77,6 +77,11 @@ async def vto_preview(
         user_photo_url=payload.user_photo_url,
         items=payload.items,
     )
+    if not result.get("success") or not result.get("result_image_url"):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Virtual try-on did not generate an image. Please try again later.",
+        )
     return {"success": True, "data": result}
 
 

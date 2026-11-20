@@ -7,6 +7,10 @@ export interface VTOAsset {
   asset_type: 'product' | 'reference';
   image_url: string;
   color?: string;
+  /** Optional catalog price; never assume it is available for imported items. */
+  price?: number;
+  /** Optional catalog fit score; only render when actually supplied. */
+  score?: number;
   occasions: string[];
   is_active: boolean;
 }

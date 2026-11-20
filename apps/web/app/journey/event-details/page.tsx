@@ -1,9 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function EventDetailsPage() {
+  const router = useRouter();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [eventName, setEventName] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -187,6 +191,7 @@ export default function EventDetailsPage() {
           </div>
         </div>
 
+        {saveError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</p>}
         {/* Footer Buttons */}
         <div className="pt-4 flex items-center justify-end space-x-3 border-t border-gray-100">
           <Link
@@ -197,32 +202,35 @@ export default function EventDetailsPage() {
           </Link>
           <button
             type="button"
+            disabled={isSaving}
             onClick={async () => {
+              if (isSaving) return;
+              setSaveError(null);
+              setIsSaving(true);
               try {
-                const journeyId = typeof window !== 'undefined' ? localStorage.getItem('personaiq_active_journey_id') : null;
-                if (journeyId) {
-                  const { journeyApi } = await import('@/lib/api/services');
-                  await journeyApi.updateEventContext(journeyId, {
-                    name: eventName || 'Executive Engagement',
-                    industry: industry || 'Technology',
-                    location: location || 'Global',
-                    event_date: date || undefined,
-                    event_time: time || undefined,
-                    importance: selectedStakes === 'critical' ? 3 : selectedStakes === 'strategic' ? 2 : 1,
-                  });
-                }
-              } catch (e) {
-                console.warn('Failed to update event context on backend:', e);
+                const journeyId = localStorage.getItem('personaiq_active_journey_id');
+                if (!journeyId) throw new Error('Missing active journey');
+                const { journeyApi } = await import('@/lib/api/services');
+                await journeyApi.updateEventContext(journeyId, {
+                  name: eventName || 'Event Preparation',
+                  industry: industry || undefined,
+                  location: location || undefined,
+                  event_date: date || undefined,
+                  event_time: time || undefined,
+                  importance: selectedStakes === 'critical' ? 3 : selectedStakes === 'strategic' ? 2 : 1,
+                });
+                localStorage.setItem('personaiq_active_draft_step', '/journey/dress-code');
+                router.push('/journey/dress-code');
+              } catch (err) {
+                console.error('Failed to save event context:', err);
+                setSaveError('Your event was not saved. Please retry before continuing.');
               } finally {
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('personaiq_active_draft_step', '/journey/dress-code');
-                }
-                window.location.href = '/journey/dress-code';
+                setIsSaving(false);
               }
             }}
             className="h-11 px-7 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center justify-center space-x-2 cursor-pointer"
           >
-            <span>Continue</span>
+            <span>{isSaving ? 'Saving...' : 'Continue'}</span>
             <span>→</span>
           </button>
         </div>

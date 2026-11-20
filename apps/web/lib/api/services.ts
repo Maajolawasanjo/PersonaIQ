@@ -109,10 +109,11 @@ export const journeyApi = {
   getJourney: (journeyId: string): Promise<Journey> =>
     apiClient.get<Journey>(`/journeys/${journeyId}`),
 
-  listJourneys: (page = 1, limit = 10, status?: string): Promise<PaginatedResponse<Journey>> => {
-    let url = `/journeys?page=${page}&limit=${limit}`;
-    if (status) url += `&status_filter=${status}`;
-    return apiClient.request<PaginatedResponse<Journey>>(url, { method: 'GET' });
+  // ApiClient unwraps the standard response data, returning an array of Journey.
+  listJourneys: (page = 1, limit = 10, status?: string): Promise<Journey[]> => {
+    let url = `/journeys?page=${page}&page_size=${limit}`;
+    if (status) url += `&status=${encodeURIComponent(status)}`;
+    return apiClient.get<Journey[]>(url);
   },
 
   archiveJourney: (journeyId: string): Promise<Journey> =>

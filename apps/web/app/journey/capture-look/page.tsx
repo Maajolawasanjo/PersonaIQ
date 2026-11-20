@@ -246,7 +246,7 @@ export default function CaptureLookPage() {
         <div className="bg-gray-50 border border-gray-200/80 rounded-[14px] p-4 flex items-start space-x-3 text-[12.5px] text-gray-600 leading-relaxed text-left">
           <Shield className="w-4 h-4 text-primary shrink-0 mt-0.5" />
           <p>
-            <strong className="text-gray-900 font-bold">Privacy First:</strong> Your photo is processed securely for your Presence Index™ facial telemetry and is never shared with third parties.
+            <strong className="text-gray-900 font-bold">Privacy First:</strong> Your uploaded image may be stored by our backend and processed by configured service providers. Upload only photos you are comfortable sharing for this purpose.
           </p>
         </div>
 

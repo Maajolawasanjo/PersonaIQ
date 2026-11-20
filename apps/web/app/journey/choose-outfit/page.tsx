@@ -277,7 +277,7 @@ export default function ChooseOutfitPage() {
 
   const handleSelectLook = (id: string) => {
     setSelectedLookId(id);
-    if (typeof window !== 'defined') {
+    if (typeof window !== 'undefined') {
       localStorage.setItem('personaiq_selected_look_id', id);
     }
   };

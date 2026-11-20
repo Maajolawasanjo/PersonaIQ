@@ -13,6 +13,7 @@ export default function ImageValidationPage() {
   const [modelName, setModelName] = useState<string>('Black Male Fitting Model');
   const [isValidating, setIsValidating] = useState<boolean>(true);
   const [telemetry, setTelemetry] = useState<ImageTelemetryResult | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     async function runAnalysis() {
@@ -38,23 +39,25 @@ export default function ImageValidationPage() {
       setUserPhoto(photoUrl);
       setModelName(name);
 
-      // Perform REAL HTML5 Canvas Computer Vision & Pixel Telemetry
-      const result = await analyzeImageFidelity(photoUrl);
-      setTelemetry(result);
-
-      // Save real telemetry into session
-      localStorage.setItem('personaiq_image_telemetry', JSON.stringify(result));
-      if (result.skinTone) {
-        localStorage.setItem('personaiq_skin_undertone', result.skinTone.undertone);
+      try {
+        const result = await analyzeImageFidelity(photoUrl);
+        setTelemetry(result);
+        localStorage.setItem('personaiq_image_telemetry', JSON.stringify(result));
+      } catch (error) {
+        console.error('Image validation error:', error);
+        localStorage.removeItem('personaiq_image_telemetry');
+        setTelemetry(null);
+        setValidationError('This image could not be checked. Please select another photo or model.');
+      } finally {
+        setIsValidating(false);
       }
-
-      setIsValidating(false);
     }
 
     runAnalysis();
   }, []);
 
   const handleBeginAnalysis = () => {
+    if (!telemetry) return;
     if (typeof window !== 'undefined') {
       localStorage.setItem('personaiq_active_draft_step', '/journey/skin-intelligence');
     }
@@ -119,7 +122,7 @@ export default function ImageValidationPage() {
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-bold text-gray-950">Face Framing & Alignment</span>
+                  <span className="font-bold text-gray-950">Face detection</span>
                 </div>
                 <span className="font-mono font-bold text-emerald-600">
                   {telemetry ? telemetry.faceDetectionText : 'Calculating...'}
@@ -128,7 +131,7 @@ export default function ImageValidationPage() {
               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-emerald-500 h-full rounded-full transition-all duration-700"
-                  style={{ width: `${telemetry?.faceDetectionScore || 85}%` }}
+                  style={{ width: `${telemetry?.faceDetectionScore ?? 0}%` }}
                 />
               </div>
             </div>
@@ -147,7 +150,7 @@ export default function ImageValidationPage() {
               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-emerald-500 h-full rounded-full transition-all duration-700"
-                  style={{ width: `${telemetry?.lightingScore || 90}%` }}
+                  style={{ width: `${telemetry?.lightingScore ?? 0}%` }}
                 />
               </div>
             </div>
@@ -166,7 +169,7 @@ export default function ImageValidationPage() {
               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-emerald-500 h-full rounded-full transition-all duration-700"
-                  style={{ width: `${telemetry?.resolutionScore || 92}%` }}
+                  style={{ width: `${telemetry?.resolutionScore ?? 0}%` }}
                 />
               </div>
             </div>
@@ -179,11 +182,9 @@ export default function ImageValidationPage() {
                     className="w-5 h-5 rounded-full border border-gray-300 shadow-2xs shrink-0"
                     style={{ backgroundColor: telemetry.skinTone.hex }}
                   />
-                  <span className="font-bold text-gray-900">Sampled Skin Tone: {telemetry.skinTone.hex}</span>
+                  <span className="font-bold text-gray-900">Center image color sample: {telemetry.skinTone.hex}</span>
                 </div>
-                <span className="text-[11px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded uppercase">
-                  {telemetry.skinTone.undertone} Undertone
-                </span>
+
               </div>
             )}
 
@@ -192,20 +193,21 @@ export default function ImageValidationPage() {
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold text-gray-950 block">
-                  {telemetry?.angleStatus || 'Camera Framing Verified'}
+                  {telemetry?.angleStatus || 'Waiting for image quality results'}
                 </span>
                 <span className="text-emerald-800 font-medium text-[11.5px] block">
-                  {telemetry?.suggestion || 'Image telemetry verified.'}
+                  {telemetry?.suggestion || 'No image measurements available yet.'}
                 </span>
               </div>
             </div>
           </div>
 
+          {validationError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{validationError}</p>}
           {/* Action Buttons */}
           <div className="space-y-2.5 pt-2">
             <button
               onClick={handleBeginAnalysis}
-              disabled={isValidating}
+              disabled={isValidating || !telemetry}
               className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
             >
               <span>Begin Skin & Presence Analysis</span>

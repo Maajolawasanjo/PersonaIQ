@@ -39,7 +39,8 @@ class VTOEngine:
         return {
             "avatar_choice": avatar_choice,
             "base_image_url": base_url,
-            "result_image_url": vto_result.get("result_url", base_url),
-            "provider_used": vto_result.get("provider", "internal_composite"),
+            "success": bool(vto_result.get("success") and vto_result.get("result_url")),
+            "result_image_url": vto_result.get("result_url") if vto_result.get("success") else None,
+            "provider_used": vto_result.get("provider", "unavailable"),
             "items_applied": items,
         }
