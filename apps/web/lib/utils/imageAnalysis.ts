@@ -29,7 +29,7 @@ export interface ImageTelemetryResult {
 }
 
 export async function analyzeImageFidelity(imageUrl: string): Promise<ImageTelemetryResult> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
@@ -56,7 +56,7 @@ export async function analyzeImageFidelity(imageUrl: string): Promise<ImageTelem
         canvas.height = h;
 
         if (!ctx) {
-          resolve(getFallbackTelemetry(img.width, img.height));
+          reject(new Error('Image pixel analysis failed. Please choose another photo.'));
           return;
         }
 
@@ -133,26 +133,24 @@ export async function analyzeImageFidelity(imageUrl: string): Promise<ImageTelem
         // 1. Resolution Score
         const totalPixels = img.width * img.height;
         const megapixels = Number((totalPixels / 1000000).toFixed(2));
-        let resolutionScore = Math.min(100, Math.max(60, Math.round(megapixels * 35 + 65)));
+        let resolutionScore = Math.min(100, Math.max(0, Math.round(megapixels * 35 + 65)));
         if (img.width >= 1080) resolutionScore = 98;
         else if (img.width >= 720) resolutionScore = 91;
         else if (img.width >= 480) resolutionScore = 82;
 
         // 2. Lighting Score (Optimal luminance 100 - 180, good contrast std dev > 30)
-        let lightingScore = Math.min(99, Math.max(70, Math.round(100 - Math.abs(avgLuminance - 130) * 0.4)));
+        let lightingScore = Math.min(99, Math.max(0, Math.round(100 - Math.abs(avgLuminance - 130) * 0.4)));
         if (contrastStdDev > 35) lightingScore = Math.min(99, lightingScore + 5);
 
         // 3. Face Detection & Framing Score (based on center region variance)
-        let faceDetectionScore = 95;
-        if (centerPixelCount > 0 && contrastStdDev > 20) {
-          faceDetectionScore = Math.min(100, 88 + Math.round(contrastStdDev * 0.25));
-        }
+        // Image contrast does not establish the presence or position of a face.
+        const faceDetectionScore = 0;
 
         const hexColor = `#${((1 << 24) + (avgR << 16) + (avgG << 8) + avgB).toString(16).slice(1)}`;
 
         // Dynamic Suggestions based on ACTUAL sampled values
-        let angleStatus = 'Camera Angle Optimal';
-        let suggestion = 'Image lighting and focal contrast are locked for skin telemetry.';
+        let angleStatus = 'Image quality sample available';
+        let suggestion = 'Brightness and contrast were sampled. Facial alignment and skin condition were not assessed.';
 
         if (avgLuminance < 80) {
           suggestion = 'Lighting is slightly dim. Position facing a soft light source to enhance contrast.';
@@ -172,7 +170,7 @@ export async function analyzeImageFidelity(imageUrl: string): Promise<ImageTelem
           avgLuminance,
           contrastStdDev,
           faceDetectionScore,
-          faceDetectionText: `${faceDetectionScore}% (${faceDetectionScore >= 95 ? 'Optimal Alignment' : 'Detected'})`,
+          faceDetectionText: 'Face localization not assessed',
           lightingScore,
           lightingText: `${lightingScore}% (${avgLuminance >= 100 && avgLuminance <= 170 ? 'Even Luminance' : 'Acceptable Lux'})`,
           resolutionScore,
@@ -189,40 +187,14 @@ export async function analyzeImageFidelity(imageUrl: string): Promise<ImageTelem
           },
         });
       } catch (err) {
-        resolve(getFallbackTelemetry(img.width, img.height));
+        reject(new Error('Image pixel analysis failed. Please choose another photo.'));
       }
     };
 
     img.onerror = () => {
-      resolve(getFallbackTelemetry(800, 1000));
+      reject(new Error('Image could not be loaded. Please choose another photo.'));
     };
 
     img.src = imageUrl;
   });
-}
-
-function getFallbackTelemetry(w: number, h: number): ImageTelemetryResult {
-  return {
-    width: w,
-    height: h,
-    megapixels: 0.8,
-    avgLuminance: 120,
-    contrastStdDev: 40,
-    faceDetectionScore: 94,
-    faceDetectionText: '94% (Detected)',
-    lightingScore: 92,
-    lightingText: '92% (Even Lux)',
-    resolutionScore: 88,
-    resolutionText: `88% (${w}x${h})`,
-    angleStatus: 'Camera Framing Accepted',
-    suggestion: 'Telemetry verified for skin & presence index analysis.',
-    skinTone: {
-      r: 140,
-      g: 100,
-      b: 80,
-      hex: '#8c6450',
-      undertone: 'Warm',
-      lumaCategory: 'Medium',
-    },
-  };
 }
