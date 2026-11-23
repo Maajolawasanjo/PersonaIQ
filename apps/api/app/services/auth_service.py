@@ -134,6 +134,16 @@ class AuthService:
         expires = self._ensure_utc(user.otp_expires_at)
         if expires and expires > now + timedelta(minutes=9):
             return
+        if settings.ENVIRONMENT.lower() in {"production", "prod"} and (
+            not settings.ENABLE_EMAIL_NOTIFICATIONS
+            or not settings.SMTP_USER
+            or not settings.SMTP_PASSWORD
+        ):
+            raise AppException(
+                code=ErrorCode.SYS_002,
+                message="Email verification is not configured.",
+                status_code=503,
+            )
         code = f"{secrets.randbelow(1000000):06d}"
         from app.services.email_service import EmailService
         sent = await EmailService().send_email_verification_email(user.email, code)
