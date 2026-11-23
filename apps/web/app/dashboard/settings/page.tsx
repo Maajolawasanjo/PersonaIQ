@@ -1,202 +1,127 @@
 'use client';
 
-import React from 'react';
+import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { User, Palette, Bell, Shield, Link2, Lock, Accessibility, CreditCard, HelpCircle, Info, ChevronRight } from 'lucide-react';
-
+import { useRouter } from 'next/navigation';
+import {
+  ArrowRight, Bell, CreditCard, LockKeyhole, Palette,
+  Shield, Trash2, UserRound, Link2, AlertCircle,
+} from 'lucide-react';
+import { useAuth } from '@/providers/auth-provider';
 import { userApi } from '@/lib/api/services';
-import { UserProfile } from '@/lib/api/types';
 
-export default function SettingsMainHubPage() {
-  const [profile, setProfile] = React.useState<UserProfile | null>(null);
+const settingsLinks = [
+  { href: '/dashboard/profile', label: 'Profile', detail: 'Your name and account details', icon: UserRound },
+  { href: '/dashboard/settings/security', label: 'Security', detail: 'Password and active sessions', icon: LockKeyhole },
+  { href: '/dashboard/settings/notifications', label: 'Notifications', detail: 'Communication preferences', icon: Bell },
+  { href: '/dashboard/settings/privacy', label: 'Privacy', detail: 'How your uploads and information are handled', icon: Shield },
+  { href: '/dashboard/settings/appearance', label: 'Appearance', detail: 'Current display and accessibility status', icon: Palette },
+  { href: '/dashboard/settings/accounts', label: 'Connected accounts', detail: 'Available integrations', icon: Link2 },
+  { href: '/dashboard/settings/billing', label: 'Billing', detail: 'Billing availability and support', icon: CreditCard },
+];
 
-  React.useEffect(() => {
-    async function loadProfile() {
-      try {
-        const user = await userApi.getProfile();
-        setProfile(user);
-      } catch (err) {
-        console.warn('Could not fetch user profile for settings:', err);
-      }
+export default function SettingsPage() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const [showDelete, setShowDelete] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [password, setPassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (confirmation !== 'DELETE' || !password || isDeleting) return;
+    setError(null);
+    setIsDeleting(true);
+    try {
+      const result = await userApi.deleteAccount(password);
+      if (!result.deleted) throw new Error('Deletion was not confirmed.');
+      await logout();
+      sessionStorage.setItem('personaiq_account_deletion_confirmed', 'yes');
+      router.replace('/system/account-deleted');
+    } catch (cause) {
+      console.error('Account deletion was not confirmed:', cause);
+      setError(
+        cause instanceof Error && cause.message
+          ? cause.message
+          : 'Account deletion could not be completed. Your account remains available.'
+      );
+    } finally {
+      setIsDeleting(false);
     }
-    loadProfile();
-  }, []);
-
-  const sections = [
-    {
-      id: 'profile',
-      title: 'Profile Settings',
-      desc: 'Name, email, occupation, and country.',
-      icon: <User className="w-5 h-5" />,
-      href: '/dashboard/settings/profile',
-    },
-    {
-      id: 'security',
-      title: 'Security',
-      desc: 'Password, 2FA, and login history.',
-      icon: <Lock className="w-5 h-5" />,
-      href: '/dashboard/settings/security',
-    },
-    {
-      id: 'notifications',
-      title: 'Notifications',
-      desc: 'Alerts and communication preferences.',
-      icon: <Bell className="w-5 h-5" />,
-      href: '/dashboard/settings/notifications',
-    },
-    {
-      id: 'privacy',
-      title: 'Privacy',
-      desc: 'Data control and security policies.',
-      icon: <Shield className="w-5 h-5" />,
-      href: '/dashboard/settings/privacy',
-    },
-    {
-      id: 'appearance',
-      title: 'Theme',
-      desc: 'Interface themes and typography.',
-      icon: <Palette className="w-5 h-5" />,
-      href: '/dashboard/settings/appearance',
-    },
-    {
-      id: 'accessibility',
-      title: 'Accessibility',
-      desc: 'Motion, contrast, and font preferences.',
-      icon: <Accessibility className="w-5 h-5" />,
-      href: '/dashboard/settings/accessibility',
-    },
-    {
-      id: 'accounts',
-      title: 'Connected Accounts',
-      desc: 'Integrations and third-party access.',
-      icon: <Link2 className="w-5 h-5" />,
-      href: '/dashboard/settings/accounts',
-    },
-    {
-      id: 'billing',
-      title: 'Billing',
-      desc: 'Plans, payments, and seat management.',
-      icon: <CreditCard className="w-5 h-5" />,
-      href: '/dashboard/settings/billing',
-      badge: 'Future',
-    },
-  ];
+  };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn py-2 bg-white p-6 sm:p-8 rounded-[24px] shadow-sm border border-gray-150">
-      
-      {/* Header */}
-      <div className="space-y-1 border-b border-gray-100 pb-4">
-        <h1 className="text-[32px] sm:text-[36px] font-bold text-gray-950 font-sans leading-tight">
-          Settings & Account
-        </h1>
-        <p className="text-[13.5px] text-gray-500 font-normal">
-          Manage your account profile and presence configuration.
+    <div className="mx-auto max-w-3xl space-y-7 pb-8">
+      <header className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-widest text-red-700">Your account</p>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-950">Settings</h1>
+        <p className="text-sm text-gray-600">Manage your account and preferences in one place.</p>
+      </header>
+
+      <section className="rounded-2xl border border-gray-200 bg-white px-5 py-5 sm:px-7">
+        <p className="text-sm font-semibold text-gray-950">
+          {user?.first_name || user?.full_name || 'Your PersonaIQ account'}
         </p>
-      </div>
-
-      {/* Live Profile Header Banner */}
-      {profile && (
-        <div className="p-4 bg-gray-50 border border-gray-200 rounded-[18px] flex items-center justify-between">
-          <div className="flex items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-full bg-red-600 text-white font-bold text-lg flex items-center justify-center shadow-xs">
-              {(profile.first_name?.[0] || profile.email?.[0] || 'U').toUpperCase()}
-            </div>
-            <div>
-              <h3 className="text-[16px] font-bold text-gray-950 font-sans leading-tight">
-                {profile.full_name || profile.first_name ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'Executive'}
-              </h3>
-              <p className="text-[12.5px] text-gray-500 font-mono">
-                {profile.email}
-              </p>
-            </div>
-          </div>
-          <span className="text-[11px] font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-            Active Account
-          </span>
+        {user?.email && <p className="mt-1 text-sm text-gray-600">{user.email}</p>}
+        <div className="mt-5 divide-y divide-gray-100">
+          {settingsLinks.map(({ href, label, detail, icon: Icon }) => (
+            <Link key={href} href={href} className="group flex min-h-16 items-center gap-4 py-4 hover:text-primary">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-600 group-hover:bg-red-50 group-hover:text-primary">
+                <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-gray-950">{label}</span>
+                <span className="mt-1 block text-xs leading-5 text-gray-600">{detail}</span>
+              </span>
+              <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-400 group-hover:text-primary" />
+            </Link>
+          ))}
         </div>
-      )}
+      </section>
 
-      {/* Main Preference Cards List */}
-      <div className="space-y-3">
-        {sections.map((item) => (
-          <Link
-            key={item.id}
-            href={item.href}
-            className="p-4 bg-white border border-gray-200 hover:border-gray-300 rounded-[18px] shadow-2xs flex items-center justify-between transition-all group"
-          >
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 group-hover:scale-105 transition-transform shrink-0">
-                {item.icon}
-              </div>
-              <div>
-                <h3 className="text-[16px] font-bold text-gray-950 font-sans leading-tight">
-                  {item.title}
-                </h3>
-                <p className="text-[12px] text-gray-500 font-normal">
-                  {item.desc}
-                </p>
-              </div>
+      <section className="rounded-2xl border border-red-200 bg-white p-5 sm:p-7" aria-labelledby="delete-title">
+        <h2 id="delete-title" className="text-lg font-semibold text-gray-950">Delete your account</h2>
+        <p className="mt-2 text-sm leading-6 text-gray-600">
+          This is permanent. Your account data and uploaded photos linked to your journeys
+          will be submitted for removal. If storage cleanup fails, deletion will not be reported as complete.
+        </p>
+
+        {!showDelete ? (
+          <button type="button" onClick={() => setShowDelete(true)}
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-300 px-4 text-sm font-semibold text-red-700 hover:bg-red-50">
+            <Trash2 aria-hidden="true" className="h-4 w-4" /> Review account deletion
+          </button>
+        ) : (
+          <form onSubmit={handleDelete} className="mt-6 space-y-4" noValidate>
+            <label className="block text-sm font-semibold text-gray-800">
+              Type DELETE to confirm
+              <input type="text" value={confirmation} onChange={event => setConfirmation(event.target.value)}
+                autoComplete="off" required aria-describedby="delete-description"
+                className="mt-2 block h-12 w-full rounded-xl border border-gray-300 px-4 text-sm text-gray-950 focus:border-primary focus:outline-none focus:ring-2 focus:ring-red-100"
+              />
+            </label>
+            <p id="delete-description" className="text-xs text-gray-600">Account deletion cannot be undone.</p>
+            <label className="block text-sm font-semibold text-gray-800">
+              Current password
+              <input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)}
+                required className="mt-2 block h-12 w-full rounded-xl border border-gray-300 px-4 text-sm text-gray-950 focus:border-primary focus:outline-none focus:ring-2 focus:ring-red-100" />
+            </label>
+            {error && <p role="alert" className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0"/>{error}</p>}
+            <div className="flex flex-wrap gap-3">
+              <button type="submit" disabled={confirmation !== 'DELETE' || !password || isDeleting}
+                className="min-h-11 rounded-xl bg-red-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50">
+                {isDeleting ? 'Deleting…' : 'Permanently delete account'}
+              </button>
+              <button type="button" onClick={() => { setShowDelete(false); setConfirmation(''); setPassword(''); setError(null); }}
+                className="min-h-11 rounded-xl border border-gray-200 px-5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
             </div>
-            <div className="flex items-center space-x-2">
-              {'badge' in item && item.badge && (
-                <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">{item.badge}</span>
-              )}
-              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Secondary Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-        <Link
-          href="/support"
-          className="p-4 bg-white border border-gray-200 rounded-[16px] flex items-center justify-between text-[13px] font-sans font-bold text-gray-900 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center space-x-2">
-            <HelpCircle className="w-4 h-4 text-gray-500" />
-            <span>Help Center</span>
-          </div>
-          <span className="text-gray-400 font-mono text-[12px]">↗</span>
-        </Link>
-        <Link
-          href="/about"
-          className="p-4 bg-white border border-gray-200 rounded-[16px] flex items-center justify-between text-[13px] font-sans font-bold text-gray-900 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center space-x-2">
-            <Info className="w-4 h-4 text-gray-500" />
-            <span>About PersonaIQ</span>
-          </div>
-          <span className="text-gray-400 font-mono text-[12px]">↗</span>
-        </Link>
-      </div>
-
-      {/* Danger Zone */}
-      <div className="pt-6 border-t border-gray-150 space-y-3">
-        <span className="text-[10px] font-mono font-bold text-red-600 uppercase tracking-widest block">
-          DANGER ZONE
-        </span>
-
-        <div className="bg-red-50/20 border border-red-200 rounded-[18px] p-5 flex items-center justify-between">
-          <div className="space-y-0.5">
-            <h3 className="text-[15px] font-bold text-gray-950 font-sans">
-              Delete Account
-            </h3>
-            <p className="text-[12px] text-gray-500 font-normal">
-              Permanently remove your presence data and configuration.
-            </p>
-          </div>
-
-          <Link
-            href="/system/account-deleted"
-            className="px-4 py-2 bg-white border border-red-300 text-red-600 hover:bg-red-50 font-bold text-[12.5px] rounded-[8px] transition-colors shrink-0"
-          >
-            Delete Account
-          </Link>
-        </div>
-      </div>
-
+          </form>
+        )}
+      </section>
     </div>
   );
 }

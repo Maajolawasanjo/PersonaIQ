@@ -80,8 +80,11 @@ export const userApi = {
     new_password: string;
   }): Promise<{ success: boolean }> => apiClient.post<{ success: boolean }>('/profile/change-password', data),
 
-  deleteAccount: (): Promise<{ deleted: boolean }> =>
-    apiClient.delete<{ deleted: boolean }>('/profile/account'),
+  deleteAccount: (currentPassword: string): Promise<{ deleted: boolean }> =>
+    apiClient.request<{ deleted: boolean }>('/profile/account', {
+      method: 'DELETE',
+      body: JSON.stringify({ password: currentPassword }),
+    }),
 
   getSessions: (): Promise<import('./types').UserSession[]> =>
     apiClient.get<import('./types').UserSession[]>('/profile/sessions'),

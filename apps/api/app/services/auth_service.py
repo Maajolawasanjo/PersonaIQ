@@ -242,10 +242,17 @@ class AuthService:
         await self.repo.db.flush()
         await self.repo.revoke_all_user_tokens(user_id)
 
-    async def delete_account(self, user_id: UUID) -> None:
+    async def delete_account(self, user_id: UUID, current_password: str) -> None:
         user = await self.repo.get_by_id(user_id)
         if not user:
             raise AppException(code=ErrorCode.USER_001, message="User not found.", status_code=404)
+
+        if not verify_password(current_password, user.hashed_password):
+            raise AppException(
+                code=ErrorCode.AUTH_001,
+                message="Current password is incorrect.",
+                status_code=400,
+            )
 
         email = user.email
         first_name = user.first_name
