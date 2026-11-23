@@ -7,28 +7,28 @@ import { Button } from '../../../components/ui/button';
 export default function FAQPage() {
   const faqs = [
     {
-      q: 'What happens to my photos?',
-      a: 'We enforce absolute privacy. All uploaded images are processed dynamically inside a secure, sandboxed session, and are permanently deleted from our cache the moment the analysis completes or you close your browser. We never persist your photos on server storage.'
+      q: 'What happens to photos I upload?',
+      a: 'Your uploaded photos are stored with your account when private media storage is available. PERSONAIQ uses private storage and temporary access links rather than public image links. Photos are not automatically deleted when you close your browser. You can request account deletion; if storage cleanup fails, the deletion request is not marked complete.'
     },
     {
-      q: 'How accurate is the Presence Index?',
-      a: 'The Presence Index is based on objective, standardized parameters (contrast values, facial hydration, posture grids, and wardrobe outline alignment). It serves as a visual diagnostic tool to help you present yourself professionally rather than a subjective evaluation of style.'
+      q: 'What does the Presence Journey do?',
+      a: 'It helps you prepare clothing and visual presentation for an upcoming event. You can enter occasion details, organize outfits, and request a virtual try-on when the rendering service is available. A verified automated Presence Index is not currently available.'
     },
     {
-      q: 'Can I use it for virtual/hybrid presentations?',
-      a: 'Yes. PersonaIQ was specifically designed to help users prepare for both virtual meetings (Zoom, Teams, Meet) and in-person interviews. The recommendations include specific ring light placement angle configurations and webcam alignments to maximize virtual composure.'
+      q: 'Can I plan outfits for online or in-person events?',
+      a: 'Yes. You can prepare looks for video calls, interviews, weddings, meetings, and other occasions. Check your room lighting and camera framing yourself; PERSONAIQ does not currently measure your composure, confidence, or professionalism from an image.'
     },
     {
-      q: 'Does it diagnose skin conditions?',
-      a: 'No. Our Skin Intelligence scanner maps superficial cosmetic metrics—specifically under-eye fatigue circles, surface dehydration, and skin tone consistency—to suggest rapid preparation boosts. It is not a clinical medical scanner and does not diagnose skin conditions.'
+      q: 'Does PERSONAIQ diagnose skin conditions or fatigue?',
+      a: 'No. PERSONAIQ is not a medical device and does not assess dehydration, skin disease, fatigue, or mental state. The photo check only confirms that an image can be opened and meets basic size requirements.'
     },
     {
-      q: 'How long does the analysis take?',
-      a: 'The frame validator is instant, and the multimodal AI scan takes less than 15 seconds. The entire Presence Plan checklist and score are compiled and ready for you in under a minute.'
+      q: 'How long will a virtual try-on take?',
+      a: 'Processing time depends on your connection and the availability of the rendering provider. A successful generated image is shown only when the provider supplies one. If rendering fails, your original image remains available and you can retry.'
     },
     {
-      q: 'Is my data private?',
-      a: 'Absolutely. We authenticate user identity via secure Clerk OIDC and route data through secure HTTPS protocols. We enforce a zero-model-training retention policy, ensuring that none of your personal visual diagnostics are used to train future AI models.'
+      q: 'How do I protect or delete my data?',
+      a: 'Account sessions use server-managed HttpOnly cookies. Protected uploads require authenticated access and temporary image links. When a try-on provider is enabled, your selected images may be sent to that provider for rendering. Account deletion is designed to remove stored uploaded media before deleting account records. Existing legacy files and production retention settings still require verification before full release.'
     }
   ];
 
@@ -49,7 +49,7 @@ export default function FAQPage() {
             Frequently Asked Questions
           </h1>
           <p className="text-[17.5px] text-gray-500 leading-relaxed max-w-xl">
-            Learn more about our strict privacy safeguards, analysis metrics, and clinical-grade verification parameters.
+            Find clear answers about account security, your images, event preparation, and current feature availability.
           </p>
         </div>
 
@@ -90,7 +90,7 @@ export default function FAQPage() {
         <div className="bg-white border border-gray-150 rounded-[20px] p-8 shadow-[0_1px_2px_rgba(0,0,0,0.005)] flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="space-y-1">
             <h4 className="text-[16.5px] font-bold text-gray-900 font-sans">Still have questions?</h4>
-            <p className="text-[14px] text-gray-400 font-semibold">Our support engineers are available to clarify authentication protocols.</p>
+            <p className="text-[14px] text-gray-400 font-semibold">Explore the available features or contact the team for assistance.</p>
           </div>
           <Link href="/signup">
             <Button className="h-11 px-6 bg-primary hover:bg-primary/95 text-white font-bold text-[14px] rounded-[6px] transition-all">
