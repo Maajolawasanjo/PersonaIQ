@@ -14,7 +14,7 @@ import {
 
 export const authApi = {
   signUp: (email: string, password: string, firstName: string, lastName: string): Promise<AuthSession> =>
-    apiClient.post<AuthTokens>('/auth/sign-up', {
+    apiClient.post<AuthSession>('/auth/sign-up', {
       email,
       password,
       first_name: firstName,
@@ -22,13 +22,13 @@ export const authApi = {
     }),
 
   signIn: (email: string, password: string): Promise<AuthSession> =>
-    apiClient.post<AuthTokens>('/auth/sign-in', {
+    apiClient.post<AuthSession>('/auth/sign-in', {
       email,
       password,
     }),
 
   verifyOtp: (email: string, code: string): Promise<AuthSession> =>
-    apiClient.post<AuthTokens>('/auth/verify-otp', {
+    apiClient.post<AuthSession>('/auth/verify-otp', {
       email,
       code,
     }),
