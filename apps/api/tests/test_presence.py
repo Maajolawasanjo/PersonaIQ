@@ -1,3 +1,4 @@
+from conftest import signup_and_verify
 import pytest
 from httpx import AsyncClient
 from app.domain.presence.scoring import PresenceScoringEngine, PresenceScoreResult
@@ -31,15 +32,12 @@ def test_pure_domain_presence_scoring_engine():
 @pytest.mark.asyncio
 async def test_ai_analysis_and_presence_plan_generation(client: AsyncClient):
     # 1. Sign Up & Auth Header
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(client, {
             "email": "presence_user@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "Presence",
             "last_name": "Tester",
-        },
-    )
+        })
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 

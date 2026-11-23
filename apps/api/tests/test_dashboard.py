@@ -1,3 +1,4 @@
+from conftest import signup_and_verify
 import pytest
 from httpx import AsyncClient
 
@@ -5,15 +6,12 @@ from httpx import AsyncClient
 @pytest.mark.asyncio
 async def test_get_dashboard_overview(client: AsyncClient):
     # 1. Sign Up User
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(client, {
             "email": "dash_user@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "Dash",
             "last_name": "Board",
-        },
-    )
+        })
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -38,15 +36,12 @@ async def test_get_dashboard_overview(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_list_journeys_paginated_and_archive(client: AsyncClient):
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(client, {
             "email": "list_user@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "List",
             "last_name": "Tester",
-        },
-    )
+        })
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 

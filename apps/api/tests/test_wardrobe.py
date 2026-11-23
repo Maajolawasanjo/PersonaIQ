@@ -1,3 +1,4 @@
+from conftest import signup_and_verify
 import pytest
 from httpx import AsyncClient
 
@@ -48,15 +49,12 @@ async def test_favorite_change_persists_and_is_scoped_to_owner(client: AsyncClie
     assert next(i for i in listing.json()["data"] if i["id"] == item_id)["is_favorite"] is True
 
     # An authenticated second user cannot alter the first user's wardrobe.
-    second = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    second = await signup_and_verify(client, {
             "email": "different_wardrobe_user@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "Other",
             "last_name": "User",
-        },
-    )
+        })
     second_token = second.json()["data"]["access_token"]
     forbidden = await client.patch(
         f"/api/v1/wardrobe/{item_id}/favorite",
@@ -92,10 +90,7 @@ async def test_outfits_persist_and_are_private(client: AsyncClient, auth_headers
     assert owned.status_code == 200
     assert any(outfit["id"] == outfit_id for outfit in owned.json()["data"])
 
-    second = await client.post(
-        "/api/v1/auth/sign-up",
-        json={"email": "another_outfit_owner@personaiq.ai", "password": "SecurePassword123!", "first_name": "Another", "last_name": "Owner"},
-    )
+    second = await signup_and_verify(client, {"email": "another_outfit_owner@personaiq.ai", "password": "SecurePassword123!", "first_name": "Another", "last_name": "Owner"})
     token = second.json()["data"]["access_token"]
     other = await client.get("/api/v1/wardrobe/outfits", headers={"Authorization": f"Bearer {token}"})
     assert other.status_code == 200

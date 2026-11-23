@@ -10,6 +10,7 @@ os.environ["SMTP_PASSWORD"] = "mock_password_123"
 
 from pathlib import Path
 from typing import AsyncGenerator
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -64,16 +65,46 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides.clear()
 
 
+verification_codes: dict[str, str] = {}
+
+
+@pytest.fixture(autouse=True)
+def capture_verification_email(monkeypatch):
+    from app.services.email_service import EmailService
+    verification_codes.clear()
+
+    async def send_verification(self, email, code):
+        verification_codes[email.lower().strip()] = code
+        return True
+
+    monkeypatch.setattr(EmailService, "send_email_verification_email", send_verification)
+    yield
+    verification_codes.clear()
+
+
+async def signup_and_verify(client: AsyncClient, payload: dict):
+    signup = await client.post("/api/v1/auth/sign-up", json=payload)
+    assert signup.status_code == 201, signup.text
+    email = payload["email"].lower().strip()
+    code = verification_codes[email]
+    verified = await client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": email, "code": code},
+    )
+    assert verified.status_code == 200, verified.text
+    return verified
+
+
 @pytest_asyncio.fixture
 async def auth_headers(client: AsyncClient) -> dict:
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(
+        client,
+        {
             "email": "testuser@personaiq.com",
             "password": "Password123!",
             "first_name": "Test",
-            "last_name": "User"
-        }
+            "last_name": "User",
+        },
     )
     data = signup_res.json()
     token = data["data"]["access_token"]

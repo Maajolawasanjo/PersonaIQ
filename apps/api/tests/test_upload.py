@@ -1,3 +1,4 @@
+from conftest import signup_and_verify
 import io
 import pytest
 from httpx import AsyncClient
@@ -6,15 +7,12 @@ from httpx import AsyncClient
 @pytest.mark.asyncio
 async def test_selfie_upload_success(client: AsyncClient):
     # 1. User Auth & Journey Setup
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(client, {
             "email": "selfie_user@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "Selfie",
             "last_name": "Test",
-        },
-    )
+        })
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -44,15 +42,12 @@ async def test_selfie_upload_success(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_outfits_upload_success(client: AsyncClient):
     # 1. User Auth & Journey Setup
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(client, {
             "email": "outfits_user@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "Outfit",
             "last_name": "Test",
-        },
-    )
+        })
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -83,15 +78,12 @@ async def test_outfits_upload_success(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_upload_invalid_mime_type_fails(client: AsyncClient):
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(client, {
             "email": "invalid_mime@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "Invalid",
             "last_name": "Mime",
-        },
-    )
+        })
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -113,15 +105,12 @@ async def test_upload_invalid_mime_type_fails(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_upload_oversized_file_fails(client: AsyncClient):
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(client, {
             "email": "oversized@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "Over",
             "last_name": "Sized",
-        },
-    )
+        })
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
