@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
+    SUPABASE_STORAGE_BUCKET: str = "personaiq-uploads"
+    ALLOW_LOCAL_PRIVATE_UPLOADS: bool = False
 
     # Feature Flags
     ENABLE_YOUCAM_VTO: bool = True
