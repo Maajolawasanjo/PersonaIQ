@@ -27,7 +27,7 @@ export default function JourneyDetailsPage() {
       try {
         const journey = await journeyApi.getJourney(id);
         let plan: PresencePlan | null = null;
-        if (journey.status === 'COMPLETED') {
+        if (journey.status === 'COMPLETED' || journey.status === 'ARCHIVED') {
           try {
             plan = await presenceApi.getPresencePlan(id);
           } catch {
@@ -73,7 +73,7 @@ export default function JourneyDetailsPage() {
 
   const { journey, plan } = view;
   const eventName = journey.event?.name ?? journey.title;
-  const complete = journey.status === 'COMPLETED' && plan !== null;
+  const complete = (journey.status === 'COMPLETED' || journey.status === 'ARCHIVED') && plan !== null;
   const canContinue = isResumableJourney(journey.status);
   const dateLabel = journey.event?.event_date || null;
 
