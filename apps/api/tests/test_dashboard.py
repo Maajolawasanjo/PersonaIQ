@@ -70,3 +70,57 @@ async def test_list_journeys_paginated_and_archive(client: AsyncClient):
     assert archived_list.status_code == 200
     assert archived_list.json()["pagination"]["total_items"] == 1
     assert archived_list.json()["data"][0]["id"] == j1
+
+
+@pytest.mark.asyncio
+async def test_dashboard_has_no_fabricated_improvement_or_presence_score(client: AsyncClient):
+    verified = await signup_and_verify(client, {
+        "email": "dashboard-honesty@personaiq.ai",
+        "password": "SecurePassword123!",
+        "first_name": "Verified",
+        "last_name": "Owner",
+    })
+    token = verified.json()["data"]["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    empty = (await client.get("/api/v1/dashboard", headers=headers)).json()["data"]
+    assert empty["presence_index_avg"] is None
+    assert "trend" not in empty["quick_stats"]
+    assert empty["recent_journeys"] == []
+
+    new = await client.post("/api/v1/journeys", json={"title": "Real Event"}, headers=headers)
+    assert new.status_code == 201
+    data = (await client.get("/api/v1/dashboard", headers=headers)).json()["data"]
+    assert data["total_journeys_count"] == 1
+    assert data["completed_journeys_count"] == 0
+    assert data["recent_journeys"][0]["title"] == "Real Event"
+    assert data["recent_journeys"][0]["id"] == new.json()["data"]["id"]
+    assert "trend" not in data["quick_stats"]
+
+
+@pytest.mark.asyncio
+async def test_dashboard_only_lists_owned_journeys_and_excludes_archived_as_active(client: AsyncClient):
+    first = await signup_and_verify(client, {
+        "email": "dashboard-a@personaiq.ai",
+        "password": "SecurePassword123!",
+        "first_name": "First",
+        "last_name": "Owner",
+    })
+    a = {"Authorization": "Bearer " + first.json()["data"]["access_token"]}
+    created = await client.post("/api/v1/journeys", json={"title": "Owner A"}, headers=a)
+    journey_id = created.json()["data"]["id"]
+    await client.post(f"/api/v1/journeys/{journey_id}/archive", headers=a)
+    archived = (await client.get("/api/v1/dashboard", headers=a)).json()["data"]
+    assert archived["active_journey"] is None
+    assert archived["total_journeys_count"] == 1
+    assert archived["recent_journeys"][0]["status"] == "ARCHIVED"
+
+    second = await signup_and_verify(client, {
+        "email": "dashboard-b@personaiq.ai",
+        "password": "SecurePassword123!",
+        "first_name": "Second",
+        "last_name": "Owner",
+    })
+    b = {"Authorization": "Bearer " + second.json()["data"]["access_token"]}
+    another = (await client.get("/api/v1/dashboard", headers=b)).json()["data"]
+    assert another["total_journeys_count"] == 0
+    assert another["recent_journeys"] == []

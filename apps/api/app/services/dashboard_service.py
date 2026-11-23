@@ -36,15 +36,20 @@ class DashboardService:
         completed_res = await self.db.execute(completed_query)
         completed_count = completed_res.scalar_one() or 0
 
-        # 3. Calculate Average Presence Index
-        avg_query = select(func.avg(Journey.active_presence_index)).where(
-            Journey.user_id == user_id,
-            Journey.status == "COMPLETED",
-            Journey.deleted_at.is_(None),
+        # We do not expose unverified historical appearance scores as user
+        # progress. A future verified metrics service can add provenance.
+        presence_avg = None
+
+        recent_journeys_result = await self.db.execute(
+            select(Journey)
+            .where(Journey.user_id == user_id, Journey.deleted_at.is_(None))
+            .order_by(Journey.updated_at.desc(), Journey.id.desc())
+            .limit(4)
         )
-        avg_res = await self.db.execute(avg_query)
-        avg_score_raw = avg_res.scalar_one()
-        presence_avg = round(float(avg_score_raw), 1) if avg_score_raw is not None else 0.0
+        recent_journeys = [
+            JourneyDTO.model_validate(journey)
+            for journey in recent_journeys_result.scalars().all()
+        ]
 
         # 4. Fetch Recent Plans
         recent_plans_query = (
@@ -62,7 +67,6 @@ class DashboardService:
 
         quick_stats = {
             "status_summary": "Active Preparation" if active_journey else "Ready for New Journey",
-            "trend": "+4% Presence Index Improvement" if completed_count > 0 else "Baseline Pending",
         }
 
         return DashboardOverviewDTO(
@@ -70,6 +74,7 @@ class DashboardService:
             presence_index_avg=presence_avg,
             completed_journeys_count=completed_count,
             total_journeys_count=total_count,
+            recent_journeys=recent_journeys,
             recent_plans=recent_plans,
             quick_stats=quick_stats,
         )

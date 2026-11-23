@@ -30,7 +30,9 @@ class JourneyRepository(BaseRepository[Journey]):
         return await self.get_by_id(journey.id, user_id)
 
     async def get_by_id(self, journey_id: UUID, user_id: Optional[UUID] = None) -> Optional[Journey]:
-        query = select(Journey).options(selectinload(Journey.event)).where(Journey.id == journey_id)
+        query = select(Journey).options(selectinload(Journey.event)).where(
+            Journey.id == journey_id, Journey.deleted_at.is_(None)
+        )
         if user_id:
             query = query.where(Journey.user_id == user_id)
         result = await self.db.execute(query)
@@ -40,8 +42,12 @@ class JourneyRepository(BaseRepository[Journey]):
         query = (
             select(Journey)
             .options(selectinload(Journey.event))
-            .where(Journey.user_id == user_id, Journey.status != "ARCHIVED", Journey.status != "COMPLETED")
-            .order_by(Journey.updated_at.desc())
+            .where(
+                Journey.user_id == user_id,
+                Journey.deleted_at.is_(None),
+                Journey.status.in_(["DRAFT", "IN_PROGRESS", "ANALYZING"]),
+            )
+            .order_by(Journey.updated_at.desc(), Journey.id.desc())
         )
         result = await self.db.execute(query)
         return result.scalars().first()
@@ -77,7 +83,9 @@ class JourneyRepository(BaseRepository[Journey]):
         page: int = 1,
         page_size: int = 10
     ) -> Tuple[List[Journey], int]:
-        query = select(Journey).options(selectinload(Journey.event)).where(Journey.user_id == user_id)
+        query = select(Journey).options(selectinload(Journey.event)).where(
+            Journey.user_id == user_id, Journey.deleted_at.is_(None)
+        )
         if status_filter:
             query = query.where(Journey.status == status_filter)
 
@@ -85,7 +93,7 @@ class JourneyRepository(BaseRepository[Journey]):
         count_res = await self.db.execute(count_query)
         total_items = count_res.scalar() or 0
 
-        query = query.order_by(Journey.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+        query = query.order_by(Journey.created_at.desc(), Journey.id.desc()).offset((page - 1) * page_size).limit(page_size)
         result = await self.db.execute(query)
         return list(result.scalars().all()), total_items
 
