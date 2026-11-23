@@ -75,3 +75,35 @@ async def test_favorite_change_persists_and_is_scoped_to_owner(client: AsyncClie
     )
     assert unfavorite.status_code == 200
     assert unfavorite.json()["data"]["is_favorite"] is False
+
+
+@pytest.mark.asyncio
+async def test_outfits_persist_and_are_private(client: AsyncClient, auth_headers: dict):
+    payload = {
+        "name": "Interview blue suit",
+        "image_url": "https://example.com/generated-look.png",
+        "items": [{"id": "cloth-navy-suit-001", "name": "Navy suit"}],
+    }
+    created = await client.post("/api/v1/wardrobe/outfits", json=payload, headers=auth_headers)
+    assert created.status_code == 201
+    outfit_id = created.json()["data"]["id"]
+
+    owned = await client.get("/api/v1/wardrobe/outfits", headers=auth_headers)
+    assert owned.status_code == 200
+    assert any(outfit["id"] == outfit_id for outfit in owned.json()["data"])
+
+    second = await client.post(
+        "/api/v1/auth/sign-up",
+        json={"email": "another_outfit_owner@personaiq.ai", "password": "SecurePassword123!", "first_name": "Another", "last_name": "Owner"},
+    )
+    token = second.json()["data"]["access_token"]
+    other = await client.get("/api/v1/wardrobe/outfits", headers={"Authorization": f"Bearer {token}"})
+    assert other.status_code == 200
+    assert all(outfit["id"] != outfit_id for outfit in other.json()["data"])
+
+    invalid = await client.post(
+        "/api/v1/wardrobe/outfits",
+        json={**payload, "image_url": "http://example.com/not-secure.png"},
+        headers=auth_headers,
+    )
+    assert invalid.status_code == 422
