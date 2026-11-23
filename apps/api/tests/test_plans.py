@@ -20,7 +20,9 @@ async def test_get_presence_plans_and_boosts(client: AsyncClient, auth_headers: 
     journey_id = journey_res.json()["data"]["id"]
 
     boosts_res = await client.get(f"/api/v1/plans/{journey_id}/boosts", headers=auth_headers)
-    assert boosts_res.status_code == 200
+    # Verified boosts are intentionally disabled. Returning fixed improvements
+    # such as "+5% authority" would fabricate a personal assessment.
+    assert boosts_res.status_code == 503
     boosts_data = boosts_res.json()
-    assert boosts_data["success"] is True
-    assert "boosters" in boosts_data["data"]
+    assert boosts_data["success"] is False
+    assert boosts_data["error"]["code"] == "AI_002"
