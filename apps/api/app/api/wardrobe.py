@@ -96,3 +96,42 @@ async def create_wardrobe_item(
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     return StandardResponse(success=True, message="Wardrobe item created.", data=dto, meta=meta)
+
+
+class UpdateFavoriteRequest(PydanticBaseModel):
+    is_favorite: bool
+
+
+@router.patch("/{item_id}/favorite", response_model=StandardResponse[WardrobeItemDTO])
+async def update_wardrobe_favorite(
+    item_id: UUID,
+    payload: UpdateFavoriteRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a wardrobe item's favorite state, scoped to its owner."""
+    repo = WardrobeRepository(db)
+    item = await repo.get_user_item(item_id=item_id, user_id=current_user.id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Wardrobe item not found.")
+
+    item.is_favorite = payload.is_favorite
+    await repo.commit()
+    await db.refresh(item)
+
+    dto = WardrobeItemDTO(
+        id=str(item.id),
+        name=item.name,
+        category=item.category,
+        color=item.color,
+        formality=item.formality,
+        photo_url=item.photo_url,
+        wear_count=item.wear_count,
+        is_favorite=item.is_favorite,
+    )
+    meta = ResponseMeta(
+        request_id=getattr(request.state, "request_id", "req_wardrobe_favorite"),
+        timestamp=datetime.now(timezone.utc).isoformat(),
+    )
+    return StandardResponse(success=True, message="Favorite updated.", data=dto, meta=meta)

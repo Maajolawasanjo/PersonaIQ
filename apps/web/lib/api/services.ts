@@ -8,6 +8,7 @@ import {
   PresencePlan,
   SelfieUpload,
   UserProfile,
+  WardrobeItem,
 } from './types';
 
 export const authApi = {
@@ -150,10 +151,12 @@ export const dashboardApi = {
 };
 
 export const wardrobeApi = {
-  listItems: (category?: string): Promise<any> =>
-    apiClient.get<any>(`/wardrobe${category ? `?category=${category}` : ''}`),
-  createItem: (data: { name: string; category: string; color?: string; formality?: string }): Promise<any> =>
-    apiClient.post<any>('/wardrobe', data),
+  listItems: (category?: string): Promise<WardrobeItem[]> =>
+    apiClient.get<WardrobeItem[]>(`/wardrobe${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  createItem: (data: { name: string; category: string; color?: string; formality?: string }): Promise<WardrobeItem> =>
+    apiClient.post<WardrobeItem>('/wardrobe', data),
+  setFavorite: (itemId: string, isFavorite: boolean): Promise<WardrobeItem> =>
+    apiClient.patch<WardrobeItem>(`/wardrobe/${itemId}/favorite`, { is_favorite: isFavorite }),
 };
 
 export const plansApi = {

@@ -166,3 +166,14 @@ export interface DashboardOverview {
   highest_score?: number;
   recent_journeys?: Journey[];
 }
+
+export interface WardrobeItem {
+  id: string;
+  name: string;
+  category: string;
+  color: string | null;
+  formality: string | null;
+  photo_url: string | null;
+  wear_count: number;
+  is_favorite: boolean;
+}

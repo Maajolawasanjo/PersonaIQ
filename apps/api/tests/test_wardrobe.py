@@ -24,3 +24,54 @@ async def test_create_and_list_wardrobe_items(client: AsyncClient, auth_headers:
     list_data = list_res.json()
     assert list_data["success"] is True
     assert len(list_data["data"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_favorite_change_persists_and_is_scoped_to_owner(client: AsyncClient, auth_headers: dict):
+    created = await client.post(
+        "/api/v1/wardrobe",
+        json={"name": "Tailored navy jacket", "category": "Outerwear"},
+        headers=auth_headers,
+    )
+    assert created.status_code == 201
+    item_id = created.json()["data"]["id"]
+
+    favorite = await client.patch(
+        f"/api/v1/wardrobe/{item_id}/favorite",
+        json={"is_favorite": True},
+        headers=auth_headers,
+    )
+    assert favorite.status_code == 200
+    assert favorite.json()["data"]["is_favorite"] is True
+
+    listing = await client.get("/api/v1/wardrobe", headers=auth_headers)
+    assert next(i for i in listing.json()["data"] if i["id"] == item_id)["is_favorite"] is True
+
+    # An authenticated second user cannot alter the first user's wardrobe.
+    second = await client.post(
+        "/api/v1/auth/sign-up",
+        json={
+            "email": "different_wardrobe_user@personaiq.ai",
+            "password": "SecurePassword123!",
+            "first_name": "Other",
+            "last_name": "User",
+        },
+    )
+    second_token = second.json()["data"]["access_token"]
+    forbidden = await client.patch(
+        f"/api/v1/wardrobe/{item_id}/favorite",
+        json={"is_favorite": False},
+        headers={"Authorization": f"Bearer {second_token}"},
+    )
+    assert forbidden.status_code == 404
+
+    unchanged = await client.get("/api/v1/wardrobe", headers=auth_headers)
+    assert next(i for i in unchanged.json()["data"] if i["id"] == item_id)["is_favorite"] is True
+
+    unfavorite = await client.patch(
+        f"/api/v1/wardrobe/{item_id}/favorite",
+        json={"is_favorite": False},
+        headers=auth_headers,
+    )
+    assert unfavorite.status_code == 200
+    assert unfavorite.json()["data"]["is_favorite"] is False
