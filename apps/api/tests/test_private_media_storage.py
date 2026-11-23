@@ -108,3 +108,39 @@ async def test_untrusted_media_reference_cannot_be_signed():
     service = StorageService()
     with pytest.raises(AppException):
         await service.create_signed_download_url("https://example.com/private-photo.jpg")
+
+
+@pytest.mark.asyncio
+async def test_preview_requires_owned_journey(client, auth_headers, monkeypatch):
+    from app.services.storage_service import StorageService
+
+    created = await client.post(
+        "/api/v1/journeys",
+        json={"title": "Private image"},
+        headers=auth_headers,
+    )
+    journey_id = created.json()["data"]["id"]
+    uploaded = await client.post(
+        "/api/v1/uploads/selfie",
+        data={"journey_id": journey_id},
+        files={"file": ("portrait.jpg", jpeg_file().file, "image/jpeg")},
+        headers=auth_headers,
+    )
+    assert uploaded.status_code == 201
+
+    async def mock_sign(self, reference, expires_in=300):
+        return "https://files.example.test/temporary-image"
+
+    monkeypatch.setattr(StorageService, "create_signed_download_url", mock_sign)
+    access = await client.get(
+        "/api/v1/uploads/selfie/" + journey_id + "/preview",
+        headers=auth_headers,
+    )
+    assert access.status_code == 200
+    assert access.json()["data"]["expires_in"] == 300
+    assert access.headers["cache-control"] == "private, no-store"
+
+    denied = await client.get(
+        "/api/v1/uploads/selfie/" + journey_id + "/preview",
+    )
+    assert denied.status_code in (401, 403)
