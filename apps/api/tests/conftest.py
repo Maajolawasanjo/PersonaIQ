@@ -69,7 +69,12 @@ verification_codes: dict[str, str] = {}
 
 
 @pytest.fixture(autouse=True)
-def capture_verification_email(monkeypatch):
+def capture_verification_email(monkeypatch, request):
+    # SMTP unit tests intentionally exercise the real email sender.
+    if request.node.path.name == "test_email.py":
+        yield
+        return
+
     from app.services.email_service import EmailService
     verification_codes.clear()
 
