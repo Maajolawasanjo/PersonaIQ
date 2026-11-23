@@ -300,8 +300,12 @@ class AuthService:
         user.occupation = request.occupation
         user.onboarding_completed = True
 
-        if request.default_event_type and user.preference:
-            user.preference.default_event_type = request.default_event_type
+        if request.default_event_type:
+            await self.repo.update_user_preference(
+                user_id,
+                {"default_event_type": request.default_event_type},
+            )
+            await self.repo.db.refresh(user, attribute_names=["preference"])
 
         return UserDTO.model_validate(user)
 

@@ -136,6 +136,7 @@ async def test_onboarding_persists_profile_and_selection(client: AsyncClient):
     profile = await client.get("/api/v1/auth/me", headers=headers)
     assert profile.status_code == 200
     assert profile.json()["data"]["onboarding_completed"] is True
+    assert profile.json()["data"]["preference"]["default_event_type"] == "Interview"
 
 
 @pytest.mark.asyncio
