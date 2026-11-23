@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update as sql_update
 from sqlalchemy.orm import selectinload
 from app.models.user import User, RefreshToken, UserPreference
+from app.core.security import hash_token
 from app.repositories.base import BaseRepository
 
 class UserRepository(BaseRepository[User]):
@@ -25,7 +26,7 @@ class UserRepository(BaseRepository[User]):
 
     async def get_by_reset_token(self, token: str) -> Optional[User]:
         result = await self.db.execute(
-            select(User).options(selectinload(User.preference)).where(User.reset_token == token)
+            select(User).options(selectinload(User.preference)).where(User.reset_token == hash_token(token))
         )
         return result.scalars().first()
 

@@ -144,7 +144,7 @@ class AuthService:
         from app.services.email_service import EmailService
 
         token = secrets.token_urlsafe(32)
-        user.reset_token = token
+        user.reset_token = hash_token(token)
         user.reset_expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
         await self.repo.db.commit()
 
@@ -160,7 +160,7 @@ class AuthService:
         from sqlalchemy import select
         from app.models.user import User
 
-        query = select(User).where(User.reset_token == token, User.deleted_at.is_(None))
+        query = select(User).where(User.reset_token == hash_token(token), User.deleted_at.is_(None))
         result = await self.repo.db.execute(query)
         user = result.scalar_one_or_none()
 

@@ -139,16 +139,27 @@ async def test_onboarding_persists_profile_and_selection(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_password_reset_revokes_old_session(client: AsyncClient, db_session: AsyncSession):
+async def test_password_reset_revokes_old_session(client: AsyncClient, db_session: AsyncSession, monkeypatch):
+    from app.services.email_service import EmailService
+    sent_reset_tokens = []
+
+    async def capture_reset(self, email, token):
+        sent_reset_tokens.append(token)
+        return True
+
+    monkeypatch.setattr(EmailService, "send_password_reset_email", capture_reset)
     email = "recover@personaiq.ai"
     original = await signup_and_verify(client, registration(email, "OldPassword123!"))
     old_refresh = original.json()["data"]["refresh_token"]
     forgot = await client.post("/api/v1/auth/forgot-password", json={"email": email})
     assert forgot.status_code == 200
     user = (await db_session.execute(select(User).where(User.email == email))).scalar_one()
+    assert len(sent_reset_tokens) == 1
+    assert user.reset_token != sent_reset_tokens[0]
+    assert len(user.reset_token) == 64
     reset = await client.post(
         "/api/v1/auth/reset-password",
-        json={"token": user.reset_token, "new_password": "NewPassword123!"},
+        json={"token": sent_reset_tokens[0], "new_password": "NewPassword123!"},
     )
     assert reset.status_code == 200
     revoked = await client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
@@ -161,3 +172,47 @@ async def test_password_reset_revokes_old_session(client: AsyncClient, db_sessio
 async def test_email_diagnostic_endpoint_is_not_public(client: AsyncClient):
     res = await client.post("/api/v1/auth/test-email?template=all&to_email=someone@example.com")
     assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_login_attempt_lockout_is_persisted(client: AsyncClient, db_session: AsyncSession):
+    data = registration("login-lock@personaiq.ai")
+    await signup_and_verify(client, data)
+    for _ in range(5):
+        invalid = await client.post(
+            "/api/v1/auth/sign-in",
+            json={"email": data["email"], "password": "WrongPassword123!"},
+        )
+        assert invalid.status_code == 401
+    locked = await client.post(
+        "/api/v1/auth/sign-in",
+        json={"email": data["email"], "password": data["password"]},
+    )
+    assert locked.status_code == 423
+    db_session.expire_all()
+    user = (await db_session.execute(select(User).where(User.email == data["email"]))).scalar_one()
+    assert user.locked_until is not None
+
+
+@pytest.mark.asyncio
+async def test_reset_password_rejects_reused_token(client: AsyncClient, monkeypatch):
+    from app.services.email_service import EmailService
+    tokens = []
+
+    async def capture_reset(self, email, token):
+        tokens.append(token)
+        return True
+
+    monkeypatch.setattr(EmailService, "send_password_reset_email", capture_reset)
+    email = "reset-replay@personaiq.ai"
+    await signup_and_verify(client, registration(email))
+    await client.post("/api/v1/auth/forgot-password", json={"email": email})
+    assert tokens
+    first = await client.post("/api/v1/auth/reset-password", json={
+        "token": tokens[0], "new_password": "NewPassword123!",
+    })
+    assert first.status_code == 200
+    replay = await client.post("/api/v1/auth/reset-password", json={
+        "token": tokens[0], "new_password": "AnotherPass123!",
+    })
+    assert replay.status_code == 400
