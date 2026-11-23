@@ -55,6 +55,10 @@ jobs:
           manifest.pnpm.overrides = overrides;
           fs.writeFileSync(filename, JSON.stringify(manifest, null, 2));
           NODE
+      - name: Pin patched Next.js 15 and matching ESLint config
+        run: |
+          pnpm --filter web add next@15.5.29 -E
+          pnpm --filter web add -D eslint-config-next@15.5.29 -E
       - name: Resolve and verify dependencies
         run: |
           pnpm install --no-frozen-lockfile
