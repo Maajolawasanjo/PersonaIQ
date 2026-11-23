@@ -162,7 +162,6 @@ export interface DashboardOverview {
   total_journeys?: number;
   average_presence_score?: number;
   highest_score?: number;
-  recent_journeys?: Journey[];
 }
 
 export interface WardrobeItem {
