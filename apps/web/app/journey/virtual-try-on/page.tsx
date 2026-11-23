@@ -31,7 +31,7 @@ import {
   Sliders,
   ChevronRight
 } from 'lucide-react';
-import { stylistApi } from '@/lib/api/services';
+import { stylistApi, wardrobeApi } from '@/lib/api/services';
 import {
   VTO_CATALOG,
   VTO_MODELS,
@@ -44,7 +44,7 @@ import {
 interface SavedLookCard {
   id: string;
   title: string;
-  score: number;
+  score?: number;
   image: string;
   garment: VTOAsset;
   shoe?: VTOAsset;
@@ -55,9 +55,9 @@ export default function VirtualTryOnPage() {
   const router = useRouter();
 
   // Baseline photo & context state
-  const [userPhoto, setUserPhoto] = useState<string>('/vto/looks/female/F01_job_interview.png');
+  const [userPhoto, setUserPhoto] = useState<string>(VTO_MODELS[0].image_url);
   const [userSelfieAvailable, setUserSelfieAvailable] = useState<boolean>(false);
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string>('user_selfie');
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string>(VTO_MODELS[0].id);
 
   // Journey context loaded from localStorage
   const [occasion, setOccasion] = useState<string>('Date Night');
@@ -92,40 +92,11 @@ export default function VirtualTryOnPage() {
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
   const [backgroundEffect, setBackgroundEffect] = useState<'studio' | 'blur' | 'plain'>('studio');
 
-  // Interactive Saved Looks Carousel
-  const [savedLooks, setSavedLooks] = useState<SavedLookCard[]>([
-    {
-      id: 'look_01',
-      title: 'Executive Navy',
-      score: 93,
-      image: '/vto/clothing/professional/01_navy_suit.jpg',
-      garment: VTO_CATALOG[0],
-      shoe: VTO_CATALOG.find((c) => c.category === 'footwear'),
-    },
-    {
-      id: 'look_02',
-      title: 'Charcoal Classic',
-      score: 89,
-      image: '/vto/clothing/professional/02_black_suit.jpg',
-      garment: VTO_CATALOG[1],
-      shoe: VTO_CATALOG.find((c) => c.category === 'footwear'),
-    },
-    {
-      id: 'look_03',
-      title: 'Grey Confidence',
-      score: 86,
-      image: '/vto/clothing/professional/04_beige_power_suit.jpg',
-      garment: VTO_CATALOG[2],
-    },
-    {
-      id: 'look_04',
-      title: 'Smart Minimal',
-      score: 82,
-      image: '/vto/clothing/professional/05_white_dress_shirt.jpg',
-      garment: VTO_CATALOG[3],
-    },
-  ]);
-  const [activeLookId, setActiveLookId] = useState<string>('look_01');
+  // Saved looks are loaded from the user's account.
+  const [savedLooks, setSavedLooks] = useState<SavedLookCard[]>([]);
+  const [activeLookId, setActiveLookId] = useState<string | null>(null);
+  const [isSavingLook, setIsSavingLook] = useState(false);
+  const [studioError, setStudioError] = useState<string | null>(null);
 
   // Import Product State
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
@@ -151,7 +122,9 @@ export default function VirtualTryOnPage() {
       if (savedSelfie) {
         setUserPhoto(savedSelfie);
         setUserSelfieAvailable(true);
+        setSelectedAvatarId('user_selfie');
       } else if (outfitPreview) {
+        setSelectedAvatarId('user_selfie');
         setUserPhoto(outfitPreview);
       }
 
@@ -188,22 +161,29 @@ export default function VirtualTryOnPage() {
         }
       }
 
-      // Initial YouCam VTO AI composite call
-      const activeImage = savedSelfie || outfitPreview || '/vto/looks/female/F01_job_interview.png';
-      stylistApi.vtoPreview('user_selfie', [selectedGarment, selectedShoe], activeImage)
-        .then((res) => {
-          const resultUrl = res?.data?.result_image_url || res?.data?.result_url || res?.preview_url || res?.data?.preview_url;
-          if (resultUrl) {
-            setVtoResult(resultUrl);
-          }
-          if (res?.data?.provider_used) {
-            setProviderUsed(res.data.provider_used === 'youcam' ? 'Perfect Corp YouCam AI' : 'PersonaIQ Composite Engine');
-          }
-        })
-        .catch((err) => {
-          console.warn('Initial YouCam VTO preview notice:', err);
-        });
+
     }
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    wardrobeApi.listOutfits().then(looks => {
+      if (!live) return;
+      const mapped: SavedLookCard[] = looks.flatMap(look => {
+        const parts = look.items as unknown as VTOAsset[];
+        const garment = parts.find(x => x?.category === 'clothing');
+        return garment && look.image_url ? [{
+          id: look.id,
+          title: look.name,
+          image: look.image_url,
+          garment,
+          shoe: parts.find(x => x?.category === 'footwear'),
+          accessory: parts.find(x => x?.category === 'accessories'),
+        }] : [];
+      });
+      setSavedLooks(mapped);
+    }).catch(() => { if (live) setStudioError('Could not load your saved looks.'); });
+    return () => { live = false; };
   }, []);
 
   // Split-Screen Drag Handler
@@ -251,34 +231,57 @@ export default function VirtualTryOnPage() {
       setAiStylistText(reasoningObj.reasoning.summary);
     }
 
+    setStudioError(null);
+    setVtoResult(null);
     setIsGenerating(true);
 
     try {
       const activeModelImg = selectedAvatarId === 'user_selfie' ? userPhoto : VTO_MODELS.find((m) => m.id === selectedAvatarId)?.image_url || userPhoto;
       const res = await stylistApi.vtoPreview(selectedAvatarId, [garment, shoe, acc, hair], activeModelImg);
-      const resultUrl = res?.data?.result_image_url || res?.data?.result_url || res?.preview_url || res?.data?.preview_url;
-      if (resultUrl) {
-        setVtoResult(resultUrl);
-      }
+      const resultUrl = res?.success ? res.result_image_url : null;
+      if (!resultUrl) throw new Error('No generated image was returned');
+      setVtoResult(resultUrl);
     } catch (e) {
-      console.warn('VTO endpoint notice, using local dynamic compositing canvas:', e);
+      console.error('VTO provider error:', e);
+      setStudioError('The try-on provider could not generate an image. Your original image is unchanged.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSaveCurrentLook = () => {
-    const newLook: SavedLookCard = {
-      id: `look_${Date.now()}`,
-      title: `${selectedGarment.name.split(' ')[0]} ${selectedGarment.color || 'Custom'}`,
-      score: presenceScore,
-      image: selectedGarment.image_url,
-      garment: selectedGarment,
-      shoe: selectedShoe,
-      accessory: selectedAccessory || undefined,
-    };
-    setSavedLooks((prev) => [newLook, ...prev.slice(0, 4)]);
-    setActiveLookId(newLook.id);
+  const handleSaveCurrentLook = async () => {
+    if (!vtoResult || isSavingLook) {
+      setStudioError('Generate a real try-on result before saving your look.');
+      return;
+    }
+    setStudioError(null);
+    setIsSavingLook(true);
+    try {
+      const items = [selectedGarment, selectedShoe, selectedAccessory, selectedHairstyle]
+        .filter((item): item is VTOAsset => item != null);
+      const journeyId = localStorage.getItem('personaiq_active_journey_id');
+      const saved = await wardrobeApi.saveOutfit({
+        name: `${selectedGarment.name} Look`,
+        image_url: vtoResult,
+        items,
+        ...(journeyId ? { journey_id: journeyId } : {}),
+      });
+      const newLook: SavedLookCard = {
+        id: saved.id,
+        title: saved.name,
+        image: saved.image_url || vtoResult,
+        garment: selectedGarment,
+        shoe: selectedShoe,
+        accessory: selectedAccessory || undefined,
+      };
+      setSavedLooks(prev => [newLook, ...prev]);
+      setActiveLookId(newLook.id);
+    } catch (error) {
+      console.error('Saved outfit error:', error);
+      setStudioError('Unable to save this look to your account. Please try again.');
+    } finally {
+      setIsSavingLook(false);
+    }
   };
 
   const handleSelectSavedLook = (look: SavedLookCard) => {
@@ -286,7 +289,8 @@ export default function VirtualTryOnPage() {
     setSelectedGarment(look.garment);
     if (look.shoe) setSelectedShoe(look.shoe);
     if (look.accessory) setSelectedAccessory(look.accessory);
-    setPresenceScore(look.score);
+    setVtoResult(look.image);
+    setStudioError(null);
   };
 
   const handleImportProduct = async (e: React.FormEvent) => {
@@ -383,7 +387,7 @@ export default function VirtualTryOnPage() {
               </h1>
             </div>
             <p className="text-base text-gray-600 mt-1 max-w-3xl pl-12">
-              See your looks. Own your presence. Powered by Perfect Corp YouCam AI engine.
+              Select garments to request a preview. Only completed renders are shown as generated images.
             </p>
           </div>
 
@@ -462,7 +466,7 @@ export default function VirtualTryOnPage() {
               />
               <div className="absolute top-4 right-4 bg-red-600 text-white text-[10px] font-mono font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-red-400 z-10 shadow-md flex items-center space-x-1">
                 <Sparkles className="w-3 h-3 text-white" />
-                <span>VTO RESULT</span>
+                <span>{vtoResult ? 'GENERATED TRY-ON' : 'NOT GENERATED'}</span>
               </div>
             </div>
 
@@ -557,9 +561,7 @@ export default function VirtualTryOnPage() {
                   >
                     <div className="aspect-[4/3] bg-gray-900 rounded-lg overflow-hidden relative mb-2">
                       <img src={look.image} alt={look.title} className="w-full h-full object-cover object-top" />
-                      <div className="absolute bottom-1 right-1 bg-black/80 text-emerald-400 font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded-full border border-emerald-500/30">
-                        {look.score}
-                      </div>
+                      
                       {isActive && (
                         <div className="absolute top-1 left-1 bg-red-600 text-white rounded-full p-0.5 shadow-md">
                           <Check className="w-3 h-3 stroke-[3]" />
@@ -588,61 +590,9 @@ export default function VirtualTryOnPage() {
             </div>
           </div>
 
-          {/* PRESENCE IMPACT METRICS BAR (UNDER CAROUSEL) */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-mono font-bold text-gray-800 uppercase tracking-wider">
-                  PRESENCE IMPACT ANALYSIS
-                </span>
-              </div>
-
-              <Link
-                href="/journey/explanation"
-                className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center space-x-1"
-              >
-                <span>View Full Analysis</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 items-center">
-              
-              {/* Main Score Bar */}
-              <div className="sm:col-span-2 space-y-1.5 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <span className="text-[11px] font-mono text-gray-500 uppercase block font-bold">Overall Presence Impact</span>
-                <div className="flex items-baseline space-x-2">
-                  <span className="text-2xl font-black text-gray-950">{presenceScore}</span>
-                  <span className="text-xs font-bold text-gray-400">/ 100</span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-600 to-emerald-500 rounded-full transition-all duration-500"
-                    style={{ width: `${presenceScore}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Metric 1 */}
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Confidence</span>
-                <span className="text-lg font-extrabold text-emerald-600">92</span>
-              </div>
-
-              {/* Metric 2 */}
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Authority</span>
-                <span className="text-lg font-extrabold text-emerald-600">91</span>
-              </div>
-
-              {/* Metric 3 */}
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Style Fit</span>
-                <span className="text-lg font-extrabold text-emerald-600">94</span>
-              </div>
-
-            </div>
+          {studioError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{studioError}</p>}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 text-xs text-gray-600">
+            {vtoResult ? 'Generated preview available. Save it to keep it in your wardrobe.' : 'No try-on has been generated yet. Select a garment to request a preview.'}
           </div>
 
         </div>

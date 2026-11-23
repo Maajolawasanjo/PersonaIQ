@@ -160,7 +160,7 @@ export const wardrobeApi = {
     apiClient.patch<WardrobeItem>(`/wardrobe/${itemId}/favorite`, { is_favorite: isFavorite }),
   listOutfits: (): Promise<SavedWardrobeLook[]> =>
     apiClient.get<SavedWardrobeLook[]>('/wardrobe/outfits'),
-  saveOutfit: (data: { name: string; image_url: string; items: Record<string, unknown>[]; journey_id?: string }): Promise<SavedWardrobeLook> =>
+  saveOutfit: (data: { name: string; image_url: string; items: object[]; journey_id?: string }): Promise<SavedWardrobeLook> =>
     apiClient.post<SavedWardrobeLook>('/wardrobe/outfits', data),
 };
 
