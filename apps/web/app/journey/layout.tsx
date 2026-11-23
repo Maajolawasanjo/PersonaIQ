@@ -30,9 +30,15 @@ export default function JourneyLayout({ children }: { children: ReactNode }) {
     }
   }, [isLoading, sessionState, router, pathname]);
 
+  useEffect(() => {
+    if (!isLoading && sessionState === 'authenticated' && user && !user.onboarding_completed) {
+      router.replace('/onboarding');
+    }
+  }, [isLoading, sessionState, user, router]);
+
   const currentStep = STEP_LABELS.findIndex(step => step.route === pathname);
 
-  if (isLoading || sessionState !== 'authenticated' || !user) {
+  if (isLoading || sessionState !== 'authenticated' || !user || !user.onboarding_completed) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F8F9FB] px-5 text-center">
         <p role="status" className="text-sm text-gray-700">
@@ -40,7 +46,9 @@ export default function JourneyLayout({ children }: { children: ReactNode }) {
             ? 'Your session could not be checked right now.'
             : sessionState === 'unauthenticated'
               ? 'Redirecting to sign in…'
-              : 'Checking your session…'}
+              : user && !user.onboarding_completed
+                ? 'Opening your account setup…'
+                : 'Checking your session…'}
         </p>
         {sessionState === 'unavailable' && (
           <button type="button" onClick={() => { void refetchUser(); }}

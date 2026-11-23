@@ -56,6 +56,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [isLoading, sessionState, pathname, router]);
 
+  useEffect(() => {
+    if (!isLoading && sessionState === 'authenticated' && user && !user.onboarding_completed) {
+      router.replace('/onboarding');
+    }
+  }, [isLoading, sessionState, user, router]);
+
   const handleSignOut = async () => {
     if (signingOut) return;
     setSigningOut(true);
@@ -67,7 +73,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   };
 
-  if (isLoading || sessionState !== 'authenticated' || !user) {
+  if (isLoading || sessionState !== 'authenticated' || !user || !user.onboarding_completed) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F8F9FB] px-5 text-center">
         <p role="status" className="text-sm text-gray-700">
@@ -75,7 +81,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             ? 'Your account could not be checked because the service is unavailable.'
             : sessionState === 'unauthenticated'
               ? 'Redirecting to sign in…'
-              : 'Checking your session…'}
+              : user && !user.onboarding_completed
+                ? 'Opening your account setup…'
+                : 'Checking your session…'}
         </p>
         {sessionState === 'unavailable' && (
           <button type="button" onClick={() => { void refetchUser(); }}

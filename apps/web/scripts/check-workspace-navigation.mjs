@@ -25,7 +25,12 @@ const filesToAudit = [
   'lib/workspace/navigation.ts',
   'app/dashboard/layout.tsx',
   'app/dashboard/settings/page.tsx',
+  'app/dashboard/page.tsx',
+  'app/dashboard/history/page.tsx',
+  'app/dashboard/plans/page.tsx',
+  'app/dashboard/progress/page.tsx',
   'app/journey/layout.tsx',
+  'app/journey/[id]/page.tsx',
   'components/workspace/WorkspaceMobileNavigation.tsx',
 ];
 const hrefs = new Set();
