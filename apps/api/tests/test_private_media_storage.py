@@ -144,3 +144,60 @@ async def test_preview_requires_owned_journey(client, auth_headers, monkeypatch)
         "/api/v1/uploads/selfie/" + journey_id + "/preview",
     )
     assert denied.status_code in (401, 403)
+
+
+def test_storage_deletion_rejects_other_users_reference():
+    storage = StorageService()
+    storage.supabase_url = "https://example.supabase.co"
+    with pytest.raises(AppException):
+        storage._owned_storage_key(
+            "supabase://" + storage.bucket + "/selfies/another-account/photo.jpg",
+            "my-account",
+        )
+
+
+@pytest.mark.asyncio
+async def test_storage_deletion_uses_exact_paths(monkeypatch):
+    storage = StorageService()
+    storage.supabase_url = "https://example.supabase.co"
+    storage.supabase_key = "unit-test-server-key"
+    seen = []
+
+    class DeleteClient:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            return False
+        async def request(self, method, url, **kwargs):
+            seen.append((method, url, kwargs["json"]))
+            return httpx.Response(200, json=[])
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: DeleteClient())
+    ref = "supabase://" + storage.bucket + "/selfies/account-1/image.jpg"
+    await storage.delete_owned_uploads([ref, ref], "account-1")
+    assert len(seen) == 1
+    assert seen[0][0] == "DELETE"
+    assert seen[0][2]["prefixes"] == ["selfies/account-1/image.jpg"]
+
+
+@pytest.mark.asyncio
+async def test_storage_cleanup_failure_preserves_error(monkeypatch):
+    storage = StorageService()
+    storage.supabase_url = "https://example.supabase.co"
+    storage.supabase_key = "unit-test-server-key"
+
+    class ErrorClient:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            return False
+        async def request(self, method, url, **kwargs):
+            return httpx.Response(503, json={"error": "unavailable"})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: ErrorClient())
+    with pytest.raises(AppException) as err:
+        await storage.delete_owned_uploads(
+            ["supabase://" + storage.bucket + "/outfits/account-1/image.png"],
+            "account-1",
+        )
+    assert err.value.status_code == 503

@@ -250,6 +250,11 @@ class AuthService:
         email = user.email
         first_name = user.first_name
 
+        # Removing a database row never removes its stored object. Purge
+        # owned media first, otherwise preserve the account for retry.
+        from app.services.storage_service import StorageService
+        media_refs = await self.repo.list_user_media_references(user_id)
+        await StorageService().delete_owned_uploads(media_refs, str(user_id))
         await self.repo.hard_delete_user_data(user_id)
 
         from app.services.email_service import EmailService

@@ -85,6 +85,23 @@ class UserRepository(BaseRepository[User]):
         await self.db.flush()
         return pref
 
+    async def list_user_media_references(self, user_id: UUID) -> list[str]:
+        """Enumerate all saved selfie/outfit objects owned through this user's journeys."""
+        from app.models.journey import Journey
+        from app.models.upload import SelfieUpload, OutfitUpload
+
+        selfies = await self.db.execute(
+            select(SelfieUpload.storage_url)
+            .join(Journey, SelfieUpload.journey_id == Journey.id)
+            .where(Journey.user_id == user_id)
+        )
+        outfits = await self.db.execute(
+            select(OutfitUpload.storage_url)
+            .join(Journey, OutfitUpload.journey_id == Journey.id)
+            .where(Journey.user_id == user_id)
+        )
+        return list(selfies.scalars().all()) + list(outfits.scalars().all())
+
     async def hard_delete_user_data(self, user_id: UUID) -> None:
         """Completely purges all data associated with a user for privacy & GDPR compliance."""
         from sqlalchemy import delete as sql_delete
