@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -9,37 +9,32 @@ const PROTECTED_PREFIXES = [
   '/settings',
   '/wardrobe',
   '/onboarding',
-]
+];
 
-const AUTH_PAGES = [
-  '/login',
-  '/signup',
-  '/forgot-password',
-  '/reset-password',
-]
+function matchesRoute(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(prefix + '/');
+}
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  const token = request.cookies.get('personaiq_access_token')?.value || request.cookies.get('access_token')?.value || request.cookies.get('token')?.value
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  const isProtectedPath = PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix))
-  const isAuthPath = AUTH_PAGES.some(page => pathname.startsWith(page))
+  // Navigation convenience only: the backend still enforces data ownership
+  // and signed access-token authorization on every protected API request.
+  const hasSession = Boolean(
+    request.cookies.get('personaiq_session_access')?.value
+      || request.cookies.get('personaiq_session_refresh')?.value
+  );
 
-  if (isProtectedPath && !token) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+  if (PROTECTED_PREFIXES.some(prefix => matchesRoute(pathname, prefix)) && !hasSession) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthPath && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  return NextResponse.next()
+  // Do not redirect users away from login just because an old cookie exists.
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
-}
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+};
