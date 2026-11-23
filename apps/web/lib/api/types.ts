@@ -177,3 +177,12 @@ export interface WardrobeItem {
   wear_count: number;
   is_favorite: boolean;
 }
+
+export interface SavedWardrobeLook {
+  id: string;
+  name: string;
+  image_url: string | null;
+  journey_id: string | null;
+  items: Array<Record<string, unknown>>;
+  created_at: string;
+}

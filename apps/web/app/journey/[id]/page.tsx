@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, ClipboardList, FileT
 import { journeyApi, presenceApi } from '@/lib/api/services';
 import type { Journey, PresencePlan } from '@/lib/api/types';
 
-type JourneyView = { status: 'loading' | 'error'; message?: string } | { status: 'ready'; journey: Journey; plan: PresencePlan | null };
+type JourneyView = { status: 'loading' } | { status: 'error'; message?: string } | { status: 'ready'; journey: Journey; plan: PresencePlan | null };
 
 export default function JourneyDetailsPage() {
   const params = useParams();

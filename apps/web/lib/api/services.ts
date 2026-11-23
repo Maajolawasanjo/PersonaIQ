@@ -9,6 +9,7 @@ import {
   SelfieUpload,
   UserProfile,
   WardrobeItem,
+  SavedWardrobeLook,
 } from './types';
 
 export const authApi = {
@@ -157,6 +158,10 @@ export const wardrobeApi = {
     apiClient.post<WardrobeItem>('/wardrobe', data),
   setFavorite: (itemId: string, isFavorite: boolean): Promise<WardrobeItem> =>
     apiClient.patch<WardrobeItem>(`/wardrobe/${itemId}/favorite`, { is_favorite: isFavorite }),
+  listOutfits: (): Promise<SavedWardrobeLook[]> =>
+    apiClient.get<SavedWardrobeLook[]>('/wardrobe/outfits'),
+  saveOutfit: (data: { name: string; image_url: string; items: Record<string, unknown>[]; journey_id?: string }): Promise<SavedWardrobeLook> =>
+    apiClient.post<SavedWardrobeLook>('/wardrobe/outfits', data),
 };
 
 export const plansApi = {
