@@ -22,12 +22,19 @@ class VTOEngine:
         """Resolve base avatar model and execute VTO try-on composite."""
         
         # Determine base canvas image URL
-        if avatar_choice == "user_photo" and user_photo_url:
+        avatar_aliases = {
+            "male_black": "black_male",
+            "female_black": "black_female",
+            "male_white": "white_male",
+            "female_white": "white_female",
+        }
+        resolved_avatar = avatar_aliases.get(avatar_choice, avatar_choice)
+        if avatar_choice in {"user_photo", "user_selfie"} and user_photo_url:
             base_url = user_photo_url
-        elif avatar_choice in STOCK_AVATARS:
-            base_url = STOCK_AVATARS[avatar_choice]
+        elif resolved_avatar in STOCK_AVATARS:
+            base_url = STOCK_AVATARS[resolved_avatar]
         else:
-            base_url = STOCK_AVATARS["black_male"]
+            raise ValueError("A supported avatar or an uploaded photo is required.")
 
         # Delegate visual rendering to provider
         vto_result = await self.provider.generate_try_on(

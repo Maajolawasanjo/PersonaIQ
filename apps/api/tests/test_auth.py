@@ -204,3 +204,9 @@ async def test_password_reset_flow(client: AsyncClient, db_session: AsyncSession
     signin_res = await client.post("/api/v1/auth/sign-in", json=signin_payload)
     assert signin_res.status_code == 200
 
+
+
+@pytest.mark.asyncio
+async def test_email_diagnostic_endpoint_not_public(client: AsyncClient):
+    response = await client.post("/api/v1/auth/test-email?template=all&to_email=outsider@example.com")
+    assert response.status_code == 404

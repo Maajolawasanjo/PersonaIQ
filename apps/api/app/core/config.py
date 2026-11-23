@@ -1,5 +1,6 @@
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "PersonaIQ Backend API"
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # Server
     HOST: str = "0.0.0.0"
@@ -23,6 +24,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:8000",
+        "https://personaiq-web.vercel.app",
     ]
 
     # Security & Authentication
@@ -75,6 +77,28 @@ class Settings(BaseSettings):
     # Email: Dev/Test settings
     EMAIL_TEST_RECIPIENT: str = ""   # Set in Render env vars to your inbox
     EMAIL_SUPPORT_URL: str = "https://personaiq.com/support"
+
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self):
+        if self.ENVIRONMENT.lower() in {"production", "prod"}:
+            insecure = (
+                self.SECRET_KEY == "personaiq-super-secret-development-jwt-key-2026"
+                or len(self.SECRET_KEY) < 32
+            )
+            if insecure:
+                raise ValueError("Production SECRET_KEY must be a unique, strong secret.")
+        return self
+
+    @property
+    def allowed_cors_origins(self) -> List[str]:
+        if self.ENVIRONMENT.lower() not in {"production", "prod"}:
+            return self.CORS_ORIGINS
+        origins = [origin.rstrip("/") for origin in self.CORS_ORIGINS if origin.startswith("https://")]
+        frontend = self.FRONTEND_URL.rstrip("/")
+        if frontend.startswith("https://") and frontend not in origins:
+            origins.append(frontend)
+        return origins
 
 
 settings = Settings()
