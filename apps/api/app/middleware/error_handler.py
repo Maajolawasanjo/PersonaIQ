@@ -24,7 +24,17 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     request_id = getattr(request.state, "request_id", "req_unknown")
-    logger.warning("Validation Exception", errors=exc.errors())
+    # Pydantic validator context can include raw Exception objects and sensitive
+    # submitted values (such as passwords). Expose only safe serializable details.
+    safe_errors = [
+        {
+            "field": ".".join(str(part) for part in issue.get("loc", [])),
+            "message": str(issue.get("msg", "Invalid value.")),
+            "type": str(issue.get("type", "validation_error")),
+        }
+        for issue in exc.errors()
+    ]
+    logger.warning("Validation Exception", errors=safe_errors)
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     error_payload = ErrorResponse(
@@ -32,7 +42,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         error=ErrorDetail(
             code=ErrorCode.SYS_003.value,
             message="Request body validation failed.",
-            details=exc.errors(),
+            details=safe_errors,
         ),
         meta=meta,
     )
