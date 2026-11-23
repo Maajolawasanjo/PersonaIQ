@@ -1,320 +1,119 @@
 'use client';
 
-import React, { useState } from 'react';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { HelpCircle, LogOut, Plus } from 'lucide-react';
+import { WorkspaceBrand } from '@/components/workspace/WorkspaceBrand';
+import { WorkspaceMobileNavigation } from '@/components/workspace/WorkspaceMobileNavigation';
+import {
+  accountNavigation,
+  isWorkspaceRouteActive,
+  primaryNavigation,
+  type WorkspaceNavItem,
+} from '@/lib/workspace/navigation';
 import { useAuth } from '@/providers/auth-provider';
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
-const IconDashboard = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-    <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
-  </svg>
-);
-const IconAnalysis = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-  </svg>
-);
-const IconHistory = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-  </svg>
-);
-const IconWardrobe = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H7v13a1 1 0 001 1h8a1 1 0 001-1V10h3.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/>
-  </svg>
-);
-const IconInsights = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
-  </svg>
-);
-const IconProfile = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
-  </svg>
-);
-const IconSettings = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-  </svg>
-);
-const IconHelp = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="10"/>
-    <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-  </svg>
-);
-const IconLogout = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-  </svg>
-);
-const IconSearch = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-  </svg>
-);
-
-const IconPlans = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-  </svg>
-);
-const IconProgress = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
-  </svg>
-);
-
-const IconStylist = () => (
-  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-  </svg>
-);
-
-// ─── Primary Nav Items ──────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { label: 'Dashboard',         href: '/dashboard',              icon: <IconDashboard /> },
-  { label: 'AI Stylist & VTO',  href: '/wardrobe/style-me',      icon: <IconStylist />, badge: 'AI VTO' },
-  { label: 'Presence Journey',  href: '/journey/start',          icon: <IconAnalysis />, badge: 'NEW' },
-  { label: 'Digital Wardrobe',  href: '/wardrobe',               icon: <IconWardrobe /> },
-  { label: 'Presence DNA™',     href: '/dashboard/presence-dna', icon: <IconInsights /> },
-  { label: 'Saved Plans',       href: '/dashboard/plans',        icon: <IconPlans /> },
-  { label: 'History',           href: '/dashboard/history',      icon: <IconHistory /> },
-  { label: 'Progress',          href: '/dashboard/progress',     icon: <IconProgress /> },
-  { label: 'Profile',           href: '/dashboard/profile',      icon: <IconProfile /> },
-  { label: 'Settings',          href: '/dashboard/settings',     icon: <IconSettings /> },
-];
-
-// ─── Mobile bottom nav ────────────────────────────────────────────────────────
-const MOBILE_NAV = [
-  { label: 'Home',      href: '/dashboard',              icon: <IconDashboard /> },
-  { label: 'Stylist',   href: '/wardrobe/style-me',      icon: <IconStylist /> },
-  { label: 'Journey',   href: '/journey/start',          icon: <IconAnalysis /> },
-  { label: 'Wardrobe',  href: '/wardrobe',               icon: <IconWardrobe /> },
-  { label: 'Presence',  href: '/dashboard/presence-dna', icon: <IconInsights /> },
-  { label: 'Plans',     href: '/dashboard/plans',        icon: <IconPlans /> },
-  { label: 'Profile',   href: '/dashboard/profile',      icon: <IconProfile /> },
-];
-
-function AvatarImage() {
-  const [userPhoto, setUserPhoto] = React.useState<string | null>(null);
-  const [initials, setInitials] = React.useState<string>('EX');
-
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const customAvatar = localStorage.getItem('personaiq_custom_avatar_url');
-      if (customAvatar && customAvatar.length > 10) {
-        setUserPhoto(customAvatar);
-      }
-
-      // Compute initials from stored session or fallback
-      const storedFirstName = localStorage.getItem('personaiq_user_firstname') || '';
-      const storedLastName = localStorage.getItem('personaiq_user_lastname') || '';
-      const storedEmail = localStorage.getItem('personaiq_user_email') || '';
-
-      if (storedFirstName || storedLastName) {
-        const firstLetter = storedFirstName ? storedFirstName[0] : '';
-        const lastLetter = storedLastName ? storedLastName[0] : '';
-        setInitials((firstLetter + lastLetter).toUpperCase() || 'EX');
-      } else if (storedEmail) {
-        setInitials(storedEmail[0].toUpperCase());
-      } else {
-        setInitials('EX');
-      }
-    }
-  }, []);
-
-  if (userPhoto) {
-    return <img src={userPhoto} alt="User Profile" className="w-full h-full object-cover" />;
-  }
-
+function SidebarLink({ item, pathname }: { item: WorkspaceNavItem; pathname: string }) {
+  const active = isWorkspaceRouteActive(pathname, item.href);
+  const Icon = item.icon;
   return (
-    <div className="w-full h-full bg-red-650 text-white font-mono font-extrabold text-[12px] flex items-center justify-center tracking-wider selection:bg-none">
-      {initials}
-    </div>
+    <Link
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      className={
+        'group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ' +
+        (active ? 'bg-red-50 text-primary' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-950')
+      }
+    >
+      <Icon aria-hidden="true" className={'h-[18px] w-[18px] shrink-0 ' + (active ? 'text-primary' : 'text-gray-500 group-hover:text-gray-800')} />
+      <span>{item.label}</span>
+    </Link>
   );
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function ProfileAvatar() {
+  const { user } = useAuth();
+  const initials = [user?.first_name?.[0], user?.last_name?.[0]]
+    .filter(Boolean).join('').toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U';
+  return (
+    <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-xs font-bold text-red-800">
+      {initials}
+    </span>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { user, logout } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
     try {
       await logout();
+      router.replace('/login');
     } finally {
-      setIsLoggingOut(false);
-      router.push('/login');
+      setSigningOut(false);
     }
   };
 
-  const isActive = (href: string) =>
-    href === '/dashboard' ? pathname === href : pathname.startsWith(href);
-
   return (
-    <div className="min-h-screen bg-pattern-geom text-gray-900 font-sans antialiased selection:bg-primary/10 selection:text-primary">
+    <div className="min-h-screen bg-[#F8F9FB] text-gray-950">
+      <a href="#workspace-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[90] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-primary">
+        Skip to content
+      </a>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          FULL-WIDTH TOP HEADER — PersonaIQ | Search | User
-          Fixed at top, spans the entire viewport width (desktop + mobile)
-      ══════════════════════════════════════════════════════════════════════ */}
-      <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-gray-950 border-b border-white/10 flex items-center px-5 shadow-md">
-
-        {/* Left: Brand */}
-        <Link href="/dashboard" className="flex items-center space-x-2.5 group shrink-0">
-          <Image
-            src="/icon.png"
-            alt="PersonaIQ"
-            width={28}
-            height={28}
-            style={{ width: 28, height: 28 }}
-            className="rounded-[6px] group-hover:scale-105 transition-transform"
-          />
-          <span className="font-extrabold text-[18px] text-white tracking-tight">
-            Persona<span className="text-primary">IQ</span>
-          </span>
-        </Link>
-
-        {/* Right: Search + User */}
-        <div className="ml-auto flex items-center space-x-2">
-
-          {/* Search */}
-          <button
-            onClick={() => setSearchOpen((v) => !v)}
-            className="h-9 px-3 flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-[8px] border border-white/10 transition-all text-[13px] font-medium"
-            aria-label="Search"
-          >
-            <IconSearch />
-            <span className="hidden sm:inline text-[12.5px]">Search</span>
-            <span className="hidden sm:inline text-[11px] text-gray-500 font-mono border border-white/10 rounded px-1">⌘K</span>
-          </button>
-
-          {/* User Avatar */}
-          <Link
-            href="/dashboard/profile"
-            className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/20 hover:border-primary transition-all shrink-0 bg-gray-800 flex items-center justify-center text-white text-xs font-bold"
-          >
-            <AvatarImage />
+      <header className="sticky top-0 z-30 flex h-[4.5rem] items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-7 lg:pl-[17rem]">
+        <div className="lg:hidden"><WorkspaceBrand compact /></div>
+        <div className="hidden lg:block">
+          <p className="text-sm font-medium text-gray-600">Your personal styling workspace</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/journey/start" className="hidden min-h-10 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 sm:inline-flex">
+            <Plus aria-hidden="true" className="h-4 w-4" /> New preparation
+          </Link>
+          <Link href="/dashboard/profile" aria-label="Open profile" className="flex min-h-11 items-center gap-2 rounded-xl px-2 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+            <ProfileAvatar />
+            <span className="hidden max-w-32 truncate text-sm font-semibold text-gray-800 sm:block">{user?.first_name || 'Profile'}</span>
           </Link>
         </div>
       </header>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          BODY — below the fixed header (pt-14)
-      ══════════════════════════════════════════════════════════════════════ */}
-      <div className="flex pt-14 min-h-screen">
-
-        {/* ── DESKTOP LEFT SIDEBAR ────────────────────────────────────────────
-            Fixed, starts at top-14 (below header), full height below
-        ─────────────────────────────────────────────────────────────────── */}
-        <aside className="hidden lg:flex fixed top-14 bottom-0 left-0 w-60 bg-gray-950 text-white border-r border-white/10 flex-col justify-between z-30 overflow-y-auto">
-
-          {/* Primary Nav */}
-          <nav className="px-4 pt-6 pb-4 space-y-1 flex-1">
-            {NAV_ITEMS.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center space-x-3 px-3 py-3 rounded-[10px] text-[15px] font-medium transition-all ${
-                    active
-                      ? 'bg-white/12 text-white font-semibold border border-white/15'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span className="ml-auto text-[9.5px] font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+      <aside aria-label="Desktop workspace navigation" className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+        <div className="flex h-[4.5rem] items-center border-b border-gray-100 px-6">
+          <WorkspaceBrand />
+        </div>
+        <div className="flex-1 space-y-7 overflow-y-auto px-4 py-6">
+          <nav aria-label="Main navigation" className="space-y-1">
+            {primaryNavigation.map(item => <SidebarLink key={item.href} item={item} pathname={pathname} />)}
           </nav>
-
-          {/* Bottom Section: divider → Help → Logout */}
-          <div className="px-4 pt-4 pb-5 space-y-1 border-t border-white/10">
-            <Link
-              href="/faq"
-              className="flex items-center space-x-3 px-3 py-3 rounded-[10px] text-[15px] font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-            >
-              <IconHelp />
-              <span>Help</span>
-            </Link>
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="w-full flex items-center space-x-3 px-3 py-3 rounded-[10px] text-[15px] font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/8 transition-all group disabled:opacity-50 cursor-pointer"
-            >
-              <span className="group-hover:text-red-400"><IconLogout /></span>
-              <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
-            </button>
+          <div>
+            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-gray-500">Your account</p>
+            <nav aria-label="Account navigation" className="space-y-1">
+              {accountNavigation.map(item => <SidebarLink key={item.href} item={item} pathname={pathname} />)}
+            </nav>
           </div>
-        </aside>
-
-        {/* ── MAIN CONTENT AREA ───────────────────────────────────────────────
-            Offset left by sidebar width on desktop
-        ─────────────────────────────────────────────────────────────────── */}
-        <div className="flex-1 lg:pl-60 flex flex-col min-w-0 min-h-[calc(100vh-3.5rem)]">
-
-          {/* Mobile: Thin sub-header with quick CTA */}
-          <div className="lg:hidden flex items-center justify-between px-4 py-2 bg-white/60 backdrop-blur-sm border-b border-gray-200/80">
-            <span className="text-[12px] font-mono text-gray-400">Executive Workspace</span>
-            <Link
-              href="/journey/start"
-              className="h-7 px-3 bg-primary text-white font-bold text-[11.5px] rounded-[6px] flex items-center shadow-sm"
-            >
-              + Analysis
-            </Link>
-          </div>
-
-          {/* Page Content */}
-          <main className="flex-1 p-5 md:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-8">
-            {children}
-          </main>
         </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          MOBILE BOTTOM NAV — 7 items, fixed at bottom
-      ══════════════════════════════════════════════════════════════════════ */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-gray-950/97 backdrop-blur-md text-white border-t border-white/10 shadow-2xl">
-        <div className="flex items-center justify-around px-0.5 py-1">
-          {MOBILE_NAV.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-[8px] transition-all min-w-0 flex-1 ${
-                  active ? 'text-primary' : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                {item.icon}
-                <span className="text-[9px] font-mono leading-none truncate w-full text-center">
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
+        <div className="space-y-1 border-t border-gray-100 px-4 py-4">
+          <Link href="/faq" className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-gray-600 hover:bg-gray-50">
+            <HelpCircle aria-hidden="true" className="h-[18px] w-[18px]" /> Help
+          </Link>
+          <button type="button" onClick={handleSignOut} disabled={signingOut} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-gray-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50">
+            <LogOut aria-hidden="true" className="h-[18px] w-[18px]" />
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
         </div>
-      </nav>
+      </aside>
 
+      <main id="workspace-content" className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-7 sm:px-8 sm:pt-9 lg:ml-64 lg:w-[calc(100%-16rem)] lg:pb-12 lg:pt-10" tabIndex={-1}>
+        {children}
+      </main>
+
+      <WorkspaceMobileNavigation />
     </div>
   );
 }
