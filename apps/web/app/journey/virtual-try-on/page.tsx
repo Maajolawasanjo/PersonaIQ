@@ -37,8 +37,7 @@ import {
   VTO_MODELS,
   VTOAsset,
   VTOModel,
-  getRecommendedAssets,
-  generateGeminiStylistReasoning
+  getRecommendedAssets
 } from '@/lib/catalog/vtoCatalog';
 
 interface SavedLookCard {
@@ -106,12 +105,10 @@ export default function VirtualTryOnPage() {
   // AI Render & Telemetry State
   const [vtoResult, setVtoResult] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [presenceScore, setPresenceScore] = useState<number>(93);
-  const [providerUsed, setProviderUsed] = useState<string>('YouCam AI VTO');
+  const [providerUsed, setProviderUsed] = useState<string>('Not generated');
 
-  // Featherless AI Stylist Reasoning
   const [aiStylistText, setAiStylistText] = useState<string>(
-    'This navy suit with a white shirt and navy tie projects confidence, professionalism, and approachability—ideal for making a strong first impression.'
+    'Select garments to request a try-on. Only successful rendering produces a generated result.'
   );
 
   useEffect(() => {
@@ -224,12 +221,9 @@ export default function VirtualTryOnPage() {
       hair = item;
     }
 
-    // Compute dynamic score & AI rationale
-    const reasoningObj = generateGeminiStylistReasoning(occasion, targetVibe, garment, shoe, acc || undefined, hair || undefined);
-    setPresenceScore(reasoningObj.total_score);
-    if (reasoningObj.reasoning.summary) {
-      setAiStylistText(reasoningObj.reasoning.summary);
-    }
+    // Garment selection is not a personality or confidence measurement.
+    setAiStylistText(`Selected ${garment.name} for ${occasion}. Generate a preview to review the outfit.`);
+    setActiveLookId(null);
 
     setStudioError(null);
     setVtoResult(null);
@@ -295,38 +289,37 @@ export default function VirtualTryOnPage() {
 
   const handleImportProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productUrl) return;
-
-    let fallbackCategory: 'clothing' | 'footwear' | 'accessories' = 'clothing';
-    let fallbackName = 'Imported Store Apparel';
-    const lower = productUrl.toLowerCase();
-
-    if (lower.includes('shoe') || lower.includes('boot') || lower.includes('sneaker') || lower.includes('loafer')) {
-      fallbackCategory = 'footwear';
-      fallbackName = 'Imported Designer Footwear';
-    } else if (lower.includes('watch') || lower.includes('tie') || lower.includes('belt')) {
-      fallbackCategory = 'accessories';
-      fallbackName = 'Imported Luxury Accessory';
+    if (!productUrl.trim()) return;
+    setStudioError(null);
+    try {
+      const url = new URL(productUrl.trim());
+      if (url.protocol !== 'https:') throw new Error('HTTPS URL required');
+      const item = await stylistApi.importProduct(url.toString());
+      if (!item?.id || typeof item.photo_url !== 'string' || !item.photo_url.startsWith('https://')) {
+        throw new Error('No usable product image');
+      }
+      const categoryText = String(item.category || '').toLowerCase();
+      const category: VTOAsset['category'] = /shoe|boot|footwear|sneaker/.test(categoryText)
+        ? 'footwear' : /watch|belt|tie|accessor/.test(categoryText) ? 'accessories' : 'clothing';
+      const asset: VTOAsset = {
+        id: String(item.id),
+        name: String(item.name || 'Imported garment'),
+        category,
+        subcategory: 'online_store',
+        gender: 'unisex',
+        asset_type: 'product',
+        image_url: item.photo_url,
+        occasions: ['all'],
+        is_active: true,
+      };
+      setImportedItems(previous => [asset, ...previous]);
+      await handleAssetSelect(asset);
+      setProductUrl('');
+      setIsImportOpen(false);
+    } catch (error) {
+      console.error('Product import failed:', error);
+      setStudioError('Unable to import this product. Check the approved retailer URL and retry.');
     }
-
-    const importedItem: VTOAsset = {
-      id: `imported_${Date.now()}`,
-      name: fallbackName,
-      category: fallbackCategory,
-      subcategory: 'online_store',
-      gender: 'unisex',
-      asset_type: 'product',
-      image_url: productUrl,
-      occasions: ['all'],
-      is_active: true,
-      price: 195,
-      score: 91,
-    };
-
-    setImportedItems((prev) => [importedItem, ...prev]);
-    handleAssetSelect(importedItem);
-    setProductUrl('');
-    setIsImportOpen(false);
   };
 
   // Sub-category Filter Options
@@ -538,11 +531,12 @@ export default function VirtualTryOnPage() {
               </span>
               <button
                 type="button"
-                onClick={handleSaveCurrentLook}
+                onClick={() => void handleSaveCurrentLook()}
+                disabled={isSavingLook || !vtoResult}
                 className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center space-x-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Save Current Composition</span>
+                <span>{isSavingLook ? 'Saving...' : 'Save Current Composition'}</span>
               </button>
             </div>
 
@@ -579,13 +573,14 @@ export default function VirtualTryOnPage() {
               {/* SAVE LOOK BUTTON CARD */}
               <button
                 type="button"
-                onClick={handleSaveCurrentLook}
+                onClick={() => void handleSaveCurrentLook()}
+                disabled={isSavingLook || !vtoResult}
                 className="bg-gray-50 hover:bg-gray-100 rounded-xl border border-dashed border-gray-300 hover:border-red-600 p-4 transition-all cursor-pointer flex flex-col items-center justify-center space-y-1.5 text-gray-500 hover:text-red-600 min-h-[100px]"
               >
                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
                   <Plus className="w-4 h-4 text-gray-700" />
                 </div>
-                <span className="text-xs font-bold">Save Look</span>
+                <span className="text-xs font-bold">{isSavingLook ? "Saving..." : "Save Look"}</span>
               </button>
             </div>
           </div>
@@ -724,8 +719,7 @@ export default function VirtualTryOnPage() {
                   selectedAccessory?.id === item.id ||
                   selectedHairstyle?.id === item.id;
                 const isFav = favorites.includes(item.id);
-                const itemPrice = item.price || (item.category === 'clothing' ? 320 : item.category === 'footwear' ? 180 : 90);
-                const itemScore = item.score || (isSelected ? presenceScore : 89);
+                const itemPrice = typeof item.price === 'number' ? item.price : null;
 
                 return (
                   <div
@@ -773,14 +767,9 @@ export default function VirtualTryOnPage() {
                       </h4>
 
                       <div className="flex items-center justify-between pt-2 border-t border-gray-150">
-                        <span className="text-xs font-mono font-extrabold text-gray-900">
-                          ${itemPrice}
+                        <span className="text-xs font-medium text-gray-600">
+                          {itemPrice === null ? 'Price not provided' : `$${itemPrice}`}
                         </span>
-
-                        {/* Circular Score Meter Badge */}
-                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center space-x-1">
-                          <span>{itemScore}</span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -838,7 +827,7 @@ export default function VirtualTryOnPage() {
             <div className="flex items-center space-x-2.5 text-red-500">
               <Sparkles className="w-4.5 h-4.5" />
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
-                AI STYLIST RECOMMENDATION
+                Style selection notes
               </h3>
             </div>
 
@@ -846,32 +835,18 @@ export default function VirtualTryOnPage() {
               {aiStylistText}
             </p>
 
-            {/* 4 Red Brand Vibe Pills */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
-                Clean Silhouette
-              </span>
-              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
-                Power Color
-              </span>
-              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
-                Interview Ready
-              </span>
-              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
-                Executive Presence
-              </span>
-            </div>
           </div>
 
           {/* BOTTOM STICKY ACTION BUTTONS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <button
               type="button"
-              onClick={handleSaveCurrentLook}
+              onClick={() => void handleSaveCurrentLook()}
+                disabled={isSavingLook || !vtoResult}
               className="h-12 px-4 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs rounded-xl border border-gray-250 transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-2xs"
             >
               <Bookmark className="w-4 h-4 text-gray-500" />
-              <span>Save to Wardrobe</span>
+              <span>{isSavingLook ? 'Saving...' : 'Save to Wardrobe'}</span>
             </button>
 
             <Link
