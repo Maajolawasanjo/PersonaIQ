@@ -124,3 +124,42 @@ async def test_dashboard_only_lists_owned_journeys_and_excludes_archived_as_acti
     another = (await client.get("/api/v1/dashboard", headers=b)).json()["data"]
     assert another["total_journeys_count"] == 0
     assert another["recent_journeys"] == []
+
+
+@pytest.mark.asyncio
+async def test_archived_journeys_stay_in_history_but_not_active(client: AsyncClient, auth_headers):
+    titles = ["Draft One", "Draft Two", "Draft Three"]
+    ids = []
+    for title in titles:
+        response = await client.post(
+            "/api/v1/journeys", json={"title": title}, headers=auth_headers
+        )
+        assert response.status_code == 201
+        ids.append(response.json()["data"]["id"])
+
+    archived = await client.post(
+        f"/api/v1/journeys/{ids[2]}/archive", headers=auth_headers
+    )
+    assert archived.status_code == 200
+
+    first_page = await client.get(
+        "/api/v1/journeys?page=1&page_size=2", headers=auth_headers
+    )
+    assert first_page.status_code == 200
+    assert first_page.json()["pagination"]["total_items"] == 3
+    assert first_page.json()["pagination"]["total_pages"] == 2
+    assert len(first_page.json()["data"]) == 2
+
+    second_page = await client.get(
+        "/api/v1/journeys?page=2&page_size=2", headers=auth_headers
+    )
+    assert len(second_page.json()["data"]) == 1
+    archived_only = await client.get(
+        "/api/v1/journeys?status=ARCHIVED", headers=auth_headers
+    )
+    assert archived_only.json()["pagination"]["total_items"] == 1
+    assert archived_only.json()["data"][0]["id"] == ids[2]
+
+    overview = await client.get("/api/v1/dashboard", headers=auth_headers)
+    assert overview.status_code == 200
+    assert overview.json()["data"]["active_journey"]["id"] in ids[:2]
