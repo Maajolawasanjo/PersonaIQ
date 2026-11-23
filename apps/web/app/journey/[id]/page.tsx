@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, ClipboardList, FileText, AlertCircle } from 'lucide-react';
 import { journeyApi, presenceApi } from '@/lib/api/services';
 import type { Journey, PresencePlan } from '@/lib/api/types';
+import { displayJourneyStatus, formatWorkspaceDate, isResumableJourney } from '@/lib/workspace/journeys';
 
 type JourneyView = { status: 'loading' } | { status: 'error'; message?: string } | { status: 'ready'; journey: Journey; plan: PresencePlan | null };
 
@@ -27,13 +28,25 @@ export default function JourneyDetailsPage() {
         const journey = await journeyApi.getJourney(id);
         let plan: PresencePlan | null = null;
         if (journey.status === 'COMPLETED') {
-          plan = await presenceApi.getPresencePlan(id);
+          try {
+            plan = await presenceApi.getPresencePlan(id);
+          } catch {
+            // Still display the owned journey if its report is unavailable.
+            plan = null;
+          }
         }
         if (!active) return;
 
         const previousJourneyId = localStorage.getItem('personaiq_active_journey_id');
         const lastStep = localStorage.getItem('personaiq_active_draft_step');
-        setResumeHref(previousJourneyId === id && lastStep?.startsWith('/journey/') ? lastStep : '/journey/event-type');
+        const savedSteps = new Set([
+          '/journey/event-type', '/journey/event-details', '/journey/dress-code',
+          '/journey/capture-look', '/journey/validation',
+          '/journey/skin-intelligence', '/journey/choose-outfit',
+          '/journey/virtual-try-on',
+        ]);
+        setResumeHref(previousJourneyId === id && lastStep && savedSteps.has(lastStep)
+          ? lastStep : '/journey/event-type');
         setView({ status: 'ready', journey, plan });
       } catch (error) {
         console.error('Could not load saved journey:', error);
@@ -59,9 +72,9 @@ export default function JourneyDetailsPage() {
   }
 
   const { journey, plan } = view;
-  const score = plan?.overall_presence_index ?? journey.active_presence_index ?? null;
   const eventName = journey.event?.name ?? journey.title;
   const complete = journey.status === 'COMPLETED' && plan !== null;
+  const canContinue = isResumableJourney(journey.status);
   const dateLabel = journey.event?.event_date || null;
 
   return (
@@ -72,9 +85,9 @@ export default function JourneyDetailsPage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-red-700">Presence Journey</p>
             <h1 className="mt-2 text-3xl font-bold text-gray-950">{eventName}</h1>
-            <p className="mt-2 text-sm text-gray-600">Created {new Date(journey.created_at).toLocaleDateString()}</p>
+            <p className="mt-2 text-sm text-gray-600">Created {formatWorkspaceDate(journey.created_at)}</p>
           </div>
-          <span className="rounded-full bg-gray-100 px-4 py-2 text-xs font-semibold text-gray-700">{journey.status}</span>
+          <span className="rounded-full bg-gray-100 px-4 py-2 text-xs font-semibold text-gray-700">{displayJourneyStatus(journey.status)}</span>
         </div>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-2xl bg-gray-50 p-4">
@@ -86,18 +99,34 @@ export default function JourneyDetailsPage() {
             <p className="mt-1 font-semibold text-gray-900">{dateLabel || 'Not provided'}</p>
           </div>
           <div className="rounded-2xl bg-gray-50 p-4">
-            <p className="text-xs text-gray-500">Presence Index</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{typeof score === 'number' && complete ? score : '—'}</p>
+            <p className="text-xs text-gray-500">Location</p>
+            <p className="mt-1 font-semibold text-gray-900">{journey.event?.location || 'Not provided'}</p>
           </div>
         </div>
         {!complete && (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <h2 className="flex items-center gap-2 font-semibold text-amber-950"><ClipboardList className="h-5 w-5"/> This journey is not complete</h2>
-            <p className="mt-2 text-sm text-amber-900">A verified Presence Plan has not been saved for this journey. No assessment scores are being estimated.</p>
-            <Link href={resumeHref} onClick={() => localStorage.setItem('personaiq_active_journey_id', id)}
-              className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">
-              Continue preparation <ArrowRight className="h-4 w-4"/>
-            </Link>
+          <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <h2 className="flex items-center gap-2 font-semibold text-gray-950">
+              <ClipboardList aria-hidden="true" className="h-5 w-5"/> {journey.status === 'ARCHIVED' ? 'Archived preparation' :
+                journey.status === 'COMPLETED' ? 'Saved report unavailable' :
+                  journey.status === 'ANALYZING' ? 'Processing not yet complete' :
+                    journey.status === 'FAILED' ? 'Preparation needs attention' :
+                      'Preparation in progress'}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-gray-600">
+              {canContinue
+                ? 'You can continue this saved journey. No personal score is estimated from this record.'
+                : journey.status === 'ARCHIVED'
+                  ? 'This journey is archived and shown as a read-only record.'
+                  : journey.status === 'COMPLETED'
+                    ? 'The journey is marked complete, but its report could not be retrieved. No score or findings are being substituted.'
+                    : 'This journey cannot currently be resumed from this screen.'}
+            </p>
+            {canContinue && (
+              <Link href={resumeHref} onClick={() => localStorage.setItem('personaiq_active_journey_id', id)}
+                className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">
+                Continue preparation <ArrowRight aria-hidden="true" className="h-4 w-4"/>
+              </Link>
+            )}
           </div>
         )}
       </section>
@@ -105,9 +134,10 @@ export default function JourneyDetailsPage() {
       {complete && plan && (
         <>
           <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
-            <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950"><CheckCircle2 className="h-6 w-6 text-emerald-600"/> Saved Presence Plan</h2>
-            <p className="mt-4 text-sm leading-7 text-gray-700">{plan.summary_narrative || 'The assessment report was saved successfully.'}</p>
-            <p className="mt-3 text-xs text-gray-500">Completed {new Date(plan.created_at).toLocaleDateString()}</p>
+            <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950"><CheckCircle2 className="h-6 w-6 text-emerald-600"/> Saved preparation report</h2>
+            <p className="mt-2 text-xs text-amber-800">Historical automated reports may predate verified provider integration. Treat generated advice as suggestions, not measured facts.</p>
+            <p className="mt-4 text-sm leading-7 text-gray-700">{plan.summary_narrative || 'The saved report does not contain a summary.'}</p>
+            <p className="mt-3 text-xs text-gray-500">Recorded {formatWorkspaceDate(plan.created_at)}</p>
           </section>
           {plan.recommendations?.length > 0 && (
             <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">

@@ -187,8 +187,8 @@ export interface SavedWardrobeLook {
 export interface SavedPlanSummary {
   id: string;
   journey_id: string;
-  overall_presence_index: number | null;
-  executive_vibe_score: number | null;
+  journey_title: string;
+  journey_status: string;
   created_at: string | null;
 }
 

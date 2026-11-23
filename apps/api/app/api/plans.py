@@ -28,19 +28,24 @@ async def list_presence_plans(
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_plans_list")
-    query = select(PresencePlan).join(Journey).where(Journey.user_id == current_user.id)
+    query = (
+        select(PresencePlan, Journey.title, Journey.status)
+        .join(Journey)
+        .where(Journey.user_id == current_user.id, Journey.deleted_at.is_(None))
+        .order_by(PresencePlan.created_at.desc(), PresencePlan.id.desc())
+    )
     result = await db.execute(query)
-    plans = result.scalars().all()
+    plans = result.all()
 
     data = [
         {
             "id": str(p.id),
             "journey_id": str(p.journey_id),
-            "overall_presence_index": p.overall_presence_index,
-            "executive_vibe_score": p.executive_vibe_score,
+            "journey_title": title,
+            "journey_status": journey_status,
             "created_at": p.created_at.isoformat() if p.created_at else None,
         }
-        for p in plans
+        for p, title, journey_status in plans
     ]
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
