@@ -197,25 +197,50 @@ class StorageService:
         """Remove images before deleting account records; fail closed if cleanup fails."""
         if not references:
             return
-        keys = list(dict.fromkeys(self._owned_storage_key(ref, user_id) for ref in references))
+        remote_keys = []
+        local_files = []
+        for reference in references:
+            if reference.startswith("/media/uploads/"):
+                if not self._local_enabled():
+                    raise storage_unavailable("Legacy local media requires manual privacy cleanup.")
+                key = reference[len("/media/uploads/"):]
+                parts = key.split("/")
+                if (
+                    len(parts) != 3 or parts[0] not in {"selfies", "outfits"}
+                    or parts[1] != user_id or parts[2] in ("", ".", "..")
+                    or any(part in ("", ".", "..") for part in parts)
+                    or "\\" in key
+                ):
+                    raise storage_unavailable("An image reference failed ownership validation.")
+                root = self.upload_dir.resolve()
+                file_path = (root / key).resolve()
+                if not file_path.is_relative_to(root):
+                    raise storage_unavailable("An image reference escaped the media directory.")
+                local_files.append(file_path)
+            else:
+                remote_keys.append(self._owned_storage_key(reference, user_id))
 
-        if not self._supabase_configured():
+        keys = list(dict.fromkeys(remote_keys))
+        if keys and not self._supabase_configured():
             raise storage_unavailable("Photo deletion requires the configured storage service.")
 
         try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
-                # Delete in small batches (API supports up to 1000 paths/request).
-                for i in range(0, len(keys), 100):
-                    response = await client.request(
-                        "DELETE",
-                        self.supabase_url + "/storage/v1/object/" + self.bucket,
-                        headers=self._headers("application/json"),
-                        json={"prefixes": keys[i:i + 100]},
-                    )
-                    if response.status_code != 200:
-                        raise storage_unavailable(
-                            "Unable to remove all stored photos. Account deletion was not completed."
+            if keys:
+                async with httpx.AsyncClient(timeout=20.0) as client:
+                    # Delete in small batches (API supports up to 1000 paths/request).
+                    for i in range(0, len(keys), 100):
+                        response = await client.request(
+                            "DELETE",
+                            self.supabase_url + "/storage/v1/object/" + self.bucket,
+                            headers=self._headers("application/json"),
+                            json={"prefixes": keys[i:i + 100]},
                         )
+                        if response.status_code != 200:
+                            raise storage_unavailable(
+                                "Unable to remove all stored photos. Account deletion was not completed."
+                            )
+            for path in set(local_files):
+                path.unlink(missing_ok=True)
         except AppException:
             raise
         except (httpx.HTTPError, ValueError, OSError) as error:

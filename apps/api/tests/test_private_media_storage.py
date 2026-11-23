@@ -201,3 +201,27 @@ async def test_storage_cleanup_failure_preserves_error(monkeypatch):
             "account-1",
         )
     assert err.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_testing_media_cleanup_removes_local_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "ENVIRONMENT", "testing")
+    storage = StorageService(upload_dir=str(tmp_path))
+    photo = tmp_path / "selfies" / "account-123" / "image.jpg"
+    photo.parent.mkdir(parents=True)
+    photo.write_bytes(b"test image bytes")
+    await storage.delete_owned_uploads(
+        ["/media/uploads/selfies/account-123/image.jpg"], "account-123"
+    )
+    assert not photo.exists()
+
+
+@pytest.mark.asyncio
+async def test_testing_media_cleanup_rejects_cross_account_path(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "ENVIRONMENT", "testing")
+    storage = StorageService(upload_dir=str(tmp_path))
+    with pytest.raises(AppException) as error:
+        await storage.delete_owned_uploads(
+            ["/media/uploads/selfies/another-account/image.jpg"], "account-123"
+        )
+    assert error.value.status_code == 503
