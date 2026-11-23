@@ -38,6 +38,23 @@ jobs:
           set -e
           echo "Auto-fix exit code: $exit_code"
           echo "The mandatory audit in the next step determines success."
+      - name: Correct incompatible transitive overrides
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const filename = 'package.json';
+          const manifest = JSON.parse(fs.readFileSync(filename, 'utf8'));
+          manifest.pnpm = manifest.pnpm || {};
+          const overrides = manifest.pnpm.overrides || {};
+          for (const key of Object.keys(overrides)) {
+            if (key.startsWith('brace-expansion@')) delete overrides[key];
+          }
+          // Do not inject brace-expansion 5 into minimatch 3 dependencies.
+          overrides['brace-expansion@<2.0.0'] = '1.1.21';
+          overrides['brace-expansion@>=4.0.0 <5.0.12'] = '5.0.12';
+          manifest.pnpm.overrides = overrides;
+          fs.writeFileSync(filename, JSON.stringify(manifest, null, 2));
+          NODE
       - name: Resolve and verify dependencies
         run: |
           pnpm install --no-frozen-lockfile
@@ -61,5 +78,5 @@ jobs:
             exit 0
           fi
           git diff --cached --stat
-          git commit -m "fix(deps): upgrade audited dependencies [skip ci]"
+          git commit -m "fix(deps): upgrade audited dependencies"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/audit/phase-0-1-trust-and-flow-fixes
