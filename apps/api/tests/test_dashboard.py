@@ -163,3 +163,36 @@ async def test_archived_journeys_stay_in_history_but_not_active(client: AsyncCli
     overview = await client.get("/api/v1/dashboard", headers=auth_headers)
     assert overview.status_code == 200
     assert overview.json()["data"]["active_journey"]["id"] in ids[:2]
+
+
+@pytest.mark.asyncio
+async def test_soft_deleted_journey_is_absent_from_overview_history_and_details(
+    client: AsyncClient, db_session, auth_headers: dict
+):
+    from uuid import UUID
+    from datetime import datetime, timezone
+    from app.models.journey import Journey
+
+    response = await client.post(
+        "/api/v1/journeys",
+        json={"title": "Deleted draft"},
+        headers=auth_headers,
+    )
+    journey_id = response.json()["data"]["id"]
+    saved = await db_session.get(Journey, UUID(journey_id))
+    saved.deleted_at = datetime.now(timezone.utc)
+    await db_session.flush()
+
+    overview = await client.get("/api/v1/dashboard", headers=auth_headers)
+    assert overview.status_code == 200
+    data = overview.json()["data"]
+    assert data["total_journeys_count"] == 0
+    assert data["active_journey"] is None
+    assert data["recent_journeys"] == []
+
+    history = await client.get("/api/v1/journeys", headers=auth_headers)
+    assert history.status_code == 200
+    assert history.json()["pagination"]["total_items"] == 0
+
+    detail = await client.get(f"/api/v1/journeys/{journey_id}", headers=auth_headers)
+    assert detail.status_code == 404
