@@ -9,6 +9,8 @@ from app.services.product_import.importer import validate_retailer_url, ProductI
     "https://localhost:8000/api",
     "https://metadata.google.internal/secret",
     "https://zara.com.evil.example/product",
+    "https://shop.zara.com/product",
+    "https://zara.com:notaport/product",
     "https://user:pass@zara.com/product",
 ])
 def test_import_rejects_untrusted_hosts_without_fetching(url):

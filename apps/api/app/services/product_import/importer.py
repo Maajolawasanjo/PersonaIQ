@@ -1,5 +1,6 @@
 import re
 from typing import Any, Dict
+from ipaddress import ip_address
 from urllib.parse import urlparse, urljoin
 
 import httpx
@@ -20,15 +21,19 @@ def validate_retailer_url(product_url: str) -> str:
     parsed = urlparse(product_url)
     hostname = (parsed.hostname or "").lower().rstrip(".")
     trusted = any(
-        hostname == retailer or hostname.endswith("." + retailer)
+        hostname == retailer or hostname == "www." + retailer
         for retailer in APPROVED_RETAILERS
     )
+    try:
+        port = parsed.port
+    except ValueError:
+        port = -1
     if (
         parsed.scheme != "https"
         or not trusted
         or parsed.username
         or parsed.password
-        or parsed.port not in (None, 443)
+        or port not in (None, 443)
     ):
         raise AppException(
             code=ErrorCode.SYS_003,
@@ -82,7 +87,17 @@ class ProductImporter:
         title = unescape(title_match.group(1)).strip()[:255]
         image_url = urljoin(product_url, unescape(image_match.group(1)))
         image_parsed = urlparse(image_url)
-        if not title or image_parsed.scheme != "https" or not image_parsed.hostname:
+        image_host = (image_parsed.hostname or "").lower().rstrip(".")
+        try:
+            private_address = not ip_address(image_host).is_global
+        except ValueError:
+            private_address = False
+        if (
+            not title or image_parsed.scheme != "https"
+            or not image_host or image_host in {"localhost", "localhost.localdomain"}
+            or image_host.endswith((".internal", ".local", ".test"))
+            or private_address or image_parsed.username or image_parsed.password
+        ):
             raise AppException(
                 code=ErrorCode.SYS_003,
                 message="Product metadata is missing or contains an invalid image link.",
