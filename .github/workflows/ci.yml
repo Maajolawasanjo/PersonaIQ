@@ -65,6 +65,8 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Validate workspace routes
+        run: node apps/web/scripts/check-workspace-navigation.mjs
       - name: Typecheck
         run: pnpm --filter web exec tsc --noEmit
       - name: Build

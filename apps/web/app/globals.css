@@ -41,14 +41,14 @@
 
   /* === Brand Scrollbar === */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: #1F262E; }
+  ::-webkit-scrollbar-track { background: #F8F9FB; }
   ::-webkit-scrollbar-thumb {
-    background: #A31F34;
+    background: #C2CDD8;
     border-radius: 4px;
-    border: 2px solid #1F262E;
+    border: 2px solid #F8F9FB;
   }
-  ::-webkit-scrollbar-thumb:hover { background: #7e1727; }
-  * { scrollbar-width: thin; scrollbar-color: #A31F34 #1F262E; }
+  ::-webkit-scrollbar-thumb:hover { background: #A31F34; }
+  * { scrollbar-width: thin; scrollbar-color: #C2CDD8 #F8F9FB; }
 }
 
 @layer components {
