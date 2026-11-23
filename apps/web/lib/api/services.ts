@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 import {
-  AuthTokens,
+  AuthSession,
   DashboardOverview,
   Journey,
   OutfitUpload,
@@ -13,7 +13,7 @@ import {
 } from './types';
 
 export const authApi = {
-  signUp: (email: string, password: string, firstName: string, lastName: string): Promise<AuthTokens> =>
+  signUp: (email: string, password: string, firstName: string, lastName: string): Promise<AuthSession> =>
     apiClient.post<AuthTokens>('/auth/sign-up', {
       email,
       password,
@@ -21,13 +21,13 @@ export const authApi = {
       last_name: lastName,
     }),
 
-  signIn: (email: string, password: string): Promise<AuthTokens> =>
+  signIn: (email: string, password: string): Promise<AuthSession> =>
     apiClient.post<AuthTokens>('/auth/sign-in', {
       email,
       password,
     }),
 
-  verifyOtp: (email: string, code: string): Promise<AuthTokens> =>
+  verifyOtp: (email: string, code: string): Promise<AuthSession> =>
     apiClient.post<AuthTokens>('/auth/verify-otp', {
       email,
       code,
@@ -49,10 +49,11 @@ export const authApi = {
       new_password: newPassword,
     }),
 
-  logout: (refreshToken: string): Promise<{ logged_out: boolean }> =>
-    apiClient.post<{ logged_out: boolean }>('/auth/logout', {
-      refresh_token: refreshToken,
-    }),
+  logout: (): Promise<{ logged_out: boolean }> =>
+    apiClient.post<{ logged_out: boolean }>('/auth/logout', {}),
+
+  refreshSession: (): Promise<{ authenticated: boolean }> =>
+    apiClient.post<{ authenticated: boolean }>('/auth/refresh', {}),
 
   getMe: (): Promise<UserProfile> => apiClient.get<UserProfile>('/auth/me'),
 };

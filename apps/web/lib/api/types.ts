@@ -25,12 +25,9 @@ export interface PaginatedResponse<T> {
   meta: ResponseMeta;
 }
 
-export interface AuthTokens {
-  access_token?: string;
-  refresh_token?: string;
-  token_type?: string;
-  expires_in?: number;
-  email?: string;
+export interface AuthSession {
+  authenticated: boolean;
+  user: UserProfile | null;
 }
 
 export interface UserPreference {

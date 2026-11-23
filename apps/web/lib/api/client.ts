@@ -1,141 +1,76 @@
 import { StandardResponse } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://personaiq-3suq.onrender.com/api/v1';
+// Browser requests are same-origin. Access/refresh tokens live only in
+// server-managed HttpOnly cookies and must not be copied into localStorage.
+const API_BASE_URL = '/api/backend';
 
 class ApiClient {
-  private getAccessToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('access_token');
-  }
-
-  private getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('refresh_token');
-  }
-
-  public setTokens(accessToken: string, refreshToken: string): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('refresh_token', refreshToken);
-    document.cookie = `personaiq_access_token=${accessToken}; path=/; max-age=2592000; SameSite=Lax`;
-    document.cookie = `token=${accessToken}; path=/; max-age=2592000; SameSite=Lax`;
-  }
-
-  public clearTokens(): void {
+  public clearLegacyBrowserTokens(): void {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
-    document.cookie = 'personaiq_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  }
-
-  private async refreshTokens(): Promise<boolean> {
-    const refreshToken = this.getRefreshToken();
-    if (!refreshToken) return false;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const resData = await response.json();
-      if (resData.success && resData.data) {
-        this.setTokens(resData.data.access_token, resData.data.refresh_token);
-        return true;
-      }
-      return false;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
+    document.cookie = 'personaiq_access_token=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'access_token=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
   }
 
   public async request<T>(
     endpoint: string,
     options: RequestInit = {},
-    isRetry = false
   ): Promise<T> {
-    const token = this.getAccessToken();
-    const headers: Record<string, string> = {
-      ...(options.headers as Record<string, string>),
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    const headers = new Headers(options.headers);
+    // Never send an access token from JavaScript to the API proxy.
+    headers.delete('Authorization');
+    if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
     }
 
-    if (!(options.body instanceof FormData) && !headers['Content-Type']) {
-      headers['Content-Type'] = 'application/json';
-    }
-
-    // 25-second timeout — prevents silent hangs during Render cold-starts
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
-
+    const timeoutId = setTimeout(() => controller.abort(), 40000);
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetch(API_BASE_URL + endpoint, {
         ...options,
-        credentials: 'include',
+        credentials: 'same-origin',
         headers,
+        cache: 'no-store',
         signal: controller.signal,
       });
-      clearTimeout(timeoutId);
 
-      const PUBLIC_ENDPOINTS = [
-        '/auth/sign-up',
-        '/auth/sign-in',
-        '/auth/verify-otp',
-        '/auth/resend-otp',
-        '/auth/forgot-password',
-        '/auth/reset-password',
-        '/auth/refresh',
-      ];
-      const isPublicEndpoint = PUBLIC_ENDPOINTS.some((ep) => endpoint.startsWith(ep));
-
-      if (response.status === 401 && !isRetry && !isPublicEndpoint && token) {
-        const refreshed = await this.refreshTokens();
-        if (refreshed) {
-          return this.request<T>(endpoint, options, true);
-        }
-      }
-
-      const resData: StandardResponse<T> = await response.json().catch(() => ({
+      const body = await response.json().catch(() => ({
         success: false,
-        message: 'Failed to parse server response.',
-        data: null as any,
-        meta: { request_id: 'error', timestamp: new Date().toISOString() },
-      }));
+        message: 'The server returned an unreadable response.',
+        data: null,
+      })) as StandardResponse<T> & {
+        error?: { message?: string };
+      };
 
-      if (!response.ok || !resData.success) {
-        if (response.status === 401 && !isPublicEndpoint && token) {
-          throw new Error('SESSION_EXPIRED: Your session has expired. Please log in again.');
+      if (!response.ok || !body.success) {
+        const publicEndpoint = [
+          '/auth/sign-in', '/auth/sign-up', '/auth/refresh',
+          '/auth/verify-otp', '/auth/resend-otp',
+          '/auth/reset-password', '/auth/forgot-password',
+        ].some(path => endpoint === path);
+
+        if (response.status === 401 && !publicEndpoint) {
+          throw new Error('SESSION_EXPIRED: Please sign in to continue.');
         }
-        const serverErrorMessage = resData.message || (resData as any).error?.message;
-        if (response.status === 423) {
-          throw new Error(serverErrorMessage || 'Account locked temporarily due to security policy.');
+        if (response.status === 503) {
+          throw new Error('BACKEND_WARMING: PERSONAIQ services are currently unavailable. Please retry.');
         }
-        throw new Error(serverErrorMessage || `Request failed with status ${response.status}`);
+        throw new Error(body.error?.message || body.message || 'Request failed (' + response.status + ').');
       }
 
-      return resData.data;
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      // Render cold-start timeout (AbortError after 25s)
-      if (err.name === 'AbortError') {
-        throw new Error('BACKEND_WARMING: The PersonaIQ server is warming up after a period of inactivity. Please wait a moment and try again.');
+      return body.data;
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('BACKEND_WARMING: The PERSONAIQ server is taking longer than expected. Please retry.');
       }
-      // General network failure
-      if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-        throw new Error('NETWORK_ERROR: Unable to connect to PersonaIQ services. Please check your connection and try again.');
+      if (err instanceof TypeError) {
+        throw new Error('NETWORK_ERROR: Unable to reach PERSONAIQ services. Check your connection and retry.');
       }
       throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -143,32 +78,23 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  public post<T>(endpoint: string, body?: any): Promise<T> {
+  public post<T>(endpoint: string, body?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: body instanceof FormData ? body : JSON.stringify(body),
+      body: body instanceof FormData ? body : JSON.stringify(body ?? {}),
     });
   }
 
-  public patch<T>(endpoint: string, body: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    });
+  public patch<T>(endpoint: string, body: unknown): Promise<T> {
+    return this.request<T>(endpoint, { method: 'PATCH', body: JSON.stringify(body) });
   }
 
-  public put<T>(endpoint: string, body: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    });
+  public put<T>(endpoint: string, body: unknown): Promise<T> {
+    return this.request<T>(endpoint, { method: 'PUT', body: JSON.stringify(body) });
   }
 
   public upload<T>(endpoint: string, formData: FormData): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: formData,
-    });
+    return this.request<T>(endpoint, { method: 'POST', body: formData });
   }
 
   public delete<T>(endpoint: string): Promise<T> {
