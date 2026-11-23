@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import {
   AuthSession,
+  RegistrationResult,
   DashboardOverview,
   Journey,
   OutfitUpload,
@@ -13,8 +14,8 @@ import {
 } from './types';
 
 export const authApi = {
-  signUp: (email: string, password: string, firstName: string, lastName: string): Promise<AuthSession> =>
-    apiClient.post<AuthSession>('/auth/sign-up', {
+  signUp: (email: string, password: string, firstName: string, lastName: string): Promise<RegistrationResult> =>
+    apiClient.post<RegistrationResult>('/auth/sign-up', {
       email,
       password,
       first_name: firstName,
@@ -33,8 +34,8 @@ export const authApi = {
       code,
     }),
 
-  resendOtp: (email: string): Promise<{ success: boolean }> =>
-    apiClient.post<{ success: boolean }>('/auth/resend-otp', {
+  resendOtp: (email: string): Promise<{ requested: boolean }> =>
+    apiClient.post<{ requested: boolean }>('/auth/resend-otp', {
       email,
     }),
 
@@ -60,6 +61,13 @@ export const authApi = {
 
 export const userApi = {
   getProfile: (): Promise<UserProfile> => apiClient.get<UserProfile>('/profile'),
+
+  completeOnboarding: (data: {
+    first_name: string;
+    last_name: string;
+    occupation?: string;
+    default_event_type?: string;
+  }): Promise<UserProfile> => apiClient.patch<UserProfile>('/profile/onboarding', data),
 
   updateProfile: (data: {
     first_name?: string;

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { authApi } from '@/lib/api/services';
-import type { AuthSession, UserProfile } from '@/lib/api/types';
+import type { AuthSession, RegistrationResult, UserProfile } from '@/lib/api/types';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -12,9 +12,9 @@ interface AuthContextType {
   refetchUser: () => Promise<UserProfile | null>;
   updateUserLocally: (partial: Partial<UserProfile>) => void;
   signIn: (email: string, pass: string) => Promise<AuthSession>;
-  signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<AuthSession>;
+  signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<RegistrationResult>;
   verifyOtp: (email: string, code: string) => Promise<AuthSession>;
-  resendOtp: (email: string) => Promise<{ success: boolean }>;
+  resendOtp: (email: string) => Promise<{ requested: boolean }>;
   forgotPassword: (email: string) => Promise<{ success: boolean }>;
   resetPassword: (token: string, pass: string) => Promise<{ success: boolean }>;
   logout: () => Promise<void>;
@@ -110,7 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, pass: string, firstName: string, lastName: string) => {
     setIsLoading(true);
     try {
-      return await completeAuthentication(await authApi.signUp(email, pass, firstName, lastName));
+      // Signup creates a pending account, never a browser session.
+      return await authApi.signUp(email, pass, firstName, lastName);
     } finally {
       setIsLoading(false);
     }

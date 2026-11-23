@@ -191,3 +191,8 @@ export interface SavedPlanSummary {
   executive_vibe_score: number | null;
   created_at: string | null;
 }
+
+export interface RegistrationResult {
+  email: string;
+  verification_required: true;
+}
