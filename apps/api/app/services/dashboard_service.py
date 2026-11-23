@@ -1,5 +1,6 @@
 from uuid import UUID
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dto.dashboard import DashboardOverviewDTO
 from app.dto.journey import JourneyDTO
@@ -42,6 +43,7 @@ class DashboardService:
 
         recent_journeys_result = await self.db.execute(
             select(Journey)
+            .options(selectinload(Journey.event))
             .where(Journey.user_id == user_id, Journey.deleted_at.is_(None))
             .order_by(Journey.updated_at.desc(), Journey.id.desc())
             .limit(4)
