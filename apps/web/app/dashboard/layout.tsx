@@ -110,12 +110,8 @@ function AvatarImage() {
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedSelfie = localStorage.getItem('personaiq_user_selfie_preview');
       const customAvatar = localStorage.getItem('personaiq_custom_avatar_url');
-
-      if (savedSelfie && savedSelfie.length > 10) {
-        setUserPhoto(savedSelfie);
-      } else if (customAvatar && customAvatar.length > 10) {
+      if (customAvatar && customAvatar.length > 10) {
         setUserPhoto(customAvatar);
       }
 

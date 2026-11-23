@@ -31,7 +31,7 @@ import {
   Sliders,
   ChevronRight
 } from 'lucide-react';
-import { stylistApi, wardrobeApi } from '@/lib/api/services';
+import { stylistApi, wardrobeApi, uploadApi } from '@/lib/api/services';
 import {
   VTO_CATALOG,
   VTO_MODELS,
@@ -113,16 +113,23 @@ export default function VirtualTryOnPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedSelfie = localStorage.getItem('personaiq_user_selfie_preview');
-      const outfitPreview = localStorage.getItem('personaiq_user_outfit_preview');
+      const savedAvatar = localStorage.getItem('personaiq_vto_avatar_id');
+      const activeJourney = localStorage.getItem('personaiq_active_journey_id');
 
-      if (savedSelfie) {
-        setUserPhoto(savedSelfie);
-        setUserSelfieAvailable(true);
-        setSelectedAvatarId('user_selfie');
-      } else if (outfitPreview) {
-        setSelectedAvatarId('user_selfie');
-        setUserPhoto(outfitPreview);
+      if (savedAvatar) {
+        const model = VTO_MODELS.find(item => item.id === savedAvatar);
+        if (model) {
+          setUserPhoto(model.image_url);
+          setSelectedAvatarId(model.id);
+        }
+      } else if (activeJourney) {
+        void uploadApi.getSelfiePreview(activeJourney)
+          .then(link => {
+            setUserPhoto(link.url);
+            setUserSelfieAvailable(true);
+            setSelectedAvatarId('user_selfie');
+          })
+          .catch(() => setStudioError('Your private photo is unavailable. Please upload it again to use your own image.'));
       }
 
       const savedOccasion =
@@ -230,7 +237,11 @@ export default function VirtualTryOnPage() {
     setIsGenerating(true);
 
     try {
-      const activeModelImg = selectedAvatarId === 'user_selfie' ? userPhoto : VTO_MODELS.find((m) => m.id === selectedAvatarId)?.image_url || userPhoto;
+      const journeyId = localStorage.getItem('personaiq_active_journey_id');
+      const activeModelImg = selectedAvatarId === 'user_selfie'
+        ? (journeyId ? (await uploadApi.getSelfiePreview(journeyId)).url : null)
+        : VTO_MODELS.find(model => model.id === selectedAvatarId)?.image_url;
+      if (!activeModelImg) throw new Error('Select an image for virtual try-on.');
       const res = await stylistApi.vtoPreview(selectedAvatarId, [garment, shoe, acc, hair], activeModelImg);
       const resultUrl = res?.success ? res.result_image_url : null;
       if (!resultUrl) throw new Error('No generated image was returned');

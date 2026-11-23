@@ -31,7 +31,7 @@ export default function CaptureLookPage() {
     setUploadComplete(false);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
-    void uploadPhoto(file, url);
+    void uploadPhoto(file);
   };
 
   // 2. Start Web Camera Stream
@@ -72,14 +72,14 @@ export default function CaptureLookPage() {
         setUploadComplete(false);
         fetch(dataUrl)
           .then((res) => res.blob())
-          .then((blob) => void uploadPhoto(new File([blob], 'selfie.jpg', { type: 'image/jpeg' }), dataUrl))
+          .then((blob) => void uploadPhoto(new File([blob], 'selfie.jpg', { type: 'image/jpeg' })))
           .catch(() => setErrorMsg('The camera image could not be prepared. Please retake it.'));
       }
     }
   };
 
   // 4. Upload Photo to Backend API & Store Local Preview
-  const uploadPhoto = async (file: File, displayUrl: string) => {
+  const uploadPhoto = async (file: File) => {
     setIsUploading(true);
     setErrorMsg(null);
     try {

@@ -26,7 +26,7 @@ import {
   Watch,
   Scissors
 } from 'lucide-react';
-import { stylistApi, userApi } from '@/lib/api/services';
+import { stylistApi, userApi, uploadApi } from '@/lib/api/services';
 import { getRecommendedLooksForSession, VTOLookDefinition, LookConstituentItem } from '@/lib/catalog/looksCatalog';
 
 function resolveOccasionLabel(raw: string | null): string {
@@ -154,8 +154,13 @@ export default function ChooseOutfitPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedSelfie = localStorage.getItem('personaiq_user_selfie_preview');
-      if (savedSelfie) setUserSelfiePreview(savedSelfie);
+      const journeyId = localStorage.getItem('personaiq_active_journey_id');
+      const stockModel = localStorage.getItem('personaiq_vto_avatar_id');
+      if (journeyId && !stockModel) {
+        void uploadApi.getSelfiePreview(journeyId)
+          .then(link => setUserSelfiePreview(link.url))
+          .catch(() => setUserSelfiePreview(null));
+      }
 
       const savedAvatarId = localStorage.getItem('personaiq_vto_avatar_id') || '';
       const isFemale = savedAvatarId.includes('female') || localStorage.getItem('personaiq_user_gender') === 'female';
