@@ -124,6 +124,10 @@ export const journeyApi = {
 };
 
 export const uploadApi = {
+  getSelfiePreview: (journeyId: string): Promise<{ url: string; expires_in: number }> =>
+    apiClient.get<{ url: string; expires_in: number }>(
+      '/uploads/selfie/' + encodeURIComponent(journeyId) + '/preview'
+    ),
   uploadSelfie: (journeyId: string, file: File): Promise<SelfieUpload> => {
     const formData = new FormData();
     formData.append('journey_id', journeyId);

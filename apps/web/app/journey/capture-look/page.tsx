@@ -87,7 +87,9 @@ export default function CaptureLookPage() {
       if (!journeyId) throw new Error('No active journey is available.');
       const saved = await uploadApi.uploadSelfie(journeyId, file);
       if (!saved?.id) throw new Error('Upload did not return a saved record.');
-      localStorage.setItem('personaiq_user_selfie_preview', displayUrl);
+      // The sensitive photo remains on the private storage service. Do not
+      // persist its data URL or blob in browser localStorage.
+      localStorage.removeItem('personaiq_user_selfie_preview');
       localStorage.removeItem('personaiq_vto_avatar_id');
       setUploadComplete(true);
     } catch (err) {
