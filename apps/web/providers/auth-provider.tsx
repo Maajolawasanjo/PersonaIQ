@@ -5,7 +5,10 @@ import { apiClient } from '@/lib/api/client';
 import { authApi } from '@/lib/api/services';
 import type { AuthSession, RegistrationResult, UserProfile } from '@/lib/api/types';
 
+export type SessionState = 'loading' | 'authenticated' | 'unauthenticated' | 'unavailable';
+
 interface AuthContextType {
+  sessionState: SessionState;
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -33,12 +36,14 @@ function broadcast(type: string, payload?: unknown) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionState, setSessionState] = useState<SessionState>('loading');
 
   const refetchUser = useCallback(async (retryCount = 0): Promise<UserProfile | null> => {
     try {
       // No client-side token check: cookies are HttpOnly and not readable here.
       const profile = await authApi.getMe();
       setUser(profile);
+      setSessionState('authenticated');
       return profile;
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
@@ -51,10 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (message.includes('SESSION_EXPIRED')) {
         setUser(null);
+        setSessionState('unauthenticated');
         return null;
       }
       console.warn('[Auth] Profile is not currently available:', message);
-      setUser(null);
+      setSessionState('unavailable');
       return null;
     }
   }, []);
@@ -80,7 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof BroadcastChannel !== 'undefined') {
       const channel = new BroadcastChannel('personaiq_auth_channel');
       channel.onmessage = (event) => {
-        if (event.data?.type === 'LOGOUT') setUser(null);
+        if (event.data?.type === 'LOGOUT') {
+          setUser(null);
+          setSessionState('unauthenticated');
+        }
         else if (event.data?.type === 'LOGIN' || event.data?.type === 'USER_UPDATED') {
           void refetchUser();
         }
@@ -94,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!session.authenticated) throw new Error('The server did not create a session.');
     const profile = session.user ?? await authApi.getMe();
     setUser(profile);
+    setSessionState('authenticated');
     broadcast('LOGIN');
     return { authenticated: true, user: profile };
   };
@@ -135,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       apiClient.clearLegacyBrowserTokens();
       setUser(null);
+      setSessionState('unauthenticated');
       setIsLoading(false);
       broadcast('LOGOUT');
     }
@@ -143,6 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user,
+      sessionState,
       isAuthenticated: Boolean(user),
       isLoading,
       refetchUser,

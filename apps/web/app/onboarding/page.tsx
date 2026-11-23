@@ -16,7 +16,7 @@ const occasions = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, isLoading, refetchUser, updateUserLocally } = useAuth();
+  const { user, isLoading, sessionState, refetchUser, updateUserLocally } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [occupation, setOccupation] = useState('');
@@ -26,10 +26,11 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) {
+    if (sessionState === 'unauthenticated') {
       router.replace('/login?redirect=%2Fonboarding');
       return;
     }
+    if (sessionState === 'unavailable' || !user) return;
     if (user.onboarding_completed) {
       router.replace('/dashboard');
       return;
@@ -37,7 +38,7 @@ export default function OnboardingPage() {
     setFirstName(user.first_name || '');
     setLastName(user.last_name || '');
     setOccupation(user.occupation || '');
-  }, [user, isLoading, router]);
+  }, [user, isLoading, sessionState, router]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,6 +63,14 @@ export default function OnboardingPage() {
     }
   };
 
+  if (sessionState === 'unavailable') {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F8F9FB] px-5 text-center">
+        <p className="text-sm text-gray-700">Your account could not be checked. Your setup has not been changed.</p>
+        <button type="button" onClick={() => { void refetchUser(); }} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-white">Retry</button>
+      </main>
+    );
+  }
   if (isLoading || !user || user.onboarding_completed) {
     return <main role="status" className="flex min-h-screen items-center justify-center bg-[#F8F9FB] px-5 text-sm text-gray-700">Loading your account…</main>;
   }

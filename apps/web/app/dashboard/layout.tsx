@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -47,8 +47,14 @@ function ProfileAvatar() {
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading, sessionState, refetchUser } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && sessionState === 'unauthenticated') {
+      router.replace('/login?redirect=' + encodeURIComponent(pathname || '/dashboard'));
+    }
+  }, [isLoading, sessionState, pathname, router]);
 
   const handleSignOut = async () => {
     if (signingOut) return;
@@ -60,6 +66,26 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       setSigningOut(false);
     }
   };
+
+  if (isLoading || sessionState !== 'authenticated' || !user) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F8F9FB] px-5 text-center">
+        <p role="status" className="text-sm text-gray-700">
+          {sessionState === 'unavailable'
+            ? 'Your account could not be checked because the service is unavailable.'
+            : sessionState === 'unauthenticated'
+              ? 'Redirecting to sign in…'
+              : 'Checking your session…'}
+        </p>
+        {sessionState === 'unavailable' && (
+          <button type="button" onClick={() => { void refetchUser(); }}
+            className="min-h-11 rounded-xl border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-950">
+            Try again
+          </button>
+        )}
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FB] text-gray-950">
