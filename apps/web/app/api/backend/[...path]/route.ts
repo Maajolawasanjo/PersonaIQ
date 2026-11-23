@@ -113,6 +113,13 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<NextR
   const endpoint = path.join('/');
   const method = request.method.toUpperCase();
   const isMutation = !['GET', 'HEAD'].includes(method);
+  // Session mutations must never be invokable with safe HTTP methods.
+  if (
+    (endpoint === 'auth/logout'
+      || endpoint === 'auth/refresh'
+      || TOKEN_ISSUERS.has(endpoint))
+    && method !== 'POST'
+  ) return errorResponse('Method not allowed.', 405);
   if (isMutation && !isSafeOrigin(request)) {
     return errorResponse('Request origin was not verified.', 403);
   }
