@@ -240,3 +240,37 @@ async def test_password_change_revokes_refresh_session(client: AsyncClient):
         json={"email": data["email"], "password": "UpdatedPass123!"},
     )
     assert new_login.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_user_can_revoke_own_refresh_session(client: AsyncClient):
+    data = registration("session-owner@personaiq.ai")
+    verification = await signup_and_verify(client, data)
+    token = verification.json()["data"]
+    auth_headers = {"Authorization": "Bearer " + token["access_token"]}
+
+    sessions = await client.get("/api/v1/profile/sessions", headers=auth_headers)
+    assert sessions.status_code == 200
+    records = sessions.json()["data"]
+    assert isinstance(records, list) and len(records) >= 1
+
+    revoked = await client.delete(
+        "/api/v1/profile/sessions/" + records[0]["id"],
+        headers=auth_headers,
+    )
+    assert revoked.status_code == 200
+    assert revoked.json()["data"]["revoked"] is True
+
+    cannot_refresh = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": token["refresh_token"]}
+    )
+    assert cannot_refresh.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_unverified_cannot_access_profile(client: AsyncClient):
+    data = registration("pending-profile@personaiq.ai")
+    registered = await client.post("/api/v1/auth/sign-up", json=data)
+    assert registered.status_code == 201
+    profile = await client.get("/api/v1/auth/me")
+    assert profile.status_code in (401, 403)
