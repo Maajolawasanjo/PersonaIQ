@@ -2,6 +2,8 @@ from typing import Optional
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppException, ErrorCode
+from app.core.config import settings
+from app.services.storage_service import StorageService
 from app.domain.presence.scoring import PresenceScoringEngine
 from app.dto.presence import PresencePlanDTO
 from app.providers.gateway import AIGateway
@@ -45,8 +47,19 @@ class PresenceService:
                 message="Upload an actual photo and at least one outfit before requesting an assessment.",
                 status_code=422,
             )
-        selfie_url = selfie.storage_url
-        outfit_urls = [outfit.storage_url for outfit in outfits]
+        if not settings.ENABLE_OUTFIT_COMPARISON:
+            raise AppException(
+                code=ErrorCode.AI_002,
+                message="Verified outfit comparison is not available yet.",
+                status_code=503,
+            )
+
+        storage = StorageService()
+        selfie_url = await storage.create_signed_download_url(selfie.storage_url)
+        outfit_urls = [
+            await storage.create_signed_download_url(outfit.storage_url)
+            for outfit in outfits
+        ]
 
         # Fire analysis-started AFTER assets confirmed — non-blocking
         # Assets are fetched but AI hasn't started; this is the correct commit point

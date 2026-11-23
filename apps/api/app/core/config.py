@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     # Feature Flags
     ENABLE_YOUCAM_VTO: bool = True
     ENABLE_SKIN_ANALYSIS: bool = True
+    ENABLE_OUTFIT_COMPARISON: bool = False
     ENABLE_PDF_EXPORT: bool = True
     ENABLE_EMAIL_NOTIFICATIONS: bool = True
 
