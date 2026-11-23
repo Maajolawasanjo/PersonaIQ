@@ -54,7 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await new Promise(resolve => setTimeout(resolve, 4000));
         return refetchUser(retryCount + 1);
       }
-      if (message.includes('SESSION_EXPIRED')) {
+      if (
+        message.includes('SESSION_EXPIRED')
+        || message.toLowerCase().includes('deactivated')
+        || message.toLowerCase().includes('verify your email')
+        || message.toLowerCase().includes('account not found')
+      ) {
         setUser(null);
         setSessionState('unauthenticated');
         return null;
