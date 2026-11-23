@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 from app.providers.gateway import OutfitComparisonResult, SkinAnalysisResult
+from app.core.errors import AppException, ErrorCode
 from app.providers.youcam.client import YouCamClient
 from app.providers.youcam.mapper import YouCamDataMapper
 from app.providers.youcam.types import YouCamTaskStatusResponse
@@ -39,9 +40,12 @@ class YouCamAdapter:
             return self.normalize("skin_analysis", status_resp)
             
         elif action == "vto_compare":
-            outfit_urls = kwargs.get("outfit_urls", [])
-            event_context = kwargs.get("event_context", {})
-            return self.normalize("vto_compare", {"outfit_urls": outfit_urls, "event_context": event_context})
+            # This integration previously returned invented rankings without calling a provider.
+            raise AppException(
+                code=ErrorCode.AI_002,
+                message="Outfit comparison is temporarily unavailable until a verified provider is connected.",
+                status_code=503,
+            )
             
         else:
             raise NotImplementedError(f"Action '{action}' is not supported by YouCamAdapter")
@@ -62,9 +66,11 @@ class YouCamAdapter:
                 return raw_response
             raise ValueError("Invalid raw_response format for skin_analysis normalization.")
         elif action == "vto_compare":
-            outfit_urls = raw_response.get("outfit_urls", [])
-            event_context = raw_response.get("event_context", {})
-            return YouCamDataMapper.to_outfit_comparison_dto(outfit_urls, event_context)
+            raise AppException(
+                code=ErrorCode.AI_002,
+                message="Unverified outfit comparisons cannot be presented as completed analysis.",
+                status_code=503,
+            )
         return raw_response
 
     async def shutdown(self) -> None:

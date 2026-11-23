@@ -39,8 +39,14 @@ class PresenceService:
         selfie = await self.upload_repo.get_selfie(journey_id)
         outfits = await self.upload_repo.get_outfits(journey_id)
 
-        selfie_url = selfie.storage_url if selfie else "/media/uploads/default_selfie.jpg"
-        outfit_urls = [o.storage_url for o in outfits] if outfits else ["/media/uploads/default_outfit.jpg"]
+        if not selfie or not outfits:
+            raise AppException(
+                code=ErrorCode.JOURNEY_003,
+                message="Upload an actual photo and at least one outfit before requesting an assessment.",
+                status_code=422,
+            )
+        selfie_url = selfie.storage_url
+        outfit_urls = [outfit.storage_url for outfit in outfits]
 
         # Fire analysis-started AFTER assets confirmed — non-blocking
         # Assets are fetched but AI hasn't started; this is the correct commit point

@@ -212,7 +212,7 @@ export default function EventDetailsPage() {
                 if (!journeyId) throw new Error('Missing active journey');
                 const { journeyApi } = await import('@/lib/api/services');
                 await journeyApi.updateEventContext(journeyId, {
-                  name: eventName || 'Event Preparation',
+                  name: eventName.trim() || localStorage.getItem('personaiq_event_type') || 'Event Preparation',
                   industry: industry || undefined,
                   location: location || undefined,
                   event_date: date || undefined,

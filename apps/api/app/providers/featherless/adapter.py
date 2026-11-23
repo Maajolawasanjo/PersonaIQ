@@ -49,7 +49,7 @@ class FeatherlessAdapter:
         """Executes Featherless AI recommendations task."""
         if action == "generate_recommendations":
             event_context = kwargs.get("event_context", {})
-            presence_score = kwargs.get("presence_score", 85)
+            presence_score = kwargs["presence_score"]
             skin_metrics = kwargs.get("skin_metrics", {})
 
             # Sanitize event context values to prevent prompt injection
@@ -87,8 +87,13 @@ class FeatherlessAdapter:
                 content = res["choices"][0]["message"]["content"]
                 return self.normalize(action, content, event_context=event_context)
             except Exception as e:
-                logger.warning(f"Featherless execute failed: {e}. Utilizing fallback normalization.")
-                return self.normalize(action, "", event_context=event_context)
+                logger.warning("Featherless recommendation request did not complete.", exc_info=False)
+                from app.core.errors import AppException, ErrorCode
+                raise AppException(
+                    code=ErrorCode.AI_003,
+                    message="AI recommendations are temporarily unavailable. Please retry.",
+                    status_code=503,
+                ) from e
         else:
             raise NotImplementedError(f"Action '{action}' not supported by FeatherlessAdapter")
 
