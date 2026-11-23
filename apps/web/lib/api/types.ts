@@ -69,6 +69,8 @@ export interface EventContext {
   id: string;
   journey_id: string;
   event_type: string;
+  name?: string;
+  industry?: string;
   dress_code: string;
   target_vibe: string;
   event_date?: string;
@@ -80,7 +82,9 @@ export interface Journey {
   id: string;
   user_id: string;
   title: string;
-  status: 'DRAFT' | 'ANALYZING' | 'COMPLETED' | 'FAILED' | 'ARCHIVED';
+  status: 'DRAFT' | 'IN_PROGRESS' | 'ANALYZING' | 'COMPLETED' | 'FAILED' | 'ARCHIVED';
+  current_step?: number;
+  active_presence_index?: number | null;
   presence_score?: number;
   executive_vibe_score?: number;
   visual_impact_score?: number;
@@ -131,6 +135,9 @@ export interface PresencePlan {
   id: string;
   journey_id: string;
   overall_presence_score: number;
+  overall_presence_index?: number;
+  summary_narrative?: string | null;
+  confidence_score?: number;
   executive_vibe_score: number;
   visual_impact_score: number;
   grooming_score: number;

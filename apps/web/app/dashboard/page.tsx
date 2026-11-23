@@ -158,7 +158,7 @@ export default function DashboardHomePage() {
                   {plans.slice(0, 3).map((plan) => (
                     <li key={plan.id}>
                       <Link href={`/journey/${plan.journey_id}`} className="block rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-800 hover:bg-red-50">
-                        <span className="block font-semibold">{plan.executive_summary?.slice(0, 70) || 'Saved preparation plan'}</span>
+                        <span className="block font-semibold">{(plan.summary_narrative ?? plan.executive_summary)?.slice(0, 70) || 'Saved preparation plan'}</span>
                         <span className="mt-1 block text-xs text-gray-500">{new Date(plan.created_at).toLocaleDateString()}</span>
                       </Link>
                     </li>
