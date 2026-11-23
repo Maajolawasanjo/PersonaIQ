@@ -1,50 +1,105 @@
 import re
+from typing import Any, Dict
+from urllib.parse import urlparse, urljoin
+
 import httpx
-from typing import Dict, Any, Optional
-from urllib.parse import urlparse
+
+from app.core.errors import AppException, ErrorCode
 from app.core.logging import logger
+
+
+# Approved domains only. This is intentional: arbitrary URL fetching allows SSRF.
+# Add new retailers after reviewing redirects, DNS behavior, and scraping terms.
+APPROVED_RETAILERS = frozenset({
+    "zara.com", "asos.com", "nordstrom.com", "hm.com", "uniqlo.com",
+})
+MAX_HTML_BYTES = 512 * 1024
+
+
+def validate_retailer_url(product_url: str) -> str:
+    parsed = urlparse(product_url)
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+    trusted = any(
+        hostname == retailer or hostname.endswith("." + retailer)
+        for retailer in APPROVED_RETAILERS
+    )
+    if (
+        parsed.scheme != "https"
+        or not trusted
+        or parsed.username
+        or parsed.password
+        or parsed.port not in (None, 443)
+    ):
+        raise AppException(
+            code=ErrorCode.SYS_003,
+            message="Product import supports HTTPS links from approved retailers only.",
+            status_code=422,
+        )
+    return hostname
 
 
 class ProductImporter:
     async def import_from_url(self, product_url: str) -> Dict[str, Any]:
-        """Extract e-commerce product image and metadata from URL."""
-        parsed = urlparse(product_url)
-        domain = parsed.netloc.replace("www.", "").split(".")[0].title()
-
-        title = "Imported Garment"
-        image_url = product_url
+        """Fetch bounded HTML from approved retailers; never follow redirects."""
+        hostname = validate_retailer_url(product_url)
+        html = ""
 
         try:
-            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-                resp = await client.get(product_url)
-                if resp.status_code == 200:
-                    html = resp.text
-                    
-                    # Extract og:image
-                    img_match = re.search(r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']', html, re.I)
-                    if img_match:
-                        image_url = img_match.group(1)
+            async with httpx.AsyncClient(timeout=12.0, follow_redirects=False) as client:
+                async with client.stream("GET", product_url, headers={"Accept": "text/html"}) as response:
+                    if response.status_code != 200:
+                        raise ValueError("Retailer did not return a product page.")
+                    content_type = response.headers.get("content-type", "").lower()
+                    if "text/html" not in content_type:
+                        raise ValueError("URL did not return an HTML product page.")
+                    size = 0
+                    chunks = []
+                    async for chunk in response.aiter_bytes():
+                        size += len(chunk)
+                        if size > MAX_HTML_BYTES:
+                            raise ValueError("Product page exceeds import size limit.")
+                        chunks.append(chunk)
+                    html = b"".join(chunks).decode("utf-8", errors="replace")
+        except Exception as error:
+            logger.warning("Retailer product import failed", reason=type(error).__name__)
+            raise AppException(
+                code=ErrorCode.SYS_002,
+                message="The retailer could not be reached or its product page is unsupported.",
+                status_code=422,
+            ) from error
 
-                    # Extract og:title
-                    title_match = re.search(r'<meta\s+property=["\']og:title["\']\s+content=["\']([^"\']+)["\']', html, re.I)
-                    if title_match:
-                        title = title_match.group(1)
-        except Exception as e:
-            logger.warning("Product URL scraping warning", error=str(e), url=product_url)
+        title_match = re.search(r'<meta\s+property=["\']og:title["\']\s+content=["\']([^"\']+)["\']', html, re.I)
+        image_match = re.search(r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']', html, re.I)
 
-        # AI Classification fallback inference
+        if not title_match or not image_match:
+            raise AppException(
+                code=ErrorCode.SYS_003,
+                message="No supported product image and title were found on this page.",
+                status_code=422,
+            )
+
+        from html import unescape
+        title = unescape(title_match.group(1)).strip()[:255]
+        image_url = urljoin(product_url, unescape(image_match.group(1)))
+        image_parsed = urlparse(image_url)
+        if not title or image_parsed.scheme != "https" or not image_parsed.hostname:
+            raise AppException(
+                code=ErrorCode.SYS_003,
+                message="Product metadata is missing or contains an invalid image link.",
+                status_code=422,
+            )
+
         category = "clothing"
-        if "shoe" in title.lower() or "boot" in title.lower() or "sneaker" in title.lower() or "loafer" in title.lower():
+        name = title.lower()
+        if any(word in name for word in ("shoe", "boot", "sneaker", "loafer")):
             category = "footwear"
-        elif "watch" in title.lower() or "bag" in title.lower() or "tie" in title.lower() or "glass" in title.lower():
+        elif any(word in name for word in ("watch", "bag", "tie", "glasses", "belt")):
             category = "accessories"
-        elif "suit" in title.lower() or "blazer" in title.lower() or "trousers" in title.lower():
-            category = "clothing"
 
         return {
             "product_url": product_url,
-            "product_name": title[:255],
-            "brand": domain,
+            "product_name": title,
+            "brand": hostname.removeprefix("www.").split(".")[0].title(),
             "image_url": image_url,
             "category": category,
             "formality": "Business Casual",
