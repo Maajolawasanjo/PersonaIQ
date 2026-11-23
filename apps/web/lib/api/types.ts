@@ -11,9 +11,9 @@ export interface StandardResponse<T> {
 }
 
 export interface PaginationMeta {
-  total: number;
+  total_items: number;
   page: number;
-  limit: number;
+  page_size: number;
   total_pages: number;
 }
 
@@ -156,8 +156,9 @@ export interface DashboardOverview {
   total_journeys_count?: number;
   recent_plans?: PresencePlan[];
   quick_stats?: Record<string, string>;
+  recent_journeys?: Journey[];
 
-  // Legacy / local-fallback aliases (kept for merge logic in dashboard/page.tsx)
+  // Legacy / local-fallback aliases (deprecated; never use for user-facing statistics)
   total_journeys?: number;
   average_presence_score?: number;
   highest_score?: number;

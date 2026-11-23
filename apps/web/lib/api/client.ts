@@ -1,4 +1,4 @@
-import { StandardResponse } from './types';
+import { PaginationMeta, StandardResponse } from './types';
 
 // Browser requests are same-origin. Access/refresh tokens live only in
 // server-managed HttpOnly cookies and must not be copied into localStorage.
@@ -17,6 +17,7 @@ class ApiClient {
   public async request<T>(
     endpoint: string,
     options: RequestInit = {},
+    includePagination = false,
   ): Promise<T> {
     const headers = new Headers(options.headers);
     // Never send an access token from JavaScript to the API proxy.
@@ -42,6 +43,7 @@ class ApiClient {
         data: null,
       })) as StandardResponse<T> & {
         error?: { message?: string };
+        pagination?: PaginationMeta;
       };
 
       if (!response.ok || !body.success) {
@@ -60,6 +62,12 @@ class ApiClient {
         throw new Error(body.error?.message || body.message || 'Request failed (' + response.status + ').');
       }
 
+      if (includePagination) {
+        if (!body.pagination) {
+          throw new Error('The server did not provide pagination information.');
+        }
+        return { items: body.data, pagination: body.pagination } as unknown as T;
+      }
       return body.data;
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -72,6 +80,15 @@ class ApiClient {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  public getPage<T>(endpoint: string): Promise<{
+    items: T[];
+    pagination: PaginationMeta;
+  }> {
+    return this.request<{ items: T[]; pagination: PaginationMeta }>(
+      endpoint, { method: 'GET' }, true
+    );
   }
 
   public get<T>(endpoint: string): Promise<T> {

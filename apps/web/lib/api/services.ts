@@ -130,6 +130,15 @@ export const journeyApi = {
     return apiClient.get<Journey[]>(url);
   },
 
+  getJourneyPage: (page = 1, limit = 12, status?: string): Promise<{
+    items: Journey[];
+    pagination: import('./types').PaginationMeta;
+  }> => {
+    let endpoint = `/journeys?page=${page}&page_size=${limit}`;
+    if (status && status !== 'ALL') endpoint += `&status=${encodeURIComponent(status)}`;
+    return apiClient.getPage<Journey>(endpoint);
+  },
+
   archiveJourney: (journeyId: string): Promise<Journey> =>
     apiClient.post<Journey>(`/journeys/${journeyId}/archive`),
 };
