@@ -173,7 +173,8 @@ export const wardrobeApi = {
 };
 
 export const plansApi = {
-  listPlans: (): Promise<any> => apiClient.get<any>('/plans'),
+  listPlans: (): Promise<import('./types').SavedPlanSummary[]> =>
+    apiClient.get<import('./types').SavedPlanSummary[]>('/plans'),
   getChecklist: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/checklist`),
   getBoosters: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/boosts`),
   getExplanation: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/explanation`),

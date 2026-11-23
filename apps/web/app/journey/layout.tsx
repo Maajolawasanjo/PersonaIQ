@@ -34,7 +34,7 @@ export default function JourneyLayout({ children }: { children: ReactNode }) {
           <span className="hidden truncate text-sm font-semibold text-gray-600 sm:block">Prepare for your occasion</span>
           <Link href="/dashboard" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50" aria-label="Exit journey to dashboard">
             <X aria-hidden="true" className="h-4 w-4" />
-            <span>Save & exit</span>
+            <span>Exit</span>
           </Link>
         </div>
       </header>
