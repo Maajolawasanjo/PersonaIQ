@@ -216,3 +216,26 @@ async def test_reset_password_rejects_reused_token(client: AsyncClient, monkeypa
         "token": tokens[0], "new_password": "AnotherPass123!",
     })
     assert replay.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_password_change_revokes_refresh_session(client: AsyncClient):
+    data = registration("change-pw@personaiq.ai", "OriginalPass123!")
+    session = await signup_and_verify(client, data)
+    headers = {"Authorization": "Bearer " + session.json()["data"]["access_token"]}
+    original_refresh = session.json()["data"]["refresh_token"]
+    changed = await client.post(
+        "/api/v1/profile/change-password",
+        json={"current_password": "OriginalPass123!", "new_password": "UpdatedPass123!"},
+        headers=headers,
+    )
+    assert changed.status_code == 200
+    expired = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": original_refresh}
+    )
+    assert expired.status_code == 401
+    new_login = await client.post(
+        "/api/v1/auth/sign-in",
+        json={"email": data["email"], "password": "UpdatedPass123!"},
+    )
+    assert new_login.status_code == 200

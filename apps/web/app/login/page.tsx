@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AuthLayout } from '@/components/auth/AuthLayout';
@@ -22,6 +22,11 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [verificationNeeded, setVerificationNeeded] = useState(false);
+  const [passwordChangedNotice, setPasswordChangedNotice] = useState(false);
+
+  useEffect(() => {
+    setPasswordChangedNotice(new URLSearchParams(window.location.search).get('password') === 'updated');
+  }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -61,6 +66,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-gray-950">Sign in</h1>
           <p className="mt-2 text-sm text-gray-600">Use your registered email address and password.</p>
         </div>
+        {passwordChangedNotice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Your password was updated. Sign in again with the new password.</p>}
         {error && (
           <div role="alert" className="space-y-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <p>{error}</p>
