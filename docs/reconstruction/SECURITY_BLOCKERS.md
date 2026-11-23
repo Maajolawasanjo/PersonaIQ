@@ -1,74 +1,76 @@
-# PERSONAIQ — security and release blockers
+# PERSONAIQ — Reconstruction release checklist
 
-Reviewed: 2026-11-23
-Branch: audit/phase-0-1-trust-and-flow-fixes (draft PR #1)
+Last reviewed: 2026-11-23  
+Working branch: audit/phase-0-1-trust-and-flow-fixes  
+Pull request: #1 (draft, production unchanged)
 
-## Dependencies — blocking release
+## Verified automated gates
 
-Mandatory pnpm audit --audit-level high still fails. The initial gate
-reported 29 findings: 3 critical, 15 high and 11 moderate.
+The full GitHub Actions CI pipeline passed on commit c78eaa7:
+- Backend pytest suite — passed
+- Frontend TypeScript check and Next.js production build — passed
+- JavaScript dependency audit at high severity — passed
+- Python dependency audit — passed
 
-Examples from audit logs: next@15.5.23 (patch >=15.5.28),
-sharp@0.34.5 (patch >=0.35.5), effect@3.21.0
-(patch >=3.22.1), plus js-yaml, brace-expansion and source-map-js.
+Dependencies were updated to compatible patched versions with a regenerated
+pnpm-lock.yaml, including Next.js 15.5.29. The dependency-repair workflow
+tested the resolution and build before creating the dependency commit.
+Review the remaining dependency overrides when dependencies next change.
 
-**Required:** Upgrade compatible packages, regenerate pnpm-lock.yaml
-using a registry-connected machine, rerun all automated and browser
-tests, then require a clean security audit before merging.
-Dependabot configuration alone does not fix existing vulnerabilities.
+## Authentication — implementation complete, live E2E pending
 
-## Authentication — code migrated, runtime QA outstanding
+- Next.js same-origin proxy now holds access/refresh credentials in HttpOnly
+  session cookies and excludes them from browser JSON and localStorage.
+- Authentication refresh and backend authorization remain server-side.
+- Request-origin checks cover unsafe methods; middleware is a navigation
+  helper, not a replacement for backend authorization.
+- Still required: deployed cookie audit, account recovery and logout testing,
+  cross-tab rotation, invalid/expired sessions and CSRF tests using real
+  browsers and deployed backend configuration.
 
-Browser API requests now use same-origin /api/backend/*.
-The Next.js server sets HttpOnly, SameSite=Lax access and refresh cookies,
-forwards authenticated API requests, and refreshes credentials on the server.
-Raw JWTs are no longer exposed by login responses or stored by the browser.
+## Media privacy — code prepared, live storage not yet verified
 
-The proxy performs origin checks for unsafe requests and restricts refresh
-and logout to POST. The middleware only provides a navigation redirect:
-backend authorization, ownership and expiration checks remain essential.
+- Portrait and outfit uploads require a non-public Supabase bucket in
+  production and a server-side service-role credential. No silent public or
+  filesystem fallback is permitted.
+- Records use internal private-media references and short-lived links, subject
+  to user/journey ownership checks.
+- Sensitive selfie data URLs are no longer stored in browser localStorage.
+- Account deletion enumerates owned uploaded media and requests file removal
+  before deleting database records; storage errors block completion.
+- Regression tests cover account deletion with successful and failed cleanup,
+  cross-account paths and private storage signing.
 
-**Required:** Verify deployed cookie attributes, login, registration,
-password recovery, logout, stale refresh-token rotation, cross-tab refresh
-races, CSRF, and stolen-token/revocation behavior in a real browser.
-Old browser sessions may need to sign in again.
+STILL REQUIRED:
+1. Create/verify a dedicated PERSONAIQ Supabase project and non-public
+   personaiq-uploads bucket; the connected Supabase account does not list one.
+2. Configure the production Render media credentials, strong token secret and
+   trusted frontend origins without exposing keys to browsers.
+3. Migrate or remove any legacy publicly stored photos, configure media
+   retention and audit all third-party generated VTO image retention.
+4. Validate upload/download, deletion, signed-link expiry, storage provider
+   errors and cross-user privacy against a real staging deployment.
 
-## Sensitive media — code protected, live setup outstanding
+## AI integrity — outstanding provider dependency
 
-Backend changes:
-- Uploads require a non-public Supabase Storage bucket and server-only
-  service-role credential; production never silently falls back to local files.
-- Stored records use internal references rather than public media URLs.
-- Authenticated ownership checks are required to issue temporary signed links.
-- The photo check and style-preparation UI no longer claim medical or
-  psychological diagnosis from image pixels.
-- Browser screens no longer persist raw selfie data URLs in localStorage.
+The analysis flow now refuses missing media and unverified provider results.
+Outfit comparison is disabled and returns 503 instead of fictional results.
+A real tested comparison provider, meaningful report provenance, and
+historical-plan validation are still required before release.
 
-**Required for a dedicated PERSONAIQ Supabase project:**
-1. Configure the personaiq-uploads bucket with public=false.
-2. Inventory and migrate/remove any previously public portrait objects.
-3. Configure backend SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
-   SUPABASE_STORAGE_BUCKET, ENVIRONMENT=production, a unique SECRET_KEY,
-   and trusted FRONTEND_URL/CORS_ORIGINS.
-4. Verify staging uploads, signed links, ownership and retention.
-5. Implement object deletion during account deletion; database record
-   deletion alone does not remove stored blobs. Set clear retention rules.
+## Public communication
 
-The connected Supabase account did not list PERSONAIQ. No live bucket
-policy or historical photo migration was changed or verified.
+The FAQ has been corrected to remove unsupported claims about instant image
+deletion, diagnostic skin measurements, guaranteed processing speed and
+an authentication vendor that was not actually integrated.
 
-## AI integrity — intentionally blocked
+Other marketing copy, pricing, legal documents and all onboarding screens
+still need a final consistency and compliance review.
 
-Analysis without submitted user media fails with a validation error.
-Unconfigured providers no longer fabricate skin results, outfit rankings,
-or LLM recommendations. Verified outfit comparison remains disabled and
-returns an explicit unavailable response until a real provider is integrated.
-Existing historical Presence Plans might contain synthetic data and require
-provenance checks before reuse.
+## Production release rule
 
-## Release rule
-
-Keep this PR in draft. Do not merge to main or deploy publicly until the
-dependency security gate is clean, private storage is live and verified,
-provider results are authentic, and user journeys pass end-to-end QA.
-A successful build and backend test suite alone are not release approval.
+**Do not merge or deploy this draft PR yet.** Automated checks are green,
+but the live private storage integration, provider availability, security
+browser tests, complete user-journey E2E verification and deployment
+configuration are outstanding. No functional claim should be inferred
+solely from a successful CI build.
