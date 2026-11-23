@@ -56,8 +56,20 @@ class AuthService:
         user.otp_code = self._otp_digest(user.email, code)
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
+        # Fail closed if production mail is disabled or unconfigured.
+        if settings.ENVIRONMENT.lower() in {"production", "prod"} and (
+            not settings.ENABLE_EMAIL_NOTIFICATIONS
+            or not settings.SMTP_USER
+            or not settings.SMTP_PASSWORD
+        ):
+            raise AppException(
+                code=ErrorCode.SYS_002,
+                message="Email verification is not configured. Registration is unavailable.",
+                status_code=503,
+            )
+
         # A successful response must not promise delivery when email is
-        # unavailable. The DB transaction rolls back if delivery fails.
+        # unavailable. The transaction rolls back if delivery fails.
         from app.services.email_service import EmailService
         delivered = await EmailService().send_email_verification_email(user.email, code)
         if not delivered:
