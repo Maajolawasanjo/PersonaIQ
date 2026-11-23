@@ -1,94 +1,82 @@
 'use client';
 
-import React from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { presenceDnaApi, dashboardApi } from '@/lib/api/services';
+import { ArrowRight, BarChart3, ClipboardCheck, Clock3 } from 'lucide-react';
+import { dashboardApi } from '@/lib/api/services';
+import type { DashboardOverview } from '@/lib/api/types';
+import { WorkspaceEmpty, WorkspaceError, WorkspaceLoading } from '@/components/dashboard/WorkspaceFeedback';
 
-export default function PersonalProgressPage() {
-  const [metrics, setMetrics] = React.useState([
-    { label: 'Avg Presence Index', val: '--', sub: 'Calculated' },
-    { label: 'Top Outfit Style', val: 'Executive Formal', sub: 'High Alignment' },
-    { label: 'Avg AI Confidence', val: '94%', sub: 'High Precision' },
-    { label: 'Completed Journeys', val: '0', sub: 'Lifetime Total' },
-  ]);
+type State =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'ready'; overview: DashboardOverview };
 
-  React.useEffect(() => {
-    async function loadProgress() {
-      try {
-        const [dna, overview] = await Promise.all([
-          presenceDnaApi.getDna().catch(() => null),
-          dashboardApi.getOverview().catch(() => null),
-        ]);
+export default function ProgressPage() {
+  const [state, setState] = useState<State>({ status: 'loading' });
+  const [retry, setRetry] = useState(0);
 
-        let localSaved: any[] = [];
-        let savedScore = 0;
-        if (typeof window !== 'undefined') {
-          const raw = localStorage.getItem('personaiq_saved_journeys');
-          if (raw) {
-            try { localSaved = JSON.parse(raw); } catch (e) {}
-          }
-          const rawScore = localStorage.getItem('personaiq_active_presence_score');
-          if (rawScore) savedScore = parseInt(rawScore, 10);
-        }
-
-        const avgScore = dna?.avg_presence_index || overview?.presence_index_avg || (localSaved.length > 0 ? Math.round(localSaved.reduce((acc, curr) => acc + (curr.presence_score || 92), 0) / localSaved.length) : savedScore);
-        const totalJourneys = Math.max(dna?.total_journeys_completed || overview?.total_journeys_count || 0, localSaved.length);
-        const topStyle = dna?.top_style || 'Executive Formal';
-
-        setMetrics([
-          { label: 'Avg Presence Index', val: avgScore > 0 ? avgScore.toString() : '93', sub: avgScore > 80 ? 'Top Tier' : 'Active Baseline' },
-          { label: 'Top Outfit Style', val: topStyle, sub: 'Optimal Match Rate' },
-          { label: 'Avg AI Confidence', val: '96%', sub: 'High Precision' },
-          { label: 'Completed Journeys', val: totalJourneys > 0 ? totalJourneys.toString() : '1', sub: 'Lifetime Total' },
-        ]);
-      } catch (err) {
-        console.warn('Could not fetch personal progress metrics:', err);
-      }
-    }
-    loadProgress();
-  }, []);
+  useEffect(() => {
+    let active = true;
+    void dashboardApi.getOverview()
+      .then(data => { if (active) setState({ status: 'ready', overview: data }); })
+      .catch(() => { if (active) setState({ status: 'error' }); });
+    return () => { active = false; };
+  }, [retry]);
 
   return (
-    <div className="space-y-6 animate-fadeIn py-2">
-      {/* Header */}
-      <div className="flex justify-between items-center border-b border-gray-200 pb-4">
+    <main className="mx-auto max-w-5xl space-y-7 pb-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <span className="text-[11px] font-mono font-bold text-gray-500 uppercase tracking-wider block">
-            LONG-TERM ANALYTICS
-          </span>
-          <h1 className="text-[28px] font-bold text-gray-950 font-sans">
-            Personal Progress
-          </h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-700">Your records</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">Progress</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-600">
+            A simple view of the preparations you have saved, without estimated appearance ratings or unverified improvement claims.
+          </p>
         </div>
-        <Link
-          href="/journey/start"
-          className="h-10 px-5 bg-primary hover:bg-primary/95 text-white font-bold text-[13px] rounded-[10px] shadow-sm flex items-center justify-center space-x-1.5"
-        >
-          <span>Start Journey</span>
+        <Link href="/dashboard/history" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-800">
+          View activity <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </Link>
-      </div>
+      </header>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((m, idx) => (
-          <div key={idx} className="bg-white border border-gray-200 rounded-[18px] p-5 shadow-xs space-y-1">
-            <span className="text-[11px] font-mono text-gray-500 block">{m.label}</span>
-            <span className="text-[24px] font-bold text-gray-950 font-sans block">{m.val}</span>
-            <span className="text-[10.5px] font-mono text-emerald-700">{m.sub}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* AI Behavioral Insights */}
-      <div className="bg-gray-950 text-white rounded-[20px] p-6 shadow-md border border-white/10 space-y-2">
-        <span className="text-[11px] font-mono font-bold text-primary block">❖ LONG-TERM PATTERN RECOGNITION</span>
-        <h3 className="text-[18px] font-bold font-sans text-white">
-          Business Formal attire consistently yields an average +9 point increase in composure ratings.
-        </h3>
-        <p className="text-[13px] text-gray-400 font-normal">
-          Maintaining a structured jacket shoulder silhouette correlates with maximum trust signaling across executive board panel presentations.
-        </p>
-      </div>
-    </div>
+      {state.status === 'loading' ? <WorkspaceLoading label="Loading your progress" /> :
+        state.status === 'error' ? <WorkspaceError
+          title="Progress could not be loaded"
+          onRetry={() => { setState({ status: 'loading' }); setRetry(x => x + 1); }} /> :
+        state.overview.total_journeys_count === 0 ? (
+          <WorkspaceEmpty title="Your progress begins with your first preparation"
+            description="Create a saved journey for an upcoming occasion. Real activity counts will appear after your first saved preparation."
+            href="/journey/start" action="Start a preparation"
+            icon={<BarChart3 aria-hidden="true" className="h-6 w-6" />} />
+        ) : (
+          <>
+            <section className="grid gap-3 sm:grid-cols-3" aria-label="Saved journey counts">
+              {[
+                { label: 'Total saved journeys', value: state.overview.total_journeys_count ?? 0, detail: 'Includes archived preparations', Icon: BarChart3 },
+                { label: 'Completed journeys', value: state.overview.completed_journeys_count ?? 0, detail: 'Completion recorded by your account', Icon: ClipboardCheck },
+                { label: 'Current preparation', value: state.overview.active_journey ? 1 : 0, detail: 'Most recent active draft', Icon: Clock3 },
+              ].map(metric => (
+                <div key={metric.label} className="rounded-2xl border border-gray-200 bg-white p-6">
+                  <metric.Icon aria-hidden="true" className="h-5 w-5 text-red-700" />
+                  <p className="mt-4 text-sm font-semibold text-gray-700">{metric.label}</p>
+                  <p className="mt-2 text-3xl font-bold tabular-nums text-gray-950">{metric.value}</p>
+                  <p className="mt-1.5 text-xs leading-5 text-gray-500">{metric.detail}</p>
+                </div>
+              ))}
+            </section>
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
+              <h2 className="text-lg font-bold text-gray-950">About your progress</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-gray-600">
+                These counts are based on saved records. Personal presence scores, confidence ratings,
+                appearance diagnostics and percentage improvements are not currently verified and
+                are deliberately not presented as measured results.
+              </p>
+              <Link href="/dashboard/history" className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-red-700">
+                Review your saved journeys <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </section>
+          </>
+        )}
+    </main>
   );
 }

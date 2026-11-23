@@ -8,6 +8,7 @@ class ErrorCode(str, Enum):
     AUTH_002 = "AUTH_002"  # Token expired or invalid
     AUTH_003 = "AUTH_003"  # Account locked due to failed attempts
     AUTH_004 = "AUTH_004"  # Insufficient permissions
+    AUTH_005 = "AUTH_005"  # Email verification required
 
     # User Profile
     USER_001 = "USER_001"  # User not found

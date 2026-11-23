@@ -31,20 +31,19 @@ import {
   Sliders,
   ChevronRight
 } from 'lucide-react';
-import { stylistApi } from '@/lib/api/services';
+import { stylistApi, wardrobeApi, uploadApi } from '@/lib/api/services';
 import {
   VTO_CATALOG,
   VTO_MODELS,
   VTOAsset,
   VTOModel,
-  getRecommendedAssets,
-  generateGeminiStylistReasoning
+  getRecommendedAssets
 } from '@/lib/catalog/vtoCatalog';
 
 interface SavedLookCard {
   id: string;
   title: string;
-  score: number;
+  score?: number;
   image: string;
   garment: VTOAsset;
   shoe?: VTOAsset;
@@ -55,9 +54,9 @@ export default function VirtualTryOnPage() {
   const router = useRouter();
 
   // Baseline photo & context state
-  const [userPhoto, setUserPhoto] = useState<string>('/vto/looks/female/F01_job_interview.png');
+  const [userPhoto, setUserPhoto] = useState<string>(VTO_MODELS[0].image_url);
   const [userSelfieAvailable, setUserSelfieAvailable] = useState<boolean>(false);
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string>('user_selfie');
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string>(VTO_MODELS[0].id);
 
   // Journey context loaded from localStorage
   const [occasion, setOccasion] = useState<string>('Date Night');
@@ -92,40 +91,11 @@ export default function VirtualTryOnPage() {
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
   const [backgroundEffect, setBackgroundEffect] = useState<'studio' | 'blur' | 'plain'>('studio');
 
-  // Interactive Saved Looks Carousel
-  const [savedLooks, setSavedLooks] = useState<SavedLookCard[]>([
-    {
-      id: 'look_01',
-      title: 'Executive Navy',
-      score: 93,
-      image: '/vto/clothing/professional/01_navy_suit.jpg',
-      garment: VTO_CATALOG[0],
-      shoe: VTO_CATALOG.find((c) => c.category === 'footwear'),
-    },
-    {
-      id: 'look_02',
-      title: 'Charcoal Classic',
-      score: 89,
-      image: '/vto/clothing/professional/02_black_suit.jpg',
-      garment: VTO_CATALOG[1],
-      shoe: VTO_CATALOG.find((c) => c.category === 'footwear'),
-    },
-    {
-      id: 'look_03',
-      title: 'Grey Confidence',
-      score: 86,
-      image: '/vto/clothing/professional/04_beige_power_suit.jpg',
-      garment: VTO_CATALOG[2],
-    },
-    {
-      id: 'look_04',
-      title: 'Smart Minimal',
-      score: 82,
-      image: '/vto/clothing/professional/05_white_dress_shirt.jpg',
-      garment: VTO_CATALOG[3],
-    },
-  ]);
-  const [activeLookId, setActiveLookId] = useState<string>('look_01');
+  // Saved looks are loaded from the user's account.
+  const [savedLooks, setSavedLooks] = useState<SavedLookCard[]>([]);
+  const [activeLookId, setActiveLookId] = useState<string | null>(null);
+  const [isSavingLook, setIsSavingLook] = useState(false);
+  const [studioError, setStudioError] = useState<string | null>(null);
 
   // Import Product State
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
@@ -135,24 +105,31 @@ export default function VirtualTryOnPage() {
   // AI Render & Telemetry State
   const [vtoResult, setVtoResult] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [presenceScore, setPresenceScore] = useState<number>(93);
-  const [providerUsed, setProviderUsed] = useState<string>('YouCam AI VTO');
+  const [providerUsed, setProviderUsed] = useState<string>('Not generated');
 
-  // Featherless AI Stylist Reasoning
   const [aiStylistText, setAiStylistText] = useState<string>(
-    'This navy suit with a white shirt and navy tie projects confidence, professionalism, and approachability—ideal for making a strong first impression.'
+    'Select garments to request a try-on. Only successful rendering produces a generated result.'
   );
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedSelfie = localStorage.getItem('personaiq_user_selfie_preview');
-      const outfitPreview = localStorage.getItem('personaiq_user_outfit_preview');
+      const savedAvatar = localStorage.getItem('personaiq_vto_avatar_id');
+      const activeJourney = localStorage.getItem('personaiq_active_journey_id');
 
-      if (savedSelfie) {
-        setUserPhoto(savedSelfie);
-        setUserSelfieAvailable(true);
-      } else if (outfitPreview) {
-        setUserPhoto(outfitPreview);
+      if (savedAvatar) {
+        const model = VTO_MODELS.find(item => item.id === savedAvatar);
+        if (model) {
+          setUserPhoto(model.image_url);
+          setSelectedAvatarId(model.id);
+        }
+      } else if (activeJourney) {
+        void uploadApi.getSelfiePreview(activeJourney)
+          .then(link => {
+            setUserPhoto(link.url);
+            setUserSelfieAvailable(true);
+            setSelectedAvatarId('user_selfie');
+          })
+          .catch(() => setStudioError('Your private photo is unavailable. Please upload it again to use your own image.'));
       }
 
       const savedOccasion =
@@ -188,22 +165,29 @@ export default function VirtualTryOnPage() {
         }
       }
 
-      // Initial YouCam VTO AI composite call
-      const activeImage = savedSelfie || outfitPreview || '/vto/looks/female/F01_job_interview.png';
-      stylistApi.vtoPreview('user_selfie', [selectedGarment, selectedShoe], activeImage)
-        .then((res) => {
-          const resultUrl = res?.data?.result_image_url || res?.data?.result_url || res?.preview_url || res?.data?.preview_url;
-          if (resultUrl) {
-            setVtoResult(resultUrl);
-          }
-          if (res?.data?.provider_used) {
-            setProviderUsed(res.data.provider_used === 'youcam' ? 'Perfect Corp YouCam AI' : 'PersonaIQ Composite Engine');
-          }
-        })
-        .catch((err) => {
-          console.warn('Initial YouCam VTO preview notice:', err);
-        });
+
     }
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    wardrobeApi.listOutfits().then(looks => {
+      if (!live) return;
+      const mapped: SavedLookCard[] = looks.flatMap(look => {
+        const parts = look.items as unknown as VTOAsset[];
+        const garment = parts.find(x => x?.category === 'clothing');
+        return garment && look.image_url ? [{
+          id: look.id,
+          title: look.name,
+          image: look.image_url,
+          garment,
+          shoe: parts.find(x => x?.category === 'footwear'),
+          accessory: parts.find(x => x?.category === 'accessories'),
+        }] : [];
+      });
+      setSavedLooks(mapped);
+    }).catch(() => { if (live) setStudioError('Could not load your saved looks.'); });
+    return () => { live = false; };
   }, []);
 
   // Split-Screen Drag Handler
@@ -244,41 +228,65 @@ export default function VirtualTryOnPage() {
       hair = item;
     }
 
-    // Compute dynamic score & AI rationale
-    const reasoningObj = generateGeminiStylistReasoning(occasion, targetVibe, garment, shoe, acc || undefined, hair || undefined);
-    setPresenceScore(reasoningObj.total_score);
-    if (reasoningObj.reasoning.summary) {
-      setAiStylistText(reasoningObj.reasoning.summary);
-    }
+    // Garment selection is not a personality or confidence measurement.
+    setAiStylistText(`Selected ${garment.name} for ${occasion}. Generate a preview to review the outfit.`);
+    setActiveLookId(null);
 
+    setStudioError(null);
+    setVtoResult(null);
     setIsGenerating(true);
 
     try {
-      const activeModelImg = selectedAvatarId === 'user_selfie' ? userPhoto : VTO_MODELS.find((m) => m.id === selectedAvatarId)?.image_url || userPhoto;
+      const journeyId = localStorage.getItem('personaiq_active_journey_id');
+      const activeModelImg = selectedAvatarId === 'user_selfie'
+        ? (journeyId ? (await uploadApi.getSelfiePreview(journeyId)).url : null)
+        : VTO_MODELS.find(model => model.id === selectedAvatarId)?.image_url;
+      if (!activeModelImg) throw new Error('Select an image for virtual try-on.');
       const res = await stylistApi.vtoPreview(selectedAvatarId, [garment, shoe, acc, hair], activeModelImg);
-      const resultUrl = res?.data?.result_image_url || res?.data?.result_url || res?.preview_url || res?.data?.preview_url;
-      if (resultUrl) {
-        setVtoResult(resultUrl);
-      }
+      const resultUrl = res?.success ? res.result_image_url : null;
+      if (!resultUrl) throw new Error('No generated image was returned');
+      setVtoResult(resultUrl);
     } catch (e) {
-      console.warn('VTO endpoint notice, using local dynamic compositing canvas:', e);
+      console.error('VTO provider error:', e);
+      setStudioError('The try-on provider could not generate an image. Your original image is unchanged.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSaveCurrentLook = () => {
-    const newLook: SavedLookCard = {
-      id: `look_${Date.now()}`,
-      title: `${selectedGarment.name.split(' ')[0]} ${selectedGarment.color || 'Custom'}`,
-      score: presenceScore,
-      image: selectedGarment.image_url,
-      garment: selectedGarment,
-      shoe: selectedShoe,
-      accessory: selectedAccessory || undefined,
-    };
-    setSavedLooks((prev) => [newLook, ...prev.slice(0, 4)]);
-    setActiveLookId(newLook.id);
+  const handleSaveCurrentLook = async () => {
+    if (!vtoResult || isSavingLook) {
+      setStudioError('Generate a real try-on result before saving your look.');
+      return;
+    }
+    setStudioError(null);
+    setIsSavingLook(true);
+    try {
+      const items = [selectedGarment, selectedShoe, selectedAccessory, selectedHairstyle]
+        .filter((item): item is VTOAsset => item != null);
+      const journeyId = localStorage.getItem('personaiq_active_journey_id');
+      const saved = await wardrobeApi.saveOutfit({
+        name: `${selectedGarment.name} Look`,
+        image_url: vtoResult,
+        items,
+        ...(journeyId ? { journey_id: journeyId } : {}),
+      });
+      const newLook: SavedLookCard = {
+        id: saved.id,
+        title: saved.name,
+        image: saved.image_url || vtoResult,
+        garment: selectedGarment,
+        shoe: selectedShoe,
+        accessory: selectedAccessory || undefined,
+      };
+      setSavedLooks(prev => [newLook, ...prev]);
+      setActiveLookId(newLook.id);
+    } catch (error) {
+      console.error('Saved outfit error:', error);
+      setStudioError('Unable to save this look to your account. Please try again.');
+    } finally {
+      setIsSavingLook(false);
+    }
   };
 
   const handleSelectSavedLook = (look: SavedLookCard) => {
@@ -286,43 +294,43 @@ export default function VirtualTryOnPage() {
     setSelectedGarment(look.garment);
     if (look.shoe) setSelectedShoe(look.shoe);
     if (look.accessory) setSelectedAccessory(look.accessory);
-    setPresenceScore(look.score);
+    setVtoResult(look.image);
+    setStudioError(null);
   };
 
   const handleImportProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productUrl) return;
-
-    let fallbackCategory: 'clothing' | 'footwear' | 'accessories' = 'clothing';
-    let fallbackName = 'Imported Store Apparel';
-    const lower = productUrl.toLowerCase();
-
-    if (lower.includes('shoe') || lower.includes('boot') || lower.includes('sneaker') || lower.includes('loafer')) {
-      fallbackCategory = 'footwear';
-      fallbackName = 'Imported Designer Footwear';
-    } else if (lower.includes('watch') || lower.includes('tie') || lower.includes('belt')) {
-      fallbackCategory = 'accessories';
-      fallbackName = 'Imported Luxury Accessory';
+    if (!productUrl.trim()) return;
+    setStudioError(null);
+    try {
+      const url = new URL(productUrl.trim());
+      if (url.protocol !== 'https:') throw new Error('HTTPS URL required');
+      const item = await stylistApi.importProduct(url.toString());
+      if (!item?.id || typeof item.photo_url !== 'string' || !item.photo_url.startsWith('https://')) {
+        throw new Error('No usable product image');
+      }
+      const categoryText = String(item.category || '').toLowerCase();
+      const category: VTOAsset['category'] = /shoe|boot|footwear|sneaker/.test(categoryText)
+        ? 'footwear' : /watch|belt|tie|accessor/.test(categoryText) ? 'accessories' : 'clothing';
+      const asset: VTOAsset = {
+        id: String(item.id),
+        name: String(item.name || 'Imported garment'),
+        category,
+        subcategory: 'online_store',
+        gender: 'unisex',
+        asset_type: 'product',
+        image_url: item.photo_url,
+        occasions: ['all'],
+        is_active: true,
+      };
+      setImportedItems(previous => [asset, ...previous]);
+      await handleAssetSelect(asset);
+      setProductUrl('');
+      setIsImportOpen(false);
+    } catch (error) {
+      console.error('Product import failed:', error);
+      setStudioError('Unable to import this product. Check the approved retailer URL and retry.');
     }
-
-    const importedItem: VTOAsset = {
-      id: `imported_${Date.now()}`,
-      name: fallbackName,
-      category: fallbackCategory,
-      subcategory: 'online_store',
-      gender: 'unisex',
-      asset_type: 'product',
-      image_url: productUrl,
-      occasions: ['all'],
-      is_active: true,
-      price: 195,
-      score: 91,
-    };
-
-    setImportedItems((prev) => [importedItem, ...prev]);
-    handleAssetSelect(importedItem);
-    setProductUrl('');
-    setIsImportOpen(false);
   };
 
   // Sub-category Filter Options
@@ -383,7 +391,7 @@ export default function VirtualTryOnPage() {
               </h1>
             </div>
             <p className="text-base text-gray-600 mt-1 max-w-3xl pl-12">
-              See your looks. Own your presence. Powered by Perfect Corp YouCam AI engine.
+              Select garments to request a preview. Only completed renders are shown as generated images.
             </p>
           </div>
 
@@ -462,7 +470,7 @@ export default function VirtualTryOnPage() {
               />
               <div className="absolute top-4 right-4 bg-red-600 text-white text-[10px] font-mono font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-red-400 z-10 shadow-md flex items-center space-x-1">
                 <Sparkles className="w-3 h-3 text-white" />
-                <span>VTO RESULT</span>
+                <span>{vtoResult ? 'GENERATED TRY-ON' : 'NOT GENERATED'}</span>
               </div>
             </div>
 
@@ -534,11 +542,12 @@ export default function VirtualTryOnPage() {
               </span>
               <button
                 type="button"
-                onClick={handleSaveCurrentLook}
+                onClick={() => void handleSaveCurrentLook()}
+                disabled={isSavingLook || !vtoResult}
                 className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center space-x-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Save Current Composition</span>
+                <span>{isSavingLook ? 'Saving...' : 'Save Current Composition'}</span>
               </button>
             </div>
 
@@ -557,9 +566,7 @@ export default function VirtualTryOnPage() {
                   >
                     <div className="aspect-[4/3] bg-gray-900 rounded-lg overflow-hidden relative mb-2">
                       <img src={look.image} alt={look.title} className="w-full h-full object-cover object-top" />
-                      <div className="absolute bottom-1 right-1 bg-black/80 text-emerald-400 font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded-full border border-emerald-500/30">
-                        {look.score}
-                      </div>
+                      
                       {isActive && (
                         <div className="absolute top-1 left-1 bg-red-600 text-white rounded-full p-0.5 shadow-md">
                           <Check className="w-3 h-3 stroke-[3]" />
@@ -577,72 +584,21 @@ export default function VirtualTryOnPage() {
               {/* SAVE LOOK BUTTON CARD */}
               <button
                 type="button"
-                onClick={handleSaveCurrentLook}
+                onClick={() => void handleSaveCurrentLook()}
+                disabled={isSavingLook || !vtoResult}
                 className="bg-gray-50 hover:bg-gray-100 rounded-xl border border-dashed border-gray-300 hover:border-red-600 p-4 transition-all cursor-pointer flex flex-col items-center justify-center space-y-1.5 text-gray-500 hover:text-red-600 min-h-[100px]"
               >
                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
                   <Plus className="w-4 h-4 text-gray-700" />
                 </div>
-                <span className="text-xs font-bold">Save Look</span>
+                <span className="text-xs font-bold">{isSavingLook ? "Saving..." : "Save Look"}</span>
               </button>
             </div>
           </div>
 
-          {/* PRESENCE IMPACT METRICS BAR (UNDER CAROUSEL) */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-mono font-bold text-gray-800 uppercase tracking-wider">
-                  PRESENCE IMPACT ANALYSIS
-                </span>
-              </div>
-
-              <Link
-                href="/journey/explanation"
-                className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center space-x-1"
-              >
-                <span>View Full Analysis</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 items-center">
-              
-              {/* Main Score Bar */}
-              <div className="sm:col-span-2 space-y-1.5 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <span className="text-[11px] font-mono text-gray-500 uppercase block font-bold">Overall Presence Impact</span>
-                <div className="flex items-baseline space-x-2">
-                  <span className="text-2xl font-black text-gray-950">{presenceScore}</span>
-                  <span className="text-xs font-bold text-gray-400">/ 100</span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-600 to-emerald-500 rounded-full transition-all duration-500"
-                    style={{ width: `${presenceScore}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Metric 1 */}
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Confidence</span>
-                <span className="text-lg font-extrabold text-emerald-600">92</span>
-              </div>
-
-              {/* Metric 2 */}
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Authority</span>
-                <span className="text-lg font-extrabold text-emerald-600">91</span>
-              </div>
-
-              {/* Metric 3 */}
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-0.5">
-                <span className="text-[10px] font-mono text-gray-500 uppercase block font-bold">Style Fit</span>
-                <span className="text-lg font-extrabold text-emerald-600">94</span>
-              </div>
-
-            </div>
+          {studioError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{studioError}</p>}
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 text-xs text-gray-600">
+            {vtoResult ? 'Generated preview available. Save it to keep it in your wardrobe.' : 'No try-on has been generated yet. Select a garment to request a preview.'}
           </div>
 
         </div>
@@ -774,8 +730,7 @@ export default function VirtualTryOnPage() {
                   selectedAccessory?.id === item.id ||
                   selectedHairstyle?.id === item.id;
                 const isFav = favorites.includes(item.id);
-                const itemPrice = item.price || (item.category === 'clothing' ? 320 : item.category === 'footwear' ? 180 : 90);
-                const itemScore = item.score || (isSelected ? presenceScore : 89);
+                const itemPrice = typeof item.price === 'number' ? item.price : null;
 
                 return (
                   <div
@@ -823,14 +778,9 @@ export default function VirtualTryOnPage() {
                       </h4>
 
                       <div className="flex items-center justify-between pt-2 border-t border-gray-150">
-                        <span className="text-xs font-mono font-extrabold text-gray-900">
-                          ${itemPrice}
+                        <span className="text-xs font-medium text-gray-600">
+                          {itemPrice === null ? 'Price not provided' : `$${itemPrice}`}
                         </span>
-
-                        {/* Circular Score Meter Badge */}
-                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center space-x-1">
-                          <span>{itemScore}</span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -888,7 +838,7 @@ export default function VirtualTryOnPage() {
             <div className="flex items-center space-x-2.5 text-red-500">
               <Sparkles className="w-4.5 h-4.5" />
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
-                AI STYLIST RECOMMENDATION
+                Style selection notes
               </h3>
             </div>
 
@@ -896,36 +846,22 @@ export default function VirtualTryOnPage() {
               {aiStylistText}
             </p>
 
-            {/* 4 Red Brand Vibe Pills */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
-                Clean Silhouette
-              </span>
-              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
-                Power Color
-              </span>
-              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
-                Interview Ready
-              </span>
-              <span className="text-[11px] font-medium bg-red-950/80 text-red-200 border border-red-800/60 px-3 py-1 rounded-full">
-                Executive Presence
-              </span>
-            </div>
           </div>
 
           {/* BOTTOM STICKY ACTION BUTTONS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <button
               type="button"
-              onClick={handleSaveCurrentLook}
+              onClick={() => void handleSaveCurrentLook()}
+                disabled={isSavingLook || !vtoResult}
               className="h-12 px-4 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs rounded-xl border border-gray-250 transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-2xs"
             >
               <Bookmark className="w-4 h-4 text-gray-500" />
-              <span>Save to Wardrobe</span>
+              <span>{isSavingLook ? 'Saving...' : 'Save to Wardrobe'}</span>
             </button>
 
             <Link
-              href="/journey/grooming-checklist"
+              href="/journey/explanation"
               className="h-12 px-5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer"
             >
               <span>Complete My Look</span>

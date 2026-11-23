@@ -9,7 +9,7 @@ from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 router = APIRouter(prefix="/profile", tags=["User Profile"])
 
@@ -260,6 +260,10 @@ async def change_password(
     )
 
 
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(min_length=1)
+
+
 @router.delete(
     "/account",
     response_model=StandardResponse[dict],
@@ -267,13 +271,14 @@ async def change_password(
     summary="Permanently Delete User Account & Purge Data",
 )
 async def delete_account(
+    request_data: DeleteAccountRequest,
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     request_id = getattr(request.state, "request_id", "req_delete_account")
     service = AuthService(db)
-    await service.delete_account(current_user.id)
+    await service.delete_account(current_user.id, request_data.password)
 
     meta = ResponseMeta(request_id=request_id, timestamp=datetime.now(timezone.utc).isoformat())
     return StandardResponse(

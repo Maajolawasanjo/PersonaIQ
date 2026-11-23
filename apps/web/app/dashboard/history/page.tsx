@@ -1,354 +1,217 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { 
-  ArrowLeftRight, 
-  BarChart3, 
-  Eye, 
-  History, 
-  Info, 
-  Search, 
-  Sliders, 
-  Shirt,
-  ArrowRight,
-  CheckSquare,
-  FileText,
-  Download,
-  Share2,
-  Copy,
-  Trash2,
-  Archive
+import {
+  Archive, ArrowLeft, ArrowRight, CalendarDays, ChevronLeft,
+  ChevronRight, History, Search,
 } from 'lucide-react';
 import { journeyApi } from '@/lib/api/services';
+import type { Journey, PaginationMeta } from '@/lib/api/types';
+import { WorkspaceEmpty, WorkspaceError, WorkspaceLoading } from '@/components/dashboard/WorkspaceFeedback';
+import { displayJourneyStatus, formatWorkspaceDate } from '@/lib/workspace/journeys';
 
-export default function JourneyArchivePage() {
-  const [filter, setFilter] = useState<string>('All');
-  const [search, setSearch] = useState<string>('');
-  const [isEmptyArchive, setIsEmptyArchive] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+const PAGE_SIZE = 12;
+type StatusFilter = 'ALL' | 'DRAFT' | 'IN_PROGRESS' | 'ANALYZING' | 'COMPLETED' | 'FAILED' | 'ARCHIVED';
+type PageState =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'ready'; journeys: Journey[]; pagination: PaginationMeta };
+const filters: StatusFilter[] = ['ALL', 'DRAFT', 'IN_PROGRESS', 'ANALYZING', 'COMPLETED', 'FAILED', 'ARCHIVED'];
 
-  const [journeys, setJourneys] = useState<any[]>([]);
+export default function JourneyHistoryPage() {
+  const [state, setState] = useState<PageState>({ status: 'loading' });
+  const [filter, setFilter] = useState<StatusFilter>('ALL');
+  const [page, setPage] = useState(1);
+  const [reload, setReload] = useState(0);
+  const [search, setSearch] = useState('');
+  const [archiving, setArchiving] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
 
-  React.useEffect(() => {
-    async function loadJourneys() {
-      let serverJourneys: any[] = [];
-      try {
-        const res = await journeyApi.listJourneys(1, 20);
-        if (res?.data && Array.isArray(res.data)) {
-          serverJourneys = res.data;
+  useEffect(() => {
+    let active = true;
+    void journeyApi.getJourneyPage(page, PAGE_SIZE, filter)
+      .then(({ items, pagination }) => {
+        if (!active) return;
+        if (page > 1 && pagination.total_pages > 0 && page > pagination.total_pages) {
+          setPage(pagination.total_pages);
+          return;
         }
-      } catch (err) {
-        console.warn('Could not fetch journeys from API, checking local history:', err);
-      }
+        setState({ status: 'ready', journeys: items, pagination });
+      })
+      .catch(() => { if (active) setState({ status: 'error' }); });
+    return () => { active = false; };
+  }, [page, filter, reload]);
 
-      let localSaved: any[] = [];
-      if (typeof window !== 'undefined') {
-        const savedJourneysRaw = localStorage.getItem('personaiq_saved_journeys');
-        if (savedJourneysRaw) {
-          try {
-            localSaved = JSON.parse(savedJourneysRaw);
-          } catch (e) {
-            console.error('Error parsing local journeys:', e);
-          }
-        }
-      }
+  const visible = useMemo(() => {
+    if (state.status !== 'ready') return [];
+    const query = search.trim().toLowerCase();
+    return query
+      ? state.journeys.filter(journey =>
+          [journey.title, journey.event?.name || '', journey.event?.dress_code || '', journey.status]
+            .join(' ').toLowerCase().includes(query)
+        )
+      : state.journeys;
+  }, [search, state]);
 
-      // Combine server + local journeys
-      const combined = [...serverJourneys, ...localSaved];
-      if (combined.length > 0) {
-        const mapped = combined.map((j: any, index: number) => ({
-          id: j.id || `local-${index}`,
-          date: j.created_at ? new Date(j.created_at).toLocaleDateString().toUpperCase() : 'RECENT',
-          title: j.title || j.occasion ? `${j.occasion.charAt(0).toUpperCase() + j.occasion.slice(1)} Session` : 'Executive Presence Session',
-          target: j.dress_code || j.event?.dress_code || 'Business Formal',
-          score: j.presence_score || j.score || 93,
-          isLatest: index === 0,
-          outfitName: j.outfit_name || (j.event?.target_vibe ? `${j.event.target_vibe} Suit` : 'Executive Navy Suit'),
-          outfitDesc: 'Analyzed for high executive authority and visual presence.',
-          image: j.outfit_image || '/vto/clothing/professional/01_navy_suit.jpg',
-          category: j.occasion?.toLowerCase().includes('interview') ? 'Interview' : 'Presentation',
-          archived: j.status === 'ARCHIVED',
-        }));
-        setJourneys(mapped);
-        setIsEmptyArchive(false);
-      } else {
-        setIsEmptyArchive(true);
-      }
-      setIsLoading(false);
+  const changeFilter = (next: StatusFilter) => {
+    if (next === filter) return;
+    setState({ status: 'loading' });
+    setFilter(next);
+    setPage(1);
+    setSearch('');
+    setNotice('');
+  };
+
+  const archive = async (journeyId: string) => {
+    if (archiving) return;
+    setArchiving(journeyId);
+    setNotice('');
+    try {
+      const saved = await journeyApi.archiveJourney(journeyId);
+      if (saved.status !== 'ARCHIVED') throw new Error('Archive was not confirmed.');
+      setNotice('Journey archived. Your activity list has been refreshed.');
+      setReload(value => value + 1);
+    } catch {
+      setNotice('The journey could not be archived. It has not been changed.');
+    } finally {
+      setArchiving(null);
     }
-    loadJourneys();
-  }, []);
-
-  const categories = ['All', 'Interview', 'Presentation', 'Networking'];
-
-  const handleDelete = (id: string) => {
-    setJourneys((prev) => prev.filter((j) => j.id !== id));
   };
-
-  const handleArchive = (id: string) => {
-    setJourneys((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, archived: !j.archived } : j))
-    );
-  };
-
-  const filtered = journeys.filter((j) => {
-    const matchesFilter = filter === 'All' || j.category === filter;
-    const matchesSearch =
-      j.title.toLowerCase().includes(search.toLowerCase()) ||
-      j.target.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn py-2 bg-white p-6 sm:p-8 rounded-[24px] shadow-sm border border-gray-150">
-      
-      {/* Header & State Toggle */}
-      <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-        <div className="space-y-1">
-          <h1 className="text-[32px] sm:text-[36px] font-bold text-gray-950 font-sans leading-tight">
-            Journey Archive
-          </h1>
-          <p className="text-[13.5px] text-gray-500 font-normal">
-            A chronological record of your simulated presence evaluations and outfit analyses.
+    <div className="mx-auto max-w-5xl space-y-6 pb-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-700">Your records</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">Activity</h1>
+          <p className="mt-2 text-sm leading-6 text-gray-600">
+            Find your saved preparations, including drafts, completed journeys and archived work.
           </p>
         </div>
+        <Link href="/journey/start" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white">
+          New preparation <ArrowRight aria-hidden="true" className="h-4 w-4" />
+        </Link>
+      </header>
 
-        {/* Toggle Empty vs Populated State */}
-        <div className="flex items-center space-x-2 shrink-0 flex-wrap gap-2">
-          <Link
-            href="/journey/compare-looks"
-            className="h-9 px-4 bg-gray-950 hover:bg-gray-800 text-white font-bold text-[12px] rounded-[8px] flex items-center space-x-1.5 transition-colors"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5" />
-            <span>Compare Reports</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => setIsEmptyArchive(!isEmptyArchive)}
-            className="text-[11px] font-mono font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 border border-gray-250 px-3 py-1 rounded-full shrink-0 flex items-center space-x-1"
-          >
-            {isEmptyArchive ? (
-              <>
-                <BarChart3 className="w-3.5 h-3.5 text-gray-500" />
-                <span>Show Populated Archive</span>
-              </>
-            ) : (
-              <>
-                <Eye className="w-3.5 h-3.5 text-gray-500" />
-                <span>Show Empty History State</span>
-              </>
-            )}
-          </button>
+      <section aria-label="Filter activity" className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+        <div className="flex flex-wrap gap-2">
+          {filters.map(option => (
+            <button key={option} type="button" aria-pressed={filter === option}
+              onClick={() => changeFilter(option)}
+              className={'min-h-10 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-colors ' +
+                (filter === option ? 'border-gray-950 bg-gray-950 text-white' : 'border-gray-200 text-gray-700 hover:border-gray-400')}>
+              {option === 'ALL' ? 'All' : displayJourneyStatus(option)}
+            </button>
+          ))}
         </div>
-      </div>
+        <label className="flex min-h-12 items-center gap-3 rounded-xl border border-gray-200 px-4">
+          <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500" />
+          <span className="sr-only">Search journeys on the current page</span>
+          <input type="search" value={search} onChange={event => setSearch(event.target.value)}
+            placeholder="Search this page" className="min-w-0 w-full bg-transparent text-sm text-gray-950 outline-none" />
+        </label>
+        <p className="text-xs text-gray-500">
+          Filters use your saved account records. Search only checks the journeys on the current page.
+        </p>
+      </section>
 
-      {/* EMPTY ARCHIVE STATE */}
-      {isEmptyArchive ? (
-        <div className="bg-white border border-gray-200 rounded-[24px] p-10 text-center flex flex-col items-center justify-center space-y-6 min-h-[400px] shadow-xs">
-          
-          <div className="w-20 h-20 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
-            <ArrowLeftRight className="w-8 h-8 text-gray-400" />
-          </div>
-
-          <div className="space-y-2 max-w-md">
-            <h2 className="text-[32px] font-bold text-gray-950 font-sans leading-tight">
-              No Journey History
-            </h2>
-            <p className="text-[13.5px] text-gray-600 font-normal leading-relaxed">
-              Your archive is currently empty. The Presence Journey records your analytical pathways and cognitive models over time. Begin a new analysis to establish your baseline.
-            </p>
-          </div>
-
-          <Link
-            href="/journey/start"
-            className="h-11 px-7 bg-red-600 hover:bg-red-700 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm flex items-center justify-center space-x-2 transition-all"
-          >
-            <span>Create Your First Journey</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-
-          <div className="bg-gray-50/80 border border-gray-150 rounded-[16px] p-5 text-left max-w-lg w-full space-y-1.5 mt-4">
-            <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1">
-              <Info className="w-3.5 h-3.5 text-gray-550" />
-              <span>ABOUT THE ARCHIVE</span>
-            </span>
-            <p className="text-[12px] text-gray-600 font-normal leading-relaxed">
-              Historical data enables longitudinal tracking of your intelligence models. Once generated, your journey maps will be securely stored here.
-            </p>
-          </div>
-
-        </div>
-      ) : (
-        /* POPULATED ARCHIVE STATE */
-        <div className="space-y-6">
-          {/* Search & Filter Bar */}
-          <div className="bg-gray-50/80 border border-gray-200 rounded-[20px] p-4 space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-3 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search events, themes, or dates..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-white border border-gray-250 rounded-[10px] text-[13px] text-gray-800 focus:outline-none focus:border-red-600 font-sans"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setFilter(cat)}
-                  className={`px-4 py-1.5 rounded-full text-[12px] font-mono font-bold transition-all ${
-                    filter === cat
-                      ? 'bg-gray-950 text-white shadow-xs'
-                      : 'bg-white border border-gray-250 text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Vertical Timeline List */}
-          <div className="relative pl-6 space-y-8 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-gray-200">
-            {filtered.map((j) => (
-              <div key={j.id} className="relative group">
-                <div
-                  className={`absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 bg-white transition-all ${
-                    j.isLatest ? 'border-red-600 bg-red-600 ring-4 ring-red-100' : 'border-gray-400'
-                  }`}
-                />
-
-                <div className="bg-white border border-gray-200 rounded-[20px] p-6 shadow-xs space-y-4">
-                  <div className="flex items-start justify-between border-b border-gray-100 pb-3">
-                    <div className="space-y-0.5">
-                      <span className="text-[10.5px] font-mono text-gray-400 uppercase tracking-wider block">
-                        {j.date}
-                      </span>
-                      <h3 className="text-[22px] font-bold text-gray-950 font-sans leading-tight">
-                        {j.title}
-                      </h3>
-                      <p className="text-[12.5px] text-gray-500 font-mono">
-                        Target Audience: <span className="text-gray-800 font-medium">{j.target}</span>
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-[32px] font-extrabold text-gray-950 font-sans leading-none block">
-                        {j.score}
-                      </span>
-                      <span className="text-[9.5px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
-                        PRESENCE INDEX
-                      </span>
-                    </div>
-                  </div>
-
-                  {!j.archived ? (
-                    <div className="bg-gray-50/70 border border-gray-150 rounded-[16px] p-4 space-y-2">
-                      <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1.5">
-                        <Shirt className="w-3.5 h-3.5 text-gray-500" />
-                        <span>SELECTED OUTFIT</span>
-                      </span>
-
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-1">
-                        <div className="w-16 h-16 rounded-[12px] overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
-                          <img src={j.image} alt={j.outfitName} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="space-y-1 flex-1">
-                          <h4 className="text-[14.5px] font-bold text-gray-950 font-sans">
-                            {j.outfitName}
-                          </h4>
-                          <p className="text-[12px] text-gray-600 font-normal leading-relaxed">
-                            {j.outfitDesc}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50/70 border border-gray-150 rounded-[16px] p-4 space-y-2">
-                      <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center space-x-1.5">
-                        <History className="w-3.5 h-3.5 text-gray-500" />
-                        <span>ARCHIVED DATA</span>
-                      </span>
-                      <p className="text-[12px] text-gray-500 font-normal italic">
-                        Outfit imagery archived. Primary index metrics retained.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Priority 3 Action Buttons Toolbar */}
-                  <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/journey/${j.id}`}
-                      className="h-8 px-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Open Plan Hub</span>
-                    </Link>
-
-                    <Link
-                      href="/journey/checklist"
-                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <CheckSquare className="w-3.5 h-3.5" />
-                      <span>Checklist</span>
-                    </Link>
-
-                    <Link
-                      href="/journey/compare-looks"
-                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                      <span>Compare Looks</span>
-                    </Link>
-
-                    <Link
-                      href="/journey/export"
-                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Export</span>
-                    </Link>
-
-                    <Link
-                      href="/journey/share"
-                      className="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-[8px] flex items-center space-x-1 transition-colors"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span>Share</span>
-                    </Link>
-
-                    <div className="ml-auto flex items-center space-x-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleArchive(j.id)}
-                        className="h-8 px-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold text-[11.5px] rounded-[8px] border border-gray-200 flex items-center space-x-1"
-                        title="Archive/Unarchive"
-                      >
-                        <Archive className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(j.id)}
-                        className="h-8 px-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11.5px] rounded-[8px] border border-red-200 flex items-center space-x-1"
-                        title="Delete Journey"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
+      {notice && (
+        <p role="status" className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-700">
+          {notice}
+        </p>
       )}
 
+      {state.status === 'loading' ? <WorkspaceLoading label="Loading saved activity" /> :
+        state.status === 'error' ? <WorkspaceError
+          title="Activity is unavailable"
+          description="We couldn't load this page of your saved journeys. Your records remain unchanged."
+          onRetry={() => { setState({ status: 'loading' }); setReload(n => n + 1); }} /> :
+        state.pagination.total_items === 0 && filter === 'ALL' ? (
+          <WorkspaceEmpty title="No journeys saved yet"
+            description="Your saved activity will appear here once you begin an event preparation."
+            href="/journey/start" action="Start your first preparation"
+            icon={<History aria-hidden="true" className="h-6 w-6" />} />
+        ) : state.pagination.total_items === 0 ? (
+          <section className="rounded-2xl border border-gray-200 bg-white p-7 sm:p-9">
+            <h2 className="text-lg font-semibold text-gray-950">No {displayJourneyStatus(filter).toLowerCase()} journeys</h2>
+            <p className="mt-2 text-sm text-gray-600">Try another status to find your saved activity.</p>
+          </section>
+        ) : (
+          <section className="space-y-4" aria-label="Journey results">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-gray-950">Saved journeys</h2>
+              <p className="text-xs tabular-nums text-gray-500">
+                {Math.min((page - 1) * PAGE_SIZE + 1, state.pagination.total_items)}
+                {'–'}
+                {Math.min(page * PAGE_SIZE, state.pagination.total_items)}
+                {' of '}
+                {state.pagination.total_items}
+              </p>
+            </div>
+            {visible.length === 0 ? (
+              <div className="rounded-2xl border border-gray-200 bg-white p-7">
+                <p className="text-sm text-gray-600">No results on this page match your search.</p>
+                <button type="button" onClick={() => setSearch('')} className="mt-4 min-h-11 text-sm font-semibold text-red-700">Clear search</button>
+              </div>
+            ) : (
+              <ul className="grid gap-3">
+                {visible.map(journey => (
+                  <li key={journey.id} className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="inline-flex items-center gap-2 text-xs text-gray-500">
+                          <CalendarDays aria-hidden="true" className="h-3.5 w-3.5" />
+                          {formatWorkspaceDate(journey.updated_at)}
+                        </p>
+                        <h3 className="mt-2 break-words text-lg font-semibold text-gray-950">{journey.title}</h3>
+                        {journey.event?.dress_code && <p className="mt-1 text-xs text-gray-600">Dress code: {journey.event.dress_code}</p>}
+                      </div>
+                      <span className={'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ' +
+                        (journey.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-800' :
+                          journey.status === 'ARCHIVED' ? 'bg-gray-100 text-gray-600' :
+                            'bg-amber-50 text-amber-900')}>
+                        {displayJourneyStatus(journey.status)}
+                      </span>
+                    </div>
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                      <Link href={'/journey/' + journey.id}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white">
+                        Open details <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                      </Link>
+                      {journey.status !== 'ARCHIVED' && (
+                        <button type="button" disabled={Boolean(archiving)}
+                          onClick={() => { void archive(journey.id); }}
+                          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                          <Archive aria-hidden="true" className="h-4 w-4" />
+                          {archiving === journey.id ? 'Archiving…' : 'Archive'}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <nav aria-label="Activity pages" className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-3 sm:px-5">
+              <button type="button" disabled={page <= 1 || Boolean(archiving)}
+                onClick={() => { setSearch(''); setState({ status: 'loading' }); setPage(x => Math.max(1, x - 1)); }}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40">
+                <ChevronLeft aria-hidden="true" className="h-4 w-4" /> Previous
+              </button>
+              <span className="text-xs font-medium tabular-nums text-gray-600">
+                Page {page} of {Math.max(1, state.pagination.total_pages)}
+              </span>
+              <button type="button" disabled={page >= state.pagination.total_pages || Boolean(archiving)}
+                onClick={() => { setSearch(''); setState({ status: 'loading' }); setPage(x => x + 1); }}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40">
+                Next <ChevronRight aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </nav>
+          </section>
+        )}
+      <Link href="/dashboard" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-950">
+        <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Back to overview
+      </Link>
     </div>
   );
 }

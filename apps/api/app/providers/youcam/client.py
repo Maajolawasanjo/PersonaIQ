@@ -21,7 +21,7 @@ class YouCamClient:
     BASE_URL = "https://yce-api-01.makeupar.com"
 
     def __init__(self):
-        self.api_key = (settings.YOUCAM_API_KEY or "test_mock_key").strip()
+        self.api_key = settings.YOUCAM_API_KEY.strip()
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -29,6 +29,9 @@ class YouCamClient:
 
     async def create_skin_analysis_task(self, image_url: str) -> YouCamTaskCreateResponse:
         """Initiates async Skin Analysis task using a public image URL or file ID."""
+        if not self.api_key:
+            raise YouCamAuthError("Skin analysis provider has not been configured.")
+
         payload = {
             "src_file_url": image_url,
             "dst_actions": [
@@ -60,11 +63,12 @@ class YouCamClient:
                 logger.warning(f"YouCam API task creation attempt {attempt} failed: {e}")
                 await asyncio.sleep(0.5)
 
-        # Return fallback task ID if API key or endpoint fails
-        return YouCamTaskCreateResponse(task_id="fallback_task_id", status_code=200)
+        raise YouCamProviderError("Skin analysis provider could not create a real task.")
 
     async def get_task_status(self, task_id: str) -> YouCamTaskStatusResponse:
         """Polls status for a given task_id."""
+        if not self.api_key:
+            raise YouCamAuthError("Skin analysis provider has not been configured.")
         for attempt in range(1, 4):
             try:
                 async with httpx.AsyncClient(timeout=15.0) as client:
@@ -75,7 +79,7 @@ class YouCamClient:
                     
                     if res.status_code == 200:
                         data = res.json().get("data", {})
-                        status = data.get("task_status", "running")
+                        status = data.get("task_status", "unknown")
                         
                         outputs = []
                         output_list = data.get("results", {}).get("output", [])
@@ -83,21 +87,25 @@ class YouCamClient:
                             outputs.append(
                                 YouCamResultItem(
                                     type=item.get("type", "unknown"),
-                                    ui_score=item.get("ui_score", 80),
-                                    raw_score=float(item.get("raw_score", 80.0)),
+                                    ui_score=int(item["ui_score"]),
+                                    raw_score=float(item["raw_score"]),
                                     mask_urls=item.get("mask_urls", []),
                                 )
                             )
                         
-                        return YouCamTaskStatusResponse(
-                            task_id=task_id,
-                            task_status=status,
-                            output=outputs,
-                            raw_response=data,
-                        )
+                        if status == "success" and outputs:
+                            return YouCamTaskStatusResponse(
+                                task_id=task_id,
+                                task_status=status,
+                                output=outputs,
+                                raw_response=data,
+                            )
+                        if status in ("error", "failed"):
+                            raise YouCamProviderError("Skin analysis provider rejected the task.")
+                        # A running task must not be treated as completed.
+                        await asyncio.sleep(1.0)
                     elif res.status_code == 401:
-                        logger.warning("YouCam API 401 Auth Error (invalid or expired key). Using fallback mock metrics.")
-                        break
+                        raise YouCamAuthError()
                     elif res.status_code == 429:
                         raise YouCamRateLimitError()
             except (httpx.TimeoutException, httpx.ConnectError) as e:
@@ -105,13 +113,4 @@ class YouCamClient:
                     raise YouCamTimeoutError(str(e))
                 await asyncio.sleep(1.0)
 
-        return YouCamTaskStatusResponse(
-            task_id=task_id,
-            task_status="success",
-            output=[
-                YouCamResultItem(type="radiance", ui_score=86, raw_score=86.0),
-                YouCamResultItem(type="moisture", ui_score=90, raw_score=90.0),
-                YouCamResultItem(type="texture", ui_score=85, raw_score=85.0),
-                YouCamResultItem(type="pore", ui_score=88, raw_score=88.0),
-            ]
-        )
+        raise YouCamProviderError("Skin analysis provider did not return a completed result.")

@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import {
-  AuthTokens,
+  AuthSession,
+  RegistrationResult,
   DashboardOverview,
   Journey,
   OutfitUpload,
@@ -8,31 +9,33 @@ import {
   PresencePlan,
   SelfieUpload,
   UserProfile,
+  WardrobeItem,
+  SavedWardrobeLook,
 } from './types';
 
 export const authApi = {
-  signUp: (email: string, password: string, firstName: string, lastName: string): Promise<AuthTokens> =>
-    apiClient.post<AuthTokens>('/auth/sign-up', {
+  signUp: (email: string, password: string, firstName: string, lastName: string): Promise<RegistrationResult> =>
+    apiClient.post<RegistrationResult>('/auth/sign-up', {
       email,
       password,
       first_name: firstName,
       last_name: lastName,
     }),
 
-  signIn: (email: string, password: string): Promise<AuthTokens> =>
-    apiClient.post<AuthTokens>('/auth/sign-in', {
+  signIn: (email: string, password: string): Promise<AuthSession> =>
+    apiClient.post<AuthSession>('/auth/sign-in', {
       email,
       password,
     }),
 
-  verifyOtp: (email: string, code: string): Promise<AuthTokens> =>
-    apiClient.post<AuthTokens>('/auth/verify-otp', {
+  verifyOtp: (email: string, code: string): Promise<AuthSession> =>
+    apiClient.post<AuthSession>('/auth/verify-otp', {
       email,
       code,
     }),
 
-  resendOtp: (email: string): Promise<{ success: boolean }> =>
-    apiClient.post<{ success: boolean }>('/auth/resend-otp', {
+  resendOtp: (email: string): Promise<{ requested: boolean }> =>
+    apiClient.post<{ requested: boolean }>('/auth/resend-otp', {
       email,
     }),
 
@@ -47,16 +50,24 @@ export const authApi = {
       new_password: newPassword,
     }),
 
-  logout: (refreshToken: string): Promise<{ logged_out: boolean }> =>
-    apiClient.post<{ logged_out: boolean }>('/auth/logout', {
-      refresh_token: refreshToken,
-    }),
+  logout: (): Promise<{ logged_out: boolean }> =>
+    apiClient.post<{ logged_out: boolean }>('/auth/logout', {}),
+
+  refreshSession: (): Promise<{ authenticated: boolean }> =>
+    apiClient.post<{ authenticated: boolean }>('/auth/refresh', {}),
 
   getMe: (): Promise<UserProfile> => apiClient.get<UserProfile>('/auth/me'),
 };
 
 export const userApi = {
   getProfile: (): Promise<UserProfile> => apiClient.get<UserProfile>('/profile'),
+
+  completeOnboarding: (data: {
+    first_name: string;
+    last_name: string;
+    occupation?: string;
+    default_event_type?: string;
+  }): Promise<UserProfile> => apiClient.patch<UserProfile>('/profile/onboarding', data),
 
   updateProfile: (data: {
     first_name?: string;
@@ -77,8 +88,11 @@ export const userApi = {
     new_password: string;
   }): Promise<{ success: boolean }> => apiClient.post<{ success: boolean }>('/profile/change-password', data),
 
-  deleteAccount: (): Promise<{ deleted: boolean }> =>
-    apiClient.delete<{ deleted: boolean }>('/profile/account'),
+  deleteAccount: (currentPassword: string): Promise<{ deleted: boolean }> =>
+    apiClient.request<{ deleted: boolean }>('/profile/account', {
+      method: 'DELETE',
+      body: JSON.stringify({ password: currentPassword }),
+    }),
 
   getSessions: (): Promise<import('./types').UserSession[]> =>
     apiClient.get<import('./types').UserSession[]>('/profile/sessions'),
@@ -109,10 +123,20 @@ export const journeyApi = {
   getJourney: (journeyId: string): Promise<Journey> =>
     apiClient.get<Journey>(`/journeys/${journeyId}`),
 
-  listJourneys: (page = 1, limit = 10, status?: string): Promise<PaginatedResponse<Journey>> => {
-    let url = `/journeys?page=${page}&limit=${limit}`;
-    if (status) url += `&status_filter=${status}`;
-    return apiClient.request<PaginatedResponse<Journey>>(url, { method: 'GET' });
+  // ApiClient unwraps the standard response data, returning an array of Journey.
+  listJourneys: (page = 1, limit = 10, status?: string): Promise<Journey[]> => {
+    let url = `/journeys?page=${page}&page_size=${limit}`;
+    if (status) url += `&status=${encodeURIComponent(status)}`;
+    return apiClient.get<Journey[]>(url);
+  },
+
+  getJourneyPage: (page = 1, limit = 12, status?: string): Promise<{
+    items: Journey[];
+    pagination: import('./types').PaginationMeta;
+  }> => {
+    let endpoint = `/journeys?page=${page}&page_size=${limit}`;
+    if (status && status !== 'ALL') endpoint += `&status=${encodeURIComponent(status)}`;
+    return apiClient.getPage<Journey>(endpoint);
   },
 
   archiveJourney: (journeyId: string): Promise<Journey> =>
@@ -120,6 +144,10 @@ export const journeyApi = {
 };
 
 export const uploadApi = {
+  getSelfiePreview: (journeyId: string): Promise<{ url: string; expires_in: number }> =>
+    apiClient.get<{ url: string; expires_in: number }>(
+      '/uploads/selfie/' + encodeURIComponent(journeyId) + '/preview'
+    ),
   uploadSelfie: (journeyId: string, file: File): Promise<SelfieUpload> => {
     const formData = new FormData();
     formData.append('journey_id', journeyId);
@@ -149,14 +177,21 @@ export const dashboardApi = {
 };
 
 export const wardrobeApi = {
-  listItems: (category?: string): Promise<any> =>
-    apiClient.get<any>(`/wardrobe${category ? `?category=${category}` : ''}`),
-  createItem: (data: { name: string; category: string; color?: string; formality?: string }): Promise<any> =>
-    apiClient.post<any>('/wardrobe', data),
+  listItems: (category?: string): Promise<WardrobeItem[]> =>
+    apiClient.get<WardrobeItem[]>(`/wardrobe${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  createItem: (data: { name: string; category: string; color?: string; formality?: string }): Promise<WardrobeItem> =>
+    apiClient.post<WardrobeItem>('/wardrobe', data),
+  setFavorite: (itemId: string, isFavorite: boolean): Promise<WardrobeItem> =>
+    apiClient.patch<WardrobeItem>(`/wardrobe/${itemId}/favorite`, { is_favorite: isFavorite }),
+  listOutfits: (): Promise<SavedWardrobeLook[]> =>
+    apiClient.get<SavedWardrobeLook[]>('/wardrobe/outfits'),
+  saveOutfit: (data: { name: string; image_url: string; items: object[]; journey_id?: string }): Promise<SavedWardrobeLook> =>
+    apiClient.post<SavedWardrobeLook>('/wardrobe/outfits', data),
 };
 
 export const plansApi = {
-  listPlans: (): Promise<any> => apiClient.get<any>('/plans'),
+  listPlans: (): Promise<import('./types').SavedPlanSummary[]> =>
+    apiClient.get<import('./types').SavedPlanSummary[]>('/plans'),
   getChecklist: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/checklist`),
   getBoosters: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/boosts`),
   getExplanation: (journeyId: string): Promise<any> => apiClient.get<any>(`/plans/${journeyId}/explanation`),

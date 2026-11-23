@@ -31,7 +31,7 @@ export function AuthLayout({
         {/* Subtle watermark text & gradient glow */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
           <div className="absolute -left-10 top-1/2 -translate-y-1/2 font-mono font-black text-[120px] text-white/[0.025] tracking-[0.3em] whitespace-nowrap uppercase rotate-90 origin-left">
-            PERSONAIQ • TELEMETRY
+            PERSONAIQ • STYLING
           </div>
           <div className="absolute left-12 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent" />
         </div>
@@ -59,9 +59,9 @@ export function AuthLayout({
           <span className="text-[11px] font-bold font-mono text-primary tracking-[0.2em] uppercase">
             {badgeText}
           </span>
-          <h1 className="text-[36px] xl:text-[44px] font-extrabold tracking-tight text-white leading-[1.12] font-sans">
+          <h2 className="text-[36px] xl:text-[44px font-extrabold tracking-tight text-white leading-[1.12] font-sans">
             {headline}
-          </h1>
+          </h2>
           <p className="text-[15.5px] text-gray-400 leading-relaxed font-normal">
             {subheadline}
           </p>
@@ -71,9 +71,9 @@ export function AuthLayout({
         <div className="relative z-10 pt-6 border-t border-white/[0.08] flex items-center justify-between text-[12.5px] text-gray-500 font-mono">
           <span className="flex items-center space-x-1.5">
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            <span>256-Bit TLS Encrypted</span>
+            <span>Private account sessions</span>
           </span>
-          <span>Zero Data Retention</span>
+          <span>Image storage disclosed in Privacy Information</span>
         </div>
       </div>
 
@@ -139,8 +139,8 @@ export function AuthLayout({
 
         {/* Mobile & Desktop Security Disclaimer */}
         <div className="w-full max-w-lg mx-auto text-center text-[11.5px] sm:text-[12.5px] text-gray-500 pt-4 sm:pt-6 border-t border-gray-200/60 mt-4">
-          <span>Protected by PersonaIQ Defensive Privacy Guard • </span>
-          <Link href="/support" className="text-gray-700 font-semibold hover:underline min-h-[44px] inline-flex items-center">
+          <span>Protect your account with a strong password • </span>
+          <Link href="/contact" className="text-gray-700 font-semibold hover:underline min-h-[44px] inline-flex items-center">
             Contact Support
           </Link>
         </div>

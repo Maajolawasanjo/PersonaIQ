@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
+import secrets
 from uuid import UUID
 from typing import Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +14,7 @@ from app.core.security import (
     hash_token,
     verify_password,
 )
-from app.dto.auth import AuthTokenDTO, RefreshTokenRequest, SignInRequest, SignUpRequest
+from app.dto.auth import AuthTokenDTO, RefreshTokenRequest, SignInRequest, SignUpRequest, RegistrationResultDTO
 from app.dto.user import OnboardingRequest, UpdateProfileRequest, UserDTO
 from app.repositories.user_repository import UserRepository
 
@@ -25,7 +28,16 @@ class AuthService:
             return None
         return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
-    async def sign_up(self, request: SignUpRequest, background_tasks: Optional[Any] = None) -> AuthTokenDTO:
+    @staticmethod
+    def _otp_digest(email: str, code: str) -> str:
+        # Existing OTP column is varchar(10). Use a keyed, constant-time
+        # comparison and rate limiting; never store the plain verification code.
+        payload = f"verify-email:{email.lower().strip()}:{code}".encode()
+        return hmac.new(
+            settings.SECRET_KEY.encode(), payload, hashlib.sha256
+        ).hexdigest()[:10]
+
+    async def sign_up(self, request: SignUpRequest, background_tasks: Optional[Any] = None) -> RegistrationResultDTO:
         existing = await self.repo.get_by_email(request.email)
         if existing:
             raise AppException(
@@ -33,35 +45,117 @@ class AuthService:
                 message="An account with this email address already exists.",
                 status_code=400,
             )
-
-        hashed_pw = hash_password(request.password)
+        code = f"{secrets.randbelow(1000000):06d}"
         user = await self.repo.create(
-            email=request.email,
-            hashed_password=hashed_pw,
-            first_name=request.first_name,
-            last_name=request.last_name,
+            email=request.email.lower().strip(),
+            hashed_password=hash_password(request.password),
+            first_name=request.first_name.strip(),
+            last_name=request.last_name.strip(),
         )
+        user.is_verified = False
+        user.otp_code = self._otp_digest(user.email, code)
+        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
-        # Auto-verify account immediately on signup for friction-free judge experience
+        # Fail closed if production mail is disabled or unconfigured.
+        if settings.ENVIRONMENT.lower() in {"production", "prod"} and (
+            not settings.ENABLE_EMAIL_NOTIFICATIONS
+            or not settings.SMTP_USER
+            or not settings.SMTP_PASSWORD
+        ):
+            raise AppException(
+                code=ErrorCode.SYS_002,
+                message="Email verification is not configured. Registration is unavailable.",
+                status_code=503,
+            )
+
+        # A successful response must not promise delivery when email is
+        # unavailable. The transaction rolls back if delivery fails.
+        from app.services.email_service import EmailService
+        delivered = await EmailService().send_email_verification_email(user.email, code)
+        if not delivered:
+            raise AppException(
+                code=ErrorCode.SYS_002,
+                message="Email verification is currently unavailable. Please try again later.",
+                status_code=503,
+            )
+        return RegistrationResultDTO(email=user.email)
+
+    async def verify_otp(self, email: str, code: str) -> AuthTokenDTO:
+        user = await self.repo.get_by_email(email)
+        now = datetime.now(timezone.utc)
+        if not user or user.is_verified or not user.is_active or user.deleted_at:
+            raise AppException(
+                code=ErrorCode.AUTH_002,
+                message="Verification code is invalid or expired.",
+                status_code=400,
+            )
+        lock = self._ensure_utc(user.locked_until)
+        if lock and lock > now:
+            raise AppException(
+                code=ErrorCode.AUTH_003,
+                message="Too many attempts. Try again later.",
+                status_code=429,
+            )
+        valid = (
+            user.otp_code
+            and user.otp_expires_at
+            and self._ensure_utc(user.otp_expires_at) > now
+            and hmac.compare_digest(
+                user.otp_code, self._otp_digest(user.email, code)
+            )
+        )
+        if not valid:
+            user.failed_login_attempts += 1
+            if user.failed_login_attempts >= 5:
+                user.locked_until = now + timedelta(minutes=10)
+            await self.repo.db.commit()
+            raise AppException(
+                code=ErrorCode.AUTH_002,
+                message="Verification code is invalid or expired.",
+                status_code=400,
+            )
         user.is_verified = True
         user.otp_code = None
         user.otp_expires_at = None
-        await self.repo.db.commit()
-
-        # Send welcome email via FastAPI BackgroundTasks (non-blocking)
-        from app.services.email_service import EmailService
-        user_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-        email_service = EmailService()
-        email_service.dispatch(
-            background_tasks,
-            email_service.send_welcome_email,
-            user.email,
-            user_name,
-        )
-
+        user.failed_login_attempts = 0
+        user.locked_until = None
         return await self._generate_auth_tokens(user)
 
-
+    async def resend_otp(self, email: str) -> None:
+        user = await self.repo.get_by_email(email)
+        if not user or user.is_verified or not user.is_active or user.deleted_at:
+            return
+        now = datetime.now(timezone.utc)
+        locked_until = self._ensure_utc(user.locked_until)
+        if locked_until and locked_until > now:
+            return
+        # Reissuing earlier than 60 seconds would let attackers rotate
+        # the verification challenge and spam a recipient.
+        expires = self._ensure_utc(user.otp_expires_at)
+        if expires and expires > now + timedelta(minutes=9):
+            return
+        if settings.ENVIRONMENT.lower() in {"production", "prod"} and (
+            not settings.ENABLE_EMAIL_NOTIFICATIONS
+            or not settings.SMTP_USER
+            or not settings.SMTP_PASSWORD
+        ):
+            raise AppException(
+                code=ErrorCode.SYS_002,
+                message="Email verification is not configured.",
+                status_code=503,
+            )
+        code = f"{secrets.randbelow(1000000):06d}"
+        from app.services.email_service import EmailService
+        sent = await EmailService().send_email_verification_email(user.email, code)
+        if not sent:
+            raise AppException(
+                code=ErrorCode.SYS_002,
+                message="Email verification is temporarily unavailable.",
+                status_code=503,
+            )
+        user.otp_code = self._otp_digest(user.email, code)
+        user.otp_expires_at = now + timedelta(minutes=10)
+        user.failed_login_attempts = 0
 
     async def request_password_reset(self, email: str, background_tasks: Optional[Any] = None) -> None:
         user = await self.repo.get_by_email(email)
@@ -72,7 +166,7 @@ class AuthService:
         from app.services.email_service import EmailService
 
         token = secrets.token_urlsafe(32)
-        user.reset_token = token
+        user.reset_token = hash_token(token)
         user.reset_expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
         await self.repo.db.commit()
 
@@ -88,7 +182,7 @@ class AuthService:
         from sqlalchemy import select
         from app.models.user import User
 
-        query = select(User).where(User.reset_token == token, User.deleted_at.is_(None))
+        query = select(User).where(User.reset_token == hash_token(token), User.deleted_at.is_(None))
         result = await self.repo.db.execute(query)
         user = result.scalar_one_or_none()
 
@@ -109,8 +203,8 @@ class AuthService:
         user.hashed_password = hash_password(new_password)
         user.reset_token = None
         user.reset_expires_at = None
-        await self.repo.db.commit()
         await self.repo.revoke_all_user_tokens(user.id)
+        await self.repo.db.commit()
 
         from app.services.email_service import EmailService
         email_service = EmailService()
@@ -141,15 +235,28 @@ class AuthService:
 
         if not verify_password(request.password, user.hashed_password):
             await self.repo.increment_failed_logins(user)
+            if user.failed_login_attempts >= 5:
+                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=10)
+            await self.repo.db.commit()
             raise AppException(
                 code=ErrorCode.AUTH_001,
                 message="Invalid email or password.",
                 status_code=401,
             )
 
+        if not user.is_active or user.deleted_at:
+            raise AppException(
+                code=ErrorCode.AUTH_001,
+                message="Invalid email or password.",
+                status_code=401,
+            )
+        if not user.is_verified:
+            raise AppException(
+                code=ErrorCode.AUTH_005,
+                message="Please verify your email before signing in.",
+                status_code=403,
+            )
         await self.repo.reset_failed_logins(user)
-
-        user.is_verified = True
         await self.repo.db.commit()
 
         from app.services.email_service import EmailService
@@ -178,10 +285,15 @@ class AuthService:
                 status_code=401,
             )
 
-        # Revoke used refresh token (Token rotation)
-        await self.repo.revoke_refresh_token(token_h)
-
         user = token_entry.user
+        if not user.is_active or not user.is_verified or user.deleted_at:
+            raise AppException(
+                code=ErrorCode.AUTH_002,
+                message="Session is no longer active.",
+                status_code=401,
+            )
+        # Rotate only after validating account status.
+        await self.repo.revoke_refresh_token(token_h)
         return await self._generate_auth_tokens(user)
 
     async def logout(self, refresh_token: str) -> None:
@@ -198,8 +310,12 @@ class AuthService:
         user.occupation = request.occupation
         user.onboarding_completed = True
 
-        if request.default_event_type and user.preference:
-            user.preference.default_event_type = request.default_event_type
+        if request.default_event_type:
+            await self.repo.update_user_preference(
+                user_id,
+                {"default_event_type": request.default_event_type},
+            )
+            await self.repo.db.refresh(user, attribute_names=["preference"])
 
         return UserDTO.model_validate(user)
 
@@ -242,14 +358,26 @@ class AuthService:
         await self.repo.db.flush()
         await self.repo.revoke_all_user_tokens(user_id)
 
-    async def delete_account(self, user_id: UUID) -> None:
+    async def delete_account(self, user_id: UUID, current_password: str) -> None:
         user = await self.repo.get_by_id(user_id)
         if not user:
             raise AppException(code=ErrorCode.USER_001, message="User not found.", status_code=404)
 
+        if not verify_password(current_password, user.hashed_password):
+            raise AppException(
+                code=ErrorCode.AUTH_001,
+                message="Current password is incorrect.",
+                status_code=400,
+            )
+
         email = user.email
         first_name = user.first_name
 
+        # Removing a database row never removes its stored object. Purge
+        # owned media first, otherwise preserve the account for retry.
+        from app.services.storage_service import StorageService
+        media_refs = await self.repo.list_user_media_references(user_id)
+        await StorageService().delete_owned_uploads(media_refs, str(user_id))
         await self.repo.hard_delete_user_data(user_id)
 
         from app.services.email_service import EmailService

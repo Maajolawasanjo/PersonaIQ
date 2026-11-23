@@ -16,15 +16,22 @@ export default function CaptureLookPage() {
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [source, setSource] = useState<'none' | 'upload' | 'model'>('none');
+  const [uploadComplete, setUploadComplete] = useState(false);
 
   // 1. Trigger Native File Picker
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      uploadPhoto(file, url);
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      setErrorMsg('Choose a JPG, PNG, or WEBP image no larger than 10 MB.');
+      return;
     }
+    setSource('upload');
+    setUploadComplete(false);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    void uploadPhoto(file);
   };
 
   // 2. Start Web Camera Stream
@@ -61,41 +68,61 @@ export default function CaptureLookPage() {
         stream?.getTracks().forEach((track) => track.stop());
         setIsCameraActive(false);
 
-        // Convert base64 to File for API upload
+        setSource('upload');
+        setUploadComplete(false);
         fetch(dataUrl)
           .then((res) => res.blob())
-          .then((blob) => {
-            const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
-            uploadPhoto(file, dataUrl);
-          });
+          .then((blob) => void uploadPhoto(new File([blob], 'selfie.jpg', { type: 'image/jpeg' })))
+          .catch(() => setErrorMsg('The camera image could not be prepared. Please retake it.'));
       }
     }
   };
 
   // 4. Upload Photo to Backend API & Store Local Preview
-  const uploadPhoto = async (file: File, displayUrl: string) => {
+  const uploadPhoto = async (file: File) => {
     setIsUploading(true);
     setErrorMsg(null);
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('personaiq_user_selfie_preview', displayUrl);
-        const journeyId = localStorage.getItem('personaiq_active_journey_id');
-        if (journeyId) {
-          await uploadApi.uploadSelfie(journeyId, file);
-        }
-      }
+      const journeyId = localStorage.getItem('personaiq_active_journey_id');
+      if (!journeyId) throw new Error('No active journey is available.');
+      const saved = await uploadApi.uploadSelfie(journeyId, file);
+      if (!saved?.id) throw new Error('Upload did not return a saved record.');
+      // The sensitive photo remains on the private storage service. Do not
+      // persist its data URL or blob in browser localStorage.
+      localStorage.removeItem('personaiq_user_selfie_preview');
+      localStorage.removeItem('personaiq_vto_avatar_id');
+      setUploadComplete(true);
     } catch (err) {
-      console.warn('Backend upload notice, using local high-res capture:', err);
+      console.error('Photo upload was not saved:', err);
+      localStorage.removeItem('personaiq_user_selfie_preview');
+      setUploadComplete(false);
+      setErrorMsg('Your photo was not saved. Check your connection and try uploading again.');
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleNext = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('personaiq_active_draft_step', '/journey/validation');
+    if (isUploading) return;
+    if (source === 'upload' && !uploadComplete) {
+      setErrorMsg('Finish uploading your photo successfully before continuing.');
+      return;
     }
-    router.push('/journey/validation');
+    if (source === 'none') {
+      setErrorMsg('Choose a photo, select a fitting model, or use Skip for now.');
+      return;
+    }
+    const nextStep = source === 'model' ? '/journey/choose-outfit' : '/journey/validation';
+    localStorage.setItem('personaiq_active_draft_step', nextStep);
+    router.push(nextStep);
+  };
+
+  const handleSkip = () => {
+    if (isUploading) return;
+    localStorage.removeItem('personaiq_user_selfie_preview');
+    localStorage.removeItem('personaiq_vto_avatar_id');
+    localStorage.setItem('personaiq_active_draft_step', '/journey/choose-outfit');
+    router.push('/journey/choose-outfit');
   };
 
   return (
@@ -104,7 +131,7 @@ export default function CaptureLookPage() {
       <input
         type="file"
         ref={fileInputRef}
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
         onChange={handleFileSelect}
         className="hidden"
       />
@@ -121,7 +148,7 @@ export default function CaptureLookPage() {
           Let&apos;s see your current look.
         </h1>
         <p className="text-[14.5px] text-gray-600 font-medium leading-relaxed">
-          Upload a recent photo or open your live camera. This will be used as the baseline for your facial skin tone, fatigue, and Presence Index™ telemetry.
+          Choose a photo for image-quality checks, or use a fitting model to explore outfit options. Photo-based skin or fatigue diagnosis is not available.
         </p>
       </div>
 
@@ -151,7 +178,10 @@ export default function CaptureLookPage() {
                 type="button"
                 onClick={() => {
                   setPreviewUrl(null);
-                  startCamera();
+                  setSource('none');
+                  setUploadComplete(false);
+                  localStorage.removeItem('personaiq_user_selfie_preview');
+                  void startCamera();
                 }}
                 className="px-3 py-1.5 bg-gray-950/80 hover:bg-gray-950 text-white font-bold text-[11px] font-mono rounded-full border border-white/20 flex items-center space-x-1 cursor-pointer"
               >
@@ -175,7 +205,7 @@ export default function CaptureLookPage() {
                 Drag & drop or click to upload photo
               </span>
               <span className="text-[12px] text-gray-500 block font-medium">
-                Supports JPG, PNG, WEBP (Max 5MB)
+                Supports JPG, PNG, WEBP (Max 10MB)
               </span>
             </div>
 
@@ -217,8 +247,11 @@ export default function CaptureLookPage() {
                     onClick={(e) => {
                       e.stopPropagation();
                       setPreviewUrl(m.img);
+                      setSource('model');
+                      setUploadComplete(false);
+                      setErrorMsg(null);
                       if (typeof window !== 'undefined') {
-                        localStorage.setItem('personaiq_user_selfie_preview', m.img);
+                        localStorage.removeItem('personaiq_user_selfie_preview');
                         localStorage.setItem('personaiq_vto_avatar_id', m.id);
                         localStorage.setItem('personaiq_vto_avatar_image', m.img);
                       }
@@ -237,7 +270,7 @@ export default function CaptureLookPage() {
         )}
 
         {errorMsg && (
-          <div className="bg-red-50 text-red-600 text-[12px] p-3 rounded-[10px] font-medium border border-red-200">
+          <div role="alert" className="bg-red-50 text-red-600 text-[12px] p-3 rounded-[10px] font-medium border border-red-200">
             {errorMsg}
           </div>
         )}
@@ -246,7 +279,7 @@ export default function CaptureLookPage() {
         <div className="bg-gray-50 border border-gray-200/80 rounded-[14px] p-4 flex items-start space-x-3 text-[12.5px] text-gray-600 leading-relaxed text-left">
           <Shield className="w-4 h-4 text-primary shrink-0 mt-0.5" />
           <p>
-            <strong className="text-gray-900 font-bold">Privacy First:</strong> Your photo is processed securely for your Presence Index™ facial telemetry and is never shared with third parties.
+            <strong className="text-gray-900 font-bold">Privacy First:</strong> Your uploaded image may be stored by our backend and processed by configured service providers. Upload only photos you are comfortable sharing for this purpose.
           </p>
         </div>
 
@@ -256,8 +289,9 @@ export default function CaptureLookPage() {
       <div className="pt-4 flex items-center justify-between">
         <button
           type="button"
-          onClick={handleNext}
-          className="text-[13.5px] font-bold text-gray-500 hover:text-gray-900"
+          onClick={handleSkip}
+          disabled={isUploading}
+          className="text-[13.5px] font-bold text-gray-500 hover:text-gray-900 disabled:opacity-50"
         >
           Skip for now
         </button>
@@ -265,10 +299,10 @@ export default function CaptureLookPage() {
         <button
           type="button"
           onClick={handleNext}
-          disabled={isUploading}
+          disabled={isUploading || source === 'none' || (source === 'upload' && !uploadComplete)}
           className="h-11 px-7 bg-primary hover:bg-primary/95 text-white font-bold text-[13.5px] rounded-[10px] shadow-sm transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-75"
         >
-          <span>{isUploading ? 'Uploading...' : 'Next Step'}</span>
+          <span>{isUploading ? 'Uploading...' : source === 'model' ? 'Choose an Outfit' : 'Next Step'}</span>
           <span>→</span>
         </button>
       </div>

@@ -1,229 +1,106 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, ShieldCheck, RefreshCw, ArrowRight, Camera, Sparkles, Activity } from 'lucide-react';
-import { VTO_MODELS } from '@/lib/catalog/vtoCatalog';
-import { analyzeImageFidelity, ImageTelemetryResult } from '@/lib/utils/imageAnalysis';
+import { CheckCircle2, ImageOff, ShieldCheck, ArrowRight } from 'lucide-react';
+import { uploadApi } from '@/lib/api/services';
 
-export default function ImageValidationPage() {
+type PhotoState =
+  | { status: 'loading' }
+  | { status: 'error'; reason: string }
+  | { status: 'ready'; src: string; width: number; height: number };
+
+export default function PhotoValidationPage() {
   const router = useRouter();
-  const [userPhoto, setUserPhoto] = useState<string>('/vto/models/male/black/male_black_base.jpg');
-  const [modelName, setModelName] = useState<string>('Black Male Fitting Model');
-  const [isValidating, setIsValidating] = useState<boolean>(true);
-  const [telemetry, setTelemetry] = useState<ImageTelemetryResult | null>(null);
+  const [photo, setPhoto] = useState<PhotoState>({ status: 'loading' });
 
   useEffect(() => {
-    async function runAnalysis() {
-      if (typeof window === 'undefined') return;
-
-      let photoUrl = '/vto/models/male/black/male_black_base.jpg';
-      let name = 'Black Male Fitting Model';
-
-      const savedPhoto = localStorage.getItem('personaiq_user_selfie_preview');
-      const savedAvatarId = localStorage.getItem('personaiq_vto_avatar_id');
-
-      if (savedPhoto && savedPhoto.length > 10) {
-        photoUrl = savedPhoto;
-        name = 'User Uploaded Selfie';
-      } else if (savedAvatarId) {
-        const found = VTO_MODELS.find((m) => m.id === savedAvatarId);
-        if (found) {
-          photoUrl = found.image_url;
-          name = found.name;
-        }
+    let active = true;
+    const load = async () => {
+      const journeyId = localStorage.getItem('personaiq_active_journey_id');
+      if (!journeyId) {
+        setPhoto({ status: 'error', reason: 'Start a journey before checking a photo.' });
+        return;
       }
-
-      setUserPhoto(photoUrl);
-      setModelName(name);
-
-      // Perform REAL HTML5 Canvas Computer Vision & Pixel Telemetry
-      const result = await analyzeImageFidelity(photoUrl);
-      setTelemetry(result);
-
-      // Save real telemetry into session
-      localStorage.setItem('personaiq_image_telemetry', JSON.stringify(result));
-      if (result.skinTone) {
-        localStorage.setItem('personaiq_skin_undertone', result.skinTone.undertone);
+      try {
+        const link = await uploadApi.getSelfiePreview(journeyId);
+        if (!link.url.startsWith('https://')) throw new Error('No private image link');
+        const image = new Image();
+        image.onload = () => {
+          if (!active) return;
+          if (image.naturalWidth < 400 || image.naturalHeight < 400) {
+            setPhoto({ status: 'error', reason: 'Please upload a photo at least 400 × 400 pixels.' });
+          } else {
+            setPhoto({ status: 'ready', src: link.url, width: image.naturalWidth, height: image.naturalHeight });
+          }
+        };
+        image.onerror = () => {
+          if (active) setPhoto({ status: 'error', reason: 'The photo could not be displayed. Please upload it again.' });
+        };
+        image.src = link.url;
+      } catch {
+        if (active) setPhoto({
+          status: 'error',
+          reason: 'Your saved photo could not be accessed securely. Please return to capture and retry.',
+        });
       }
-
-      setIsValidating(false);
-    }
-
-    runAnalysis();
+    };
+    void load();
+    return () => { active = false; };
   }, []);
 
-  const handleBeginAnalysis = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('personaiq_active_draft_step', '/journey/skin-intelligence');
-    }
+  const next = () => {
+    if (photo.status !== 'ready') return;
+    localStorage.setItem('personaiq_active_draft_step', '/journey/skin-intelligence');
     router.push('/journey/skin-intelligence');
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn py-6">
-      {/* Top Header Bar */}
-      <div className="bg-gray-950 text-white px-5 py-3.5 rounded-t-2xl flex items-center justify-between text-xs font-mono font-bold tracking-wide border border-gray-800">
-        <div className="flex items-center space-x-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Real-time Image Vision & Telemetry Check | Presence Journey</span>
-        </div>
-        <span className="text-[10px] text-gray-400 font-mono">STEP 4 OF 6</span>
-      </div>
+    <main className="mx-auto max-w-3xl space-y-6 py-6">
+      <header className="rounded-2xl bg-gray-950 px-6 py-5 text-white">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
+          <ShieldCheck className="h-4 w-4 text-emerald-400" />
+          Private photo preview
+        </p>
+        <h1 className="mt-3 text-3xl font-bold">Check your photo</h1>
+        <p className="mt-2 text-sm text-gray-300">
+          Confirm that the image is clear and large enough for outfit planning.
+          This check does not detect a face or diagnose skin, fatigue, or health.
+        </p>
+      </header>
 
-      {/* Main Validation Card */}
-      <div className="bg-white border border-gray-200 border-t-0 rounded-b-2xl p-6 sm:p-8 shadow-xs grid grid-cols-1 sm:grid-cols-12 gap-7 items-center">
-        
-        {/* Left Column: Portrait Viewfinder Feed */}
-        <div className="sm:col-span-5 relative aspect-[3/4] bg-gray-950 rounded-2xl overflow-hidden border border-gray-800 shadow-md">
-          <img
-            src={userPhoto}
-            alt="Validated Capture"
-            className="w-full h-full object-cover"
-          />
-
-          {/* Scanner Grid Overlay */}
-          <div className="absolute inset-0 border-2 border-red-500/30 pointer-events-none" />
-          <div className="absolute top-1/3 left-0 right-0 h-[2px] bg-red-600 shadow-[0_0_12px_#dc2626] animate-pulse" />
-
-          {/* Live Feed Badge */}
-          <div className="absolute bottom-3 left-3 right-3 bg-gray-950/85 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10.5px] font-mono font-bold flex items-center justify-between border border-white/10">
-            <div className="flex items-center space-x-1.5">
-              <span className={`w-2 h-2 rounded-full ${isValidating ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
-              <span>{isValidating ? 'SAMPLING PIXELS...' : 'PIXEL SCAN COMPLETE'}</span>
-            </div>
-            <span className="text-[10px] font-mono text-gray-300 truncate max-w-[120px]">{modelName}</span>
-          </div>
-        </div>
-
-        {/* Right Column: Pre-Analysis Check Checklist */}
-        <div className="sm:col-span-7 space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2 text-red-600 font-bold">
-              <Activity className="w-5 h-5" />
-              <h2 className="text-2xl font-bold text-gray-950 font-sans leading-tight">
-                Computer Vision Pre-Check
-              </h2>
-            </div>
-            <p className="text-xs text-gray-600 font-medium leading-relaxed">
-              Analyzing sampled RGB contrast, pixel resolution ({telemetry?.width || '--'}x{telemetry?.height || '--'}px), and skin tone luma telemetry.
-            </p>
-          </div>
-
-          {/* Diagnostic Telemetry Meters */}
-          <div className="space-y-4 pt-1">
-            
-            {/* Meter 1: Face Detection & Alignment */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-bold text-gray-950">Face Framing & Alignment</span>
-                </div>
-                <span className="font-mono font-bold text-emerald-600">
-                  {telemetry ? telemetry.faceDetectionText : 'Calculating...'}
-                </span>
-              </div>
-              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-emerald-500 h-full rounded-full transition-all duration-700"
-                  style={{ width: `${telemetry?.faceDetectionScore || 85}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Meter 2: Lighting & Lux Contrast */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-bold text-gray-950">Lighting Lux & Contrast</span>
-                </div>
-                <span className="font-mono font-bold text-emerald-600">
-                  {telemetry ? telemetry.lightingText : 'Calculating...'}
-                </span>
-              </div>
-              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-emerald-500 h-full rounded-full transition-all duration-700"
-                  style={{ width: `${telemetry?.lightingScore || 90}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Meter 3: Resolution & Sharpness */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-bold text-gray-950">Pixel Resolution & Clarity</span>
-                </div>
-                <span className="font-mono font-bold text-emerald-600">
-                  {telemetry ? telemetry.resolutionText : 'Calculating...'}
-                </span>
-              </div>
-              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-emerald-500 h-full rounded-full transition-all duration-700"
-                  style={{ width: `${telemetry?.resolutionScore || 92}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Real Skin Tone Chip */}
-            {telemetry?.skinTone && (
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between text-xs font-mono">
-                <div className="flex items-center space-x-2">
-                  <div
-                    className="w-5 h-5 rounded-full border border-gray-300 shadow-2xs shrink-0"
-                    style={{ backgroundColor: telemetry.skinTone.hex }}
-                  />
-                  <span className="font-bold text-gray-900">Sampled Skin Tone: {telemetry.skinTone.hex}</span>
-                </div>
-                <span className="text-[11px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded uppercase">
-                  {telemetry.skinTone.undertone} Undertone
-                </span>
-              </div>
-            )}
-
-            {/* Alert Box */}
-            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 flex items-start space-x-3 text-xs">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-gray-950 block">
-                  {telemetry?.angleStatus || 'Camera Framing Verified'}
-                </span>
-                <span className="text-emerald-800 font-medium text-[11.5px] block">
-                  {telemetry?.suggestion || 'Image telemetry verified.'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-2.5 pt-2">
-            <button
-              onClick={handleBeginAnalysis}
-              disabled={isValidating}
-              className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
-            >
-              <span>Begin Skin & Presence Analysis</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <Link
-              href="/journey/capture-look"
-              className="w-full h-10 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-2"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Change Photo / Select Built-in Model</span>
+      <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+        {photo.status === 'loading' ? (
+          <p role="status" className="py-10 text-center text-sm text-gray-600">Loading your private image...</p>
+        ) : photo.status === 'error' ? (
+          <div role="alert" className="space-y-4 py-8 text-center">
+            <ImageOff className="mx-auto h-10 w-10 text-red-600" />
+            <p className="text-sm text-gray-700">{photo.reason}</p>
+            <Link href="/journey/capture-look"
+              className="inline-flex min-h-11 items-center rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">
+              Choose another photo
             </Link>
           </div>
-
-        </div>
-
-      </div>
-    </div>
+        ) : (
+          <div className="grid items-center gap-6 sm:grid-cols-2">
+            <img src={photo.src} alt="Your securely uploaded photo" className="aspect-[3/4] w-full rounded-2xl object-cover" />
+            <div>
+              <CheckCircle2 className="h-9 w-9 text-emerald-600" />
+              <h2 className="mt-3 text-xl font-bold text-gray-950">Photo loaded successfully</h2>
+              <p className="mt-3 text-sm text-gray-600">Image dimensions: {photo.width} × {photo.height} pixels.</p>
+              <p className="mt-3 text-sm leading-6 text-gray-600">
+                This confirms the image can be displayed and meets the minimum size.
+                It does not evaluate personal appearance, personality, or medical characteristics.
+              </p>
+              <button type="button" onClick={next}
+                className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">
+                Continue <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

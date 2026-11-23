@@ -35,3 +35,16 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(..., min_length=8)
 
+
+class RegistrationResultDTO(BaseModel):
+    email: EmailStr
+    verification_required: bool = True
+
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., pattern=r"^[0-9]{6}$")
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr

@@ -49,7 +49,7 @@ class EmailService:
         """Synchronous SMTP sending logic."""
         if not self.smtp_user or not self.smtp_password:
             logger.warning("SMTP credentials not fully configured in environment. Email logged to console.")
-            logger.info(f"--- EMAIL TO {to_email} ---\nSubject: {subject}\n{html_content[:200]}...")
+            logger.info("SMTP mail delivery is not configured; message was not sent.")
             return False
 
         sender = self.smtp_user if "gmail" in (self.smtp_host or "").lower() else self.from_email
@@ -157,7 +157,7 @@ class EmailService:
 
     # 2. Email Verification / OTP Code
     async def send_email_verification_email(self, to_email: str, code: str) -> bool:
-        subject = f"{code} is your PersonaIQ Verification Code"
+        subject = "Your PersonaIQ Email Verification Code"
         landing_url = settings.FRONTEND_URL
 
         fallback_html = """<!DOCTYPE html>

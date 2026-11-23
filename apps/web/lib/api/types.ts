@@ -11,9 +11,9 @@ export interface StandardResponse<T> {
 }
 
 export interface PaginationMeta {
-  total: number;
+  total_items: number;
   page: number;
-  limit: number;
+  page_size: number;
   total_pages: number;
 }
 
@@ -25,12 +25,9 @@ export interface PaginatedResponse<T> {
   meta: ResponseMeta;
 }
 
-export interface AuthTokens {
-  access_token?: string;
-  refresh_token?: string;
-  token_type?: string;
-  expires_in?: number;
-  email?: string;
+export interface AuthSession {
+  authenticated: boolean;
+  user: UserProfile | null;
 }
 
 export interface UserPreference {
@@ -69,6 +66,8 @@ export interface EventContext {
   id: string;
   journey_id: string;
   event_type: string;
+  name?: string;
+  industry?: string;
   dress_code: string;
   target_vibe: string;
   event_date?: string;
@@ -80,7 +79,9 @@ export interface Journey {
   id: string;
   user_id: string;
   title: string;
-  status: 'DRAFT' | 'ANALYZING' | 'COMPLETED' | 'FAILED' | 'ARCHIVED';
+  status: 'DRAFT' | 'IN_PROGRESS' | 'ANALYZING' | 'COMPLETED' | 'FAILED' | 'ARCHIVED';
+  current_step?: number;
+  active_presence_index?: number | null;
   presence_score?: number;
   executive_vibe_score?: number;
   visual_impact_score?: number;
@@ -131,6 +132,9 @@ export interface PresencePlan {
   id: string;
   journey_id: string;
   overall_presence_score: number;
+  overall_presence_index?: number;
+  summary_narrative?: string | null;
+  confidence_score?: number;
   executive_vibe_score: number;
   visual_impact_score: number;
   grooming_score: number;
@@ -152,10 +156,43 @@ export interface DashboardOverview {
   total_journeys_count?: number;
   recent_plans?: PresencePlan[];
   quick_stats?: Record<string, string>;
+  recent_journeys?: Journey[];
 
-  // Legacy / local-fallback aliases (kept for merge logic in dashboard/page.tsx)
+  // Legacy / local-fallback aliases (deprecated; never use for user-facing statistics)
   total_journeys?: number;
   average_presence_score?: number;
   highest_score?: number;
-  recent_journeys?: Journey[];
+}
+
+export interface WardrobeItem {
+  id: string;
+  name: string;
+  category: string;
+  color: string | null;
+  formality: string | null;
+  photo_url: string | null;
+  wear_count: number;
+  is_favorite: boolean;
+}
+
+export interface SavedWardrobeLook {
+  id: string;
+  name: string;
+  image_url: string | null;
+  journey_id: string | null;
+  items: Array<Record<string, unknown>>;
+  created_at: string;
+}
+
+export interface SavedPlanSummary {
+  id: string;
+  journey_id: string;
+  journey_title: string;
+  journey_status: string;
+  created_at: string | null;
+}
+
+export interface RegistrationResult {
+  email: string;
+  verification_required: true;
 }

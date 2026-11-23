@@ -1,3 +1,4 @@
+from conftest import signup_and_verify
 import pytest
 from httpx import AsyncClient
 
@@ -11,8 +12,8 @@ async def test_create_journey_success(client: AsyncClient):
         "first_name": "Jane",
         "last_name": "Doe",
     }
-    signup_res = await client.post("/api/v1/auth/sign-up", json=signup_payload)
-    assert signup_res.status_code == 201
+    signup_res = await signup_and_verify(client, signup_payload)
+    assert signup_res.status_code == 200
     access_token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {access_token}"}
 
@@ -39,7 +40,7 @@ async def test_get_journey_and_update_event_context(client: AsyncClient):
         "first_name": "Alex",
         "last_name": "Smith",
     }
-    signup_res = await client.post("/api/v1/auth/sign-up", json=signup_payload)
+    signup_res = await signup_and_verify(client, signup_payload)
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -81,15 +82,12 @@ async def test_get_journey_and_update_event_context(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_journey_access_denied_for_other_user(client: AsyncClient):
     # 1. Sign Up User 1 & Create Journey
-    user1_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    user1_res = await signup_and_verify(client, {
             "email": "user1@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "User",
             "last_name": "One",
-        },
-    )
+        })
     headers1 = {"Authorization": f"Bearer {user1_res.json()['data']['access_token']}"}
     create_res = await client.post(
         "/api/v1/journeys", json={"title": "Private Journey"}, headers=headers1
@@ -97,15 +95,12 @@ async def test_journey_access_denied_for_other_user(client: AsyncClient):
     journey_id = create_res.json()["data"]["id"]
 
     # 2. Sign Up User 2
-    user2_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    user2_res = await signup_and_verify(client, {
             "email": "user2@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "User",
             "last_name": "Two",
-        },
-    )
+        })
     headers2 = {"Authorization": f"Bearer {user2_res.json()['data']['access_token']}"}
 
     # 3. User 2 attempts to fetch User 1's journey

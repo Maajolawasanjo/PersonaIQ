@@ -1,0 +1,86 @@
+name: PERSONAIQ Dependency Repair (Draft Branch Only)
+
+on:
+  push:
+    branches:
+      - 'audit/phase-0-1-trust-and-flow-fixes'
+    paths:
+      - '.github/workflows/dependency-repair.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    if: github.repository == 'Maajolawasanjo/PersonaIQ' && github.ref == 'refs/heads/audit/phase-0-1-trust-and-flow-fixes'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install current lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Attempt non-interactive security repair
+        run: |
+          set +e
+          pnpm audit --fix --audit-level high
+          exit_code=$?
+          set -e
+          echo "Auto-fix exit code: $exit_code"
+          echo "The mandatory audit in the next step determines success."
+      - name: Correct incompatible transitive overrides
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const filename = 'package.json';
+          const manifest = JSON.parse(fs.readFileSync(filename, 'utf8'));
+          manifest.pnpm = manifest.pnpm || {};
+          const overrides = manifest.pnpm.overrides || {};
+          for (const key of Object.keys(overrides)) {
+            if (key.startsWith('brace-expansion@')) delete overrides[key];
+          }
+          // Do not inject brace-expansion 5 into minimatch 3 dependencies.
+          overrides['brace-expansion@<2.0.0'] = '1.1.21';
+          overrides['brace-expansion@>=4.0.0 <5.0.12'] = '5.0.12';
+          manifest.pnpm.overrides = overrides;
+          fs.writeFileSync(filename, JSON.stringify(manifest, null, 2));
+          NODE
+      - name: Pin patched Next.js 15 and matching ESLint config
+        run: |
+          pnpm --filter web add next@15.5.29 -E
+          pnpm --filter web add -D eslint-config-next@15.5.29 -E
+      - name: Resolve and verify dependencies
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm audit --audit-level high
+      - name: Typecheck and build repaired frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+        run: |
+          pnpm --filter web exec tsc --noEmit
+          pnpm --filter web build
+      - name: Commit only tested dependency manifests and lockfile
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- package.json pnpm-workspace.yaml pnpm-lock.yaml apps/web/package.json packages/database/package.json
+          if git diff --cached --quiet; then
+            echo "No changes required."
+            exit 0
+          fi
+          git diff --cached --stat
+          git commit -m "fix(deps): upgrade audited dependencies"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/audit/phase-0-1-trust-and-flow-fixes

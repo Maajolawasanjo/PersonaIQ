@@ -19,11 +19,11 @@ class YouCamVTOProvider(VTOProvider):
     ) -> Dict[str, Any]:
         """Call YouCam API to perform garment/hair try-on layering."""
         if not self.api_key or not settings.ENABLE_YOUCAM_VTO:
-            logger.info("YouCam credentials not configured or VTO disabled; using internal composite engine.")
+            logger.info("YouCam credentials not configured or VTO disabled; no image generated.")
             return {
-                "success": True,
-                "provider": "internal_composite",
-                "result_url": base_image_url,
+                "success": False,
+                "provider": "unavailable",
+                "result_url": None,
                 "applied_items": garment_items,
             }
 
@@ -48,25 +48,34 @@ class YouCamVTOProvider(VTOProvider):
                 )
                 if response.status_code == 200:
                     res_data = response.json()
+                    result_url = res_data.get("output_image_url")
+                    if isinstance(result_url, str) and result_url.startswith("https://") and result_url != base_image_url:
+                        return {
+                            "success": True,
+                            "provider": "youcam",
+                            "result_url": result_url,
+                            "applied_items": garment_items,
+                        }
+                    logger.warning("YouCam response did not include a generated HTTPS image URL.")
                     return {
-                        "success": True,
-                        "provider": "youcam",
-                        "result_url": res_data.get("output_image_url", base_image_url),
+                        "success": False,
+                        "provider": "provider_failed",
+                        "result_url": None,
                         "applied_items": garment_items,
                     }
                 else:
                     logger.warning("YouCam API error", status_code=response.status_code)
                     return {
-                        "success": True,
-                        "provider": "internal_composite_fallback",
-                        "result_url": base_image_url,
+                        "success": False,
+                        "provider": "provider_failed",
+                        "result_url": None,
                         "applied_items": garment_items,
                     }
         except Exception as e:
             logger.error("YouCam VTO request failed", error=str(e))
             return {
-                "success": True,
-                "provider": "internal_composite_fallback",
-                "result_url": base_image_url,
+                "success": False,
+                "provider": "provider_failed",
+                "result_url": None,
                 "applied_items": garment_items,
             }

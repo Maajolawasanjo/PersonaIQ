@@ -9,9 +9,11 @@ import { journeyApi } from '@/lib/api/services';
 export default function JourneyStartPage() {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleStart = async (e: React.MouseEvent) => {
     e.preventDefault();
+    setCreateError(null);
     setIsCreating(true);
     try {
       const journey = await journeyApi.createJourney('Executive Presence Journey');
@@ -21,11 +23,8 @@ export default function JourneyStartPage() {
       }
       router.push('/journey/event-type');
     } catch (err) {
-      console.warn('Backend creation fallback, proceeding to event-type step:', err);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('personaiq_active_draft_step', '/journey/event-type');
-      }
-      router.push('/journey/event-type');
+      console.error('Failed to create journey:', err);
+      setCreateError('We could not start your journey. Check your connection and try again.');
     } finally {
       setIsCreating(false);
     }
@@ -61,7 +60,7 @@ export default function JourneyStartPage() {
             Begin Your Journey
           </h1>
           <p className="text-[13.5px] text-gray-500 font-normal leading-relaxed max-w-sm mx-auto">
-            The dashboard is currently clear. Initiate your first analysis to begin mapping your intellectual presence and cognitive pathways.
+            Tell PERSONAIQ what you are preparing for, then get personalized outfit and presentation guidance.
           </p>
         </div>
 
@@ -78,6 +77,7 @@ export default function JourneyStartPage() {
           </button>
         </div>
 
+        {createError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{createError}</p>}
         {/* Divider */}
         <div className="border-t border-gray-100 pt-6">
           <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block mb-4">
@@ -91,7 +91,7 @@ export default function JourneyStartPage() {
                 <span>Data Aggregation</span>
               </span>
               <p className="text-[11.5px] text-gray-450 leading-relaxed">
-                We compile your inputs into a structured cognitive model.
+                Your event and selected style help us tailor suggestions.
               </p>
             </div>
 
@@ -101,7 +101,7 @@ export default function JourneyStartPage() {
                 <span>Presence Index™</span>
               </span>
               <p className="text-[11.5px] text-gray-450 leading-relaxed">
-                Receive a baseline score of your intellectual readiness.
+                Review available assessment results and actionable preparation steps.
               </p>
             </div>
           </div>

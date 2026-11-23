@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update as sql_update
 from sqlalchemy.orm import selectinload
 from app.models.user import User, RefreshToken, UserPreference
+from app.core.security import hash_token
 from app.repositories.base import BaseRepository
 
 class UserRepository(BaseRepository[User]):
@@ -25,7 +26,7 @@ class UserRepository(BaseRepository[User]):
 
     async def get_by_reset_token(self, token: str) -> Optional[User]:
         result = await self.db.execute(
-            select(User).options(selectinload(User.preference)).where(User.reset_token == token)
+            select(User).options(selectinload(User.preference)).where(User.reset_token == hash_token(token))
         )
         return result.scalars().first()
 
@@ -84,6 +85,23 @@ class UserRepository(BaseRepository[User]):
                     setattr(pref, k, v)
         await self.db.flush()
         return pref
+
+    async def list_user_media_references(self, user_id: UUID) -> list[str]:
+        """Enumerate all saved selfie/outfit objects owned through this user's journeys."""
+        from app.models.journey import Journey
+        from app.models.upload import SelfieUpload, OutfitUpload
+
+        selfies = await self.db.execute(
+            select(SelfieUpload.storage_url)
+            .join(Journey, SelfieUpload.journey_id == Journey.id)
+            .where(Journey.user_id == user_id)
+        )
+        outfits = await self.db.execute(
+            select(OutfitUpload.storage_url)
+            .join(Journey, OutfitUpload.journey_id == Journey.id)
+            .where(Journey.user_id == user_id)
+        )
+        return list(selfies.scalars().all()) + list(outfits.scalars().all())
 
     async def hard_delete_user_data(self, user_id: UUID) -> None:
         """Completely purges all data associated with a user for privacy & GDPR compliance."""

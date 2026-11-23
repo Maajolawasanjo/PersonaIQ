@@ -1,207 +1,87 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { AuthLayout } from '../../components/auth/AuthLayout';
-import { PasswordField } from '../../components/auth/PasswordField';
+import { useRouter } from 'next/navigation';
+import { AuthLayout } from '@/components/auth/AuthLayout';
+import { PasswordField } from '@/components/auth/PasswordField';
 import { useAuth } from '@/providers/auth-provider';
 
+function safeDestination(redirect: string | null): string {
+  if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//') || redirect.includes('\\')) {
+    return '/dashboard';
+  }
+  return redirect;
+}
+
 export default function LoginPage() {
+  const router = useRouter();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [warmingUp, setWarmingUp] = useState(false);
-  const [warmingSeconds, setWarmingSeconds] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [verificationNeeded, setVerificationNeeded] = useState(false);
+  const [passwordChangedNotice, setPasswordChangedNotice] = useState(false);
 
-  // Warming-up countdown timer
   useEffect(() => {
-    if (warmingUp) {
-      setWarmingSeconds(0);
-      timerRef.current = setInterval(() => {
-        setWarmingSeconds((s) => s + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [warmingUp]);
+    setPasswordChangedNotice(new URLSearchParams(window.location.search).get('password') === 'updated');
+  }, []);
 
-  const validateEmail = (val: string) => {
-    const trimmed = val.trim().toLowerCase();
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!email.trim() || !password || busy) return;
+    setBusy(true);
+    setError('');
+    setVerificationNeeded(false);
+    try {
+      const session = await signIn(email.trim().toLowerCase(), password);
+      const redirect = safeDestination(new URLSearchParams(window.location.search).get('redirect'));
+      router.replace(session.user && !session.user.onboarding_completed ? '/onboarding' : redirect);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'Sign in failed.';
+      setVerificationNeeded(message.toLowerCase().includes('verify your email'));
+      setError(message.replace(/^(BACKEND_WARMING|NETWORK_ERROR|SESSION_EXPIRED):\s*/, ''));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    setWarmingUp(false);
-
-    const formattedEmail = email.trim().toLowerCase();
-
-    if (!validateEmail(formattedEmail)) {
-      setErrorMessage('Please enter a valid work email address.');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      await signIn(formattedEmail, password);
-      window.location.href = '/dashboard';
-    } catch (err: any) {
-      const msg: string = err?.message || '';
-
-      if (msg.includes('BACKEND_WARMING')) {
-        // Backend was sleeping — show warm-up state and auto-retry
-        setWarmingUp(true);
-        setTimeout(async () => {
-          setWarmingUp(false);
-          try {
-            await signIn(formattedEmail, password);
-            window.location.href = '/dashboard';
-          } catch (retryErr: any) {
-            const retryMsg: string = retryErr?.message || '';
-            setErrorMessage(
-              retryMsg.includes('BACKEND_WARMING') || retryMsg.includes('NETWORK_ERROR')
-                ? 'The server is taking longer than expected to wake up. Please try again in 30 seconds.'
-                : retryMsg.replace(/^(SESSION_EXPIRED|NETWORK_ERROR|BACKEND_WARMING):\s*/, '') ||
-                  'Invalid email or password.'
-            );
-          } finally {
-            setIsLoading(false);
-          }
-        }, 10000); // wait 10s then auto-retry
-        return; // keep isLoading true during warmup
-      }
-
-      setErrorMessage(
-        msg.replace(/^(SESSION_EXPIRED|NETWORK_ERROR|BACKEND_WARMING):\s*/, '') ||
-          'Invalid email or password.'
-      );
-    } finally {
-      if (!warmingUp) setIsLoading(false);
-    }
+  const openVerification = () => {
+    sessionStorage.setItem('personaiq_pending_verification_email', email.trim().toLowerCase());
+    router.push('/verify-email');
   };
 
   return (
     <AuthLayout
       headline="Welcome back to PersonaIQ."
-      subheadline="Sign in to access your executive presence diagnostics, boardroom wardrobe matchers, and session telemetry."
-      topRightText="Don't have an account?"
-      topRightLinkText="Create Account"
+      subheadline="Access your saved outfits, event preparations and personal styling workspace."
+      topRightText="New to PersonaIQ?"
+      topRightLinkText="Create account"
       topRightLinkHref="/signup"
-      badgeText="AUTHENTICATION"
+      badgeText="SIGN IN"
     >
       <div className="space-y-6">
-        <div className="space-y-2">
-          <h2 className="text-[32px] sm:text-[36px] font-extrabold tracking-tight text-gray-950 font-sans">
-            Sign In
-          </h2>
-          <p className="text-[15px] text-gray-600">
-            Enter your credentials to continue to your workspace.
-          </p>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-950">Sign in</h1>
+          <p className="mt-2 text-sm text-gray-600">Use your registered email address and password.</p>
         </div>
-
-        {/* Warming-Up Banner */}
-        {warmingUp && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[13px] font-medium p-4 rounded-[10px] space-y-2 animate-fadeIn">
-            <div className="flex items-center space-x-2.5">
-              <svg className="w-4 h-4 shrink-0 animate-spin text-amber-600" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <span className="font-bold">Server warming up…</span>
-            </div>
-            <p className="text-[12.5px] text-amber-700 pl-6 leading-relaxed">
-              PersonaIQ's backend was in sleep mode. We're waking it up and will sign you in automatically.{' '}
-              <span className="font-mono font-bold">{warmingSeconds}s</span>
-            </p>
+        {passwordChangedNotice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Your password was updated. Sign in again with the new password.</p>}
+        {error && (
+          <div role="alert" className="space-y-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <p>{error}</p>
+            {verificationNeeded && <button type="button" onClick={openVerification} className="min-h-10 font-semibold underline">Verify my email</button>}
           </div>
         )}
-
-        {/* Global Error Banner */}
-        {errorMessage && !warmingUp && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-[13px] font-medium p-3.5 rounded-[10px] flex items-center space-x-2.5 animate-fadeIn">
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="shrink-0 text-red-600">
-              <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
-            </svg>
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
-          <div className="space-y-1.5">
-            <label htmlFor="email" className="text-[14px] font-bold text-gray-900 block">
-              Work Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value.trim().toLowerCase())}
-              placeholder="name@organization.com"
-              autoComplete="email"
-              disabled={isLoading}
-              className="w-full h-12 bg-white border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-[10px] px-4 text-[15px] text-gray-900 font-medium placeholder:text-gray-400 outline-none transition-all shadow-sm disabled:opacity-60"
-            />
-          </div>
-
-          <PasswordField
-            id="password"
-            label="Password"
-            value={password}
-            onChange={setPassword}
-            autoComplete="current-password"
-            rightElement={
-              <Link href="/forgot-password" className="text-[13px] font-bold text-primary hover:underline">
-                Forgot password?
-              </Link>
-            }
+        <form onSubmit={submit} className="space-y-5">
+          <label className="block text-sm font-semibold text-gray-900">Email address
+            <input type="email" required autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} className="mt-2 block h-12 w-full rounded-xl border border-gray-300 px-4 text-sm font-normal"/>
+          </label>
+          <PasswordField id="login-password" label="Password" value={password} onChange={setPassword} autoComplete="current-password"
+            rightElement={<Link href="/forgot-password" className="text-sm font-semibold text-primary">Forgot password?</Link>}
           />
-
-          <div className="flex items-center space-x-2.5 pt-1">
-            <input
-              type="checkbox"
-              id="rememberMe"
-              name="rememberMe"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
-            />
-            <label htmlFor="rememberMe" className="text-[13.5px] text-gray-700 font-medium select-none cursor-pointer">
-              Remember me for 30 days
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold text-[15px] rounded-[10px] shadow-sm hover:shadow transition-all flex items-center justify-center space-x-2 mt-4 active:scale-[0.99] disabled:opacity-60"
-          >
-            {isLoading ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span className="text-[14px]">
-                  {warmingUp ? 'Warming up server…' : 'Signing in…'}
-                </span>
-              </div>
-            ) : (
-              <>
-                <span>Sign In to Workspace</span>
-                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </>
-            )}
+          <button type="submit" disabled={busy} className="min-h-12 w-full rounded-xl bg-primary px-5 text-sm font-semibold text-white disabled:opacity-50">
+            {busy ? 'Signing in…' : 'Sign in to workspace'}
           </button>
         </form>
       </div>

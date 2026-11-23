@@ -1,3 +1,4 @@
+from conftest import signup_and_verify
 import pytest
 from httpx import AsyncClient
 from app.domain.presence.scoring import PresenceScoringEngine, PresenceScoreResult
@@ -31,15 +32,12 @@ def test_pure_domain_presence_scoring_engine():
 @pytest.mark.asyncio
 async def test_ai_analysis_and_presence_plan_generation(client: AsyncClient):
     # 1. Sign Up & Auth Header
-    signup_res = await client.post(
-        "/api/v1/auth/sign-up",
-        json={
+    signup_res = await signup_and_verify(client, {
             "email": "presence_user@personaiq.ai",
             "password": "SecurePassword123!",
             "first_name": "Presence",
             "last_name": "Tester",
-        },
-    )
+        })
     token = signup_res.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -61,24 +59,15 @@ async def test_ai_analysis_and_presence_plan_generation(client: AsyncClient):
         headers=headers,
     )
 
-    # 4. Trigger AI Analysis
+    # No real media was submitted. An assessment must not invent data.
     analyze_res = await client.post(
         f"/api/v1/journeys/{journey_id}/analyze", headers=headers
     )
-    assert analyze_res.status_code == 200
-    body = analyze_res.json()
+    assert analyze_res.status_code == 422
+    assert analyze_res.json()["error"]["code"] == "JOURNEY_003"
 
-    assert body["success"] is True
-    plan = body["data"]
-    assert plan["journey_id"] == journey_id
-    assert 0 <= plan["overall_presence_index"] <= 100
-    assert plan["executive_vibe_score"] > 0
-    assert len(plan["recommendations"]) >= 3
-    assert len(plan["checklist"]) >= 3
-
-    # 5. Fetch Presence Plan via GET
+    # A report must not appear after the rejected analysis.
     get_plan_res = await client.get(
         f"/api/v1/journeys/{journey_id}/plan", headers=headers
     )
-    assert get_plan_res.status_code == 200
-    assert get_plan_res.json()["data"]["id"] == plan["id"]
+    assert get_plan_res.status_code == 404

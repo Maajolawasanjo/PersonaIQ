@@ -8,20 +8,28 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#FAF9F6', // Soft Off-White
-        foreground: '#2C353E', // Soft Charcoal (Reduced blackness)
+        background: '#F8F9FB',
+        foreground: '#1F262E',
+        border: '#E2E8EE',
+        input: '#D6DFE7',
+        ring: '#A31F34',
+        accent: { DEFAULT: '#FFF1F3', foreground: '#681526' },
         primary: {
           DEFAULT: '#A31F34', // MIT Red
           foreground: '#FFFFFF',
         },
+        'primary-foreground': '#FFFFFF',
         secondary: {
           DEFAULT: '#8A8B8C', // MIT Warm Gray
           foreground: '#FFFFFF',
         },
+        'secondary-foreground': '#FFFFFF',
         muted: {
           DEFAULT: '#F3F4F6',
           foreground: '#6B7280',
         },
+        'muted-foreground': '#6B7280',
+        'accent-foreground': '#681526',
         // Softened executive dark slate & charcoal palette (reduced heavy blackness)
         gray: {
           950: '#1F262E', // Softened Dark Slate (Navbar, Footer, Hero)

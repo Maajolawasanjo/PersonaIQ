@@ -1,510 +1,218 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Star, Shield, Heart, Sparkles, X, Activity, Eye, Volume2, Shirt } from 'lucide-react';
+import { ArrowRight, Heart, Plus, Search, Shirt, Sparkles, X, AlertCircle } from 'lucide-react';
 import { wardrobeApi } from '@/lib/api/services';
+import type { WardrobeItem } from '@/lib/api/types';
 
-const OUTFIT_CATEGORIES = ['All', 'Favorites', 'Formal', 'Business Casual', 'Keynote', 'Boardroom', 'Casual'];
-
-interface Outfit {
-  id: string;
-  name: string;
-  category: string;
-  score: number;
-  events: number;
-  lastWorn: string;
-  tag: string | null;
-  favorite: boolean;
-  image: string;
-  details: {
-    authority: number;
-    trustworthiness: number;
-    composure: number;
-    colorNotes: string;
-    vocalNotes: string;
-  };
-}
-
-const INITIAL_OUTFITS: Outfit[] = [
-  {
-    id: '1',
-    name: 'Executive Navy Tailored Suit',
-    category: 'Boardroom',
-    score: 94,
-    events: 3,
-    lastWorn: '2 days ago',
-    tag: 'Top Pick',
-    favorite: true,
-    image: '/vto/clothing/professional/01_navy_suit.jpg',
-    details: {
-      authority: 95,
-      trustworthiness: 93,
-      composure: 94,
-      colorNotes: 'Deep Navy matches cool skin undertones, reinforcing stability and high-level decision authority.',
-      vocalNotes: 'Tailored shoulder silhouette supports open diaphragmatic posture, aiding projection stability.',
-    },
-  },
-  {
-    id: '2',
-    name: 'Executive Charcoal Double-Breasted Suit',
-    category: 'Formal',
-    score: 88,
-    events: 5,
-    lastWorn: '1 week ago',
-    tag: 'Most Used',
-    favorite: false,
-    image: '/vto/clothing/professional/02_black_suit.jpg',
-    details: {
-      authority: 92,
-      trustworthiness: 84,
-      composure: 88,
-      colorNotes: 'Charcoal presents strong formal neutrality, ideal for major announcements and risk communication.',
-      vocalNotes: 'Double-breasted configuration restricts thoracic expansion slightly; maintain deliberate pacing.',
-    },
-  },
-  {
-    id: '3',
-    name: 'Beige Power Executive Suit',
-    category: 'Keynote',
-    score: 91,
-    events: 2,
-    lastWorn: '3 weeks ago',
-    tag: 'High Impact',
-    favorite: true,
-    image: '/vto/clothing/professional/04_beige_power_suit.jpg',
-    details: {
-      authority: 89,
-      trustworthiness: 92,
-      composure: 92,
-      colorNotes: 'Warm beige creates approachable visual contrast under stage lighting, boosting engagement.',
-      vocalNotes: 'Unbuttoned design facilitates full breathing flexibility for prolonged projection.',
-    },
-  },
-  {
-    id: '4',
-    name: 'Smart Casual Beige Knit Ensemble',
-    category: 'Business Casual',
-    score: 82,
-    events: 4,
-    lastWorn: '4 days ago',
-    tag: null,
-    favorite: false,
-    image: '/vto/clothing/casual/03_beige_hoodie.jpg',
-    details: {
-      authority: 80,
-      trustworthiness: 85,
-      composure: 81,
-      colorNotes: 'Soft knit offers approachable professionalism, facilitating team-wide collaborative discussions.',
-      vocalNotes: 'Relaxed structure optimizes comfort, lowering systemic heart rate and performance anxiety.',
-    },
-  },
-  {
-    id: '5',
-    name: 'Traditional Cultural Senator Ensemble',
-    category: 'Formal',
-    score: 93,
-    events: 6,
-    lastWorn: '2 weeks ago',
-    tag: 'Cultural',
-    favorite: true,
-    image: '/vto/clothing/ceremonial/traditional_men.jpg',
-    details: {
-      authority: 94,
-      trustworthiness: 92,
-      composure: 93,
-      colorNotes: 'Structured traditional tailoring projects distinct cultural leadership and visual distinction.',
-      vocalNotes: 'High collar design encourages upright neck spinal alignment for vocal resonance.',
-    },
-  },
-  {
-    id: '6',
-    name: 'Formal Cocktail & Evening Attire',
-    category: 'Formal',
-    score: 96,
-    events: 1,
-    lastWorn: '1 month ago',
-    tag: 'Best Score',
-    favorite: false,
-    image: '/vto/clothing/formal/cocktail_dress.jpg',
-    details: {
-      authority: 98,
-      trustworthiness: 94,
-      composure: 96,
-      colorNotes: 'Sleek formal cut provides maximum high-contrast presence and authority.',
-      vocalNotes: 'Formal waist structure supports upright posture for clear presentation delivery.',
-    },
-  },
-];
-
-const AI_RECOMMENDATIONS = [
-  {
-    title: 'Earth Tone Presentation Pack',
-    desc: 'Based on your upcoming Q4 Strategy Keynote on stage. Recommend adding olive or beige layers to bridge the digital and physical contrast.',
-    match: '94% Match',
-  },
-  {
-    title: 'High-Contrast Virtual Setup',
-    desc: 'Based on low lighting in your default room. Recommend wearing ivory or white tops to maximize light projection to webcams.',
-    match: '91% Match',
-  },
-];
+const CATEGORY_CHOICES = ['Tops', 'Bottoms', 'Outerwear', 'Dresses', 'Footwear', 'Accessories', 'Traditional', 'Other'];
 
 export default function WardrobePage() {
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [outfits, setOutfits] = useState<Outfit[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
+  const [items, setItems] = useState<WardrobeItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('All');
+  const [showCreate, setShowCreate] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pendingFavorite, setPendingFavorite] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('Tops');
+  const [color, setColor] = useState('');
+  const [formality, setFormality] = useState('Casual');
 
   useEffect(() => {
-    async function loadWardrobe() {
+    let active = true;
+    async function load() {
       try {
-        const res = await wardrobeApi.listItems();
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped: Outfit[] = res.data.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            category: item.category || 'Business Casual',
-            score: item.score || 88,
-            events: item.wear_count || 1,
-            lastWorn: 'Recently',
-            tag: item.is_favorite ? 'Favorite' : null,
-            favorite: item.is_favorite || false,
-            image: item.photo_url || '/images/brown-peaked-lapel-suit.jpg',
-            details: {
-              authority: 90,
-              trustworthiness: 88,
-              composure: 89,
-              colorNotes: `${item.color || 'Classic'} tone aligned with executive presence benchmarks.`,
-              vocalNotes: 'Tailored shoulder silhouette supports open diaphragmatic posture.',
-            },
-          }));
-          setOutfits(mapped);
-        } else {
-          setOutfits([]);
-        }
-      } catch (err) {
-        console.warn('Backend wardrobe items unresolvable:', err);
-        setOutfits([]);
+        const result = await wardrobeApi.listItems();
+        if (active) setItems(result);
+      } catch {
+        if (active) setError('Your wardrobe could not be loaded. Please try again.');
       } finally {
-        setIsLoading(false);
+        if (active) setLoading(false);
       }
     }
-    loadWardrobe();
+    void load();
+    return () => { active = false; };
   }, []);
 
-  const toggleFavorite = (id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setOutfits(prev =>
-      prev.map(o => (o.id === id ? { ...o, favorite: !o.favorite } : o))
-    );
+  const categories = useMemo(() => ['All', 'Favorites', ...new Set(items.map(item => item.category).filter(Boolean))], [items]);
+  const visible = useMemo(() => items.filter(item => {
+    const matchesFilter = filter === 'All' || (filter === 'Favorites' ? item.is_favorite : item.category === filter);
+    const matchesSearch = [item.name, item.color ?? '', item.category].join(' ').toLowerCase().includes(query.trim().toLowerCase());
+    return matchesFilter && matchesSearch;
+  }), [items, filter, query]);
+
+  const setFavorite = async (item: WardrobeItem) => {
+    if (pendingFavorite) return;
+    setError(null);
+    setPendingFavorite(item.id);
+    try {
+      const saved = await wardrobeApi.setFavorite(item.id, !item.is_favorite);
+      setItems(previous => previous.map(existing => existing.id === item.id ? saved : existing));
+    } catch {
+      setError('The favorite change could not be saved. Please try again.');
+    } finally {
+      setPendingFavorite(null);
+    }
   };
 
-  const filtered = outfits.filter((o) => {
-    if (activeCategory === 'All') return true;
-    if (activeCategory === 'Favorites') return o.favorite;
-    return o.category === activeCategory;
-  });
-
-  const avgScore = outfits.length > 0 ? Math.round(outfits.reduce((acc, curr) => acc + curr.score, 0) / outfits.length) : '--';
-  const bestScore = outfits.length > 0 ? Math.max(...outfits.map(o => o.score)) : '--';
-  const favoritesCount = outfits.filter(o => o.favorite).length;
+  const create = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving || !name.trim()) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const item = await wardrobeApi.createItem({
+        name: name.trim(),
+        category,
+        color: color.trim() || undefined,
+        formality,
+      });
+      setItems(previous => [item, ...previous]);
+      setName('');
+      setColor('');
+      setShowCreate(false);
+      setFilter('All');
+      setQuery('');
+    } catch {
+      setError('Your clothing item could not be added. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="space-y-8 animate-fadeIn w-full">
-
-      {/* Page Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4 border-b border-gray-105 pb-5">
-        <div className="space-y-1">
-          <h1 className="text-[30px] sm:text-[36px] font-bold tracking-tight text-gray-950 font-sans leading-tight">
-            Wardrobe
-          </h1>
-          <p className="text-[14.5px] text-gray-500 font-normal">
-            Your saved outfits, virtual try-ons, and AI-ranked looks.
-          </p>
+    <main className="mx-auto max-w-6xl space-y-7 py-2">
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-red-700">PERSONAIQ Wardrobe</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950 sm:text-4xl">My Wardrobe</h1>
+          <p className="mt-2 text-sm text-gray-600">Organize the clothing you own and prepare outfits for your next event.</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Link
-            href="/wardrobe/style-me"
-            className="h-10 px-5 bg-red-600 hover:bg-red-700 text-white font-bold text-[13px] rounded-[10px] flex items-center space-x-2 shadow-sm transition-all"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>AI Stylist & VTO Studio</span>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/wardrobe/style-me" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800">
+            <Sparkles className="h-4 w-4 text-red-700" /> AI Stylist
           </Link>
-          <Link
-            href="/journey/choosing-outfit"
-            className="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-[13px] rounded-[10px] flex items-center space-x-2 transition-all"
-          >
-            <span>+ Add Outfit</span>
-          </Link>
+          <button type="button" onClick={() => setShowCreate(current => !current)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white">
+            {showCreate ? <X className="h-4 w-4"/> : <Plus className="h-4 w-4"/>}
+            {showCreate ? 'Close form' : 'Add clothing'}
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Outfits', value: outfits.length },
-          { label: 'Avg. Score', value: avgScore },
-          { label: 'Favorites', value: favoritesCount },
-          { label: 'Best Score', value: bestScore },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-gray-200 rounded-[16px] p-5 shadow-2xs text-center">
-            <div className="text-[32px] font-extrabold font-sans text-gray-950 leading-none">{stat.value}</div>
-            <div className="text-[11.5px] font-mono text-gray-500 mt-1.5 uppercase tracking-wide">{stat.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Grid: Left Items List vs Right AI Recommendations */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Side: Outfits (8 Cols) */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Category Filter */}
-          <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-hide">
-            {OUTFIT_CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`shrink-0 px-4 py-2 rounded-full text-[12.5px] font-bold transition-all border ${
-                  activeCategory === cat
-                    ? 'bg-gray-950 text-white border-gray-950 shadow-sm'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:text-gray-900'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Outfit Grid */}
-          {filtered.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-[20px] p-8 text-center space-y-4">
-              <div className="w-14 h-14 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center mx-auto text-gray-400">
-                <Shirt className="w-6 h-6 text-gray-400" />
-              </div>
-              <div className="space-y-1 max-w-sm mx-auto">
-                <h3 className="text-[17px] font-bold text-gray-950 font-sans">No Outfits in Wardrobe</h3>
-                <p className="text-[12.5px] text-gray-500 font-normal">
-                  Your wardrobe is currently empty. Upload photos during your Presence Journey or click below to add your first outfit.
-                </p>
-              </div>
-              <Link
-                href="/journey/choose-outfit"
-                className="inline-flex items-center space-x-1.5 h-9 px-4 bg-primary text-white font-bold text-[12px] rounded-[8px] hover:bg-primary/90 transition-colors"
-              >
-                <span>Add Your First Outfit</span>
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {filtered.map((outfit) => (
-              <div
-                key={outfit.id}
-                onClick={() => setSelectedOutfit(outfit)}
-                className="bg-white border border-gray-205 hover:border-gray-300 rounded-[20px] p-4.5 shadow-2xs hover:shadow-xs transition-all group flex flex-col space-y-4 cursor-pointer"
-              >
-                {/* Outfit Visual Placeholder */}
-                <div className="w-full h-44 bg-gray-50 border border-gray-150 rounded-[12px] flex items-center justify-center relative overflow-hidden">
-                  <Shirt className="w-12 h-12 text-gray-400" />
-                  <button
-                    onClick={(e) => toggleFavorite(outfit.id, e)}
-                    className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-xs hover:scale-105 transition-all text-gray-400 hover:text-red-500"
-                  >
-                    <Heart className={`w-4.5 h-4.5 ${outfit.favorite ? 'fill-red-500 text-red-500' : ''}`} />
-                  </button>
-                  {outfit.tag && (
-                    <span className="absolute top-3 right-3 text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-primary text-white border border-primary/20 shadow-xs">
-                      {outfit.tag}
-                    </span>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="space-y-1.5 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-[14.5px] font-bold text-gray-950 leading-snug group-hover:text-primary transition-colors">{outfit.name}</h3>
-                    <span className="text-[22px] font-extrabold font-sans text-gray-950 leading-none shrink-0">
-                      {outfit.score}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-[10.5px] font-mono text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">
-                      {outfit.category}
-                    </span>
-                    <span className="text-[11px] text-gray-400">• {outfit.lastWorn}</span>
-                  </div>
-                </div>
-
-                {/* Action Row */}
-                <div className="flex items-center space-x-2 pt-2.5 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-                  <Link
-                    href="/journey/virtual-try-on"
-                    className="flex-1 h-9 bg-gray-950 hover:bg-gray-800 text-white text-[12px] font-bold rounded-[8px] flex items-center justify-center transition-colors"
-                  >
-                    Try On
-                  </Link>
-                  <Link
-                    href="/journey/choose-outfit"
-                    className="flex-1 h-9 bg-white border border-gray-200 hover:border-gray-400 text-gray-700 text-[12px] font-bold rounded-[8px] flex items-center justify-center transition-colors"
-                  >
-                    Use in Journey
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-          )}
-
-          {/* Empty State */}
-          {filtered.length === 0 && (
-            <div className="bg-white border border-gray-200 rounded-[24px] p-12 text-center flex flex-col items-center space-y-4">
-              <Shirt className="w-16 h-16 text-gray-400" />
-              <h3 className="text-[20px] font-bold text-gray-950 font-sans">No outfits in this category</h3>
-              <p className="text-[14px] text-gray-500 max-w-xs">
-                Start a Presence Journey to save outfits and build your wardrobe.
-              </p>
-              <Link
-                href="/journey/start"
-                className="h-10 px-6 bg-primary text-white font-bold text-[13px] rounded-[10px] flex items-center justify-center shadow-sm hover:bg-primary/90 transition-all"
-              >
-                Start New Analysis
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Right Side: AI Recommendations & Insights (4 Cols) */}
-        <div className="lg:col-span-4 space-y-6">
-          
-          {/* AI Recommendations Panel */}
-          <div className="bg-white border border-gray-200 rounded-[22px] p-5.5 shadow-2xs space-y-4">
-            <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest flex items-center space-x-1">
-              <Sparkles className="w-3.5 h-3.5 fill-primary text-primary" />
-              <span>AI RECOMMENDATIONS</span>
-            </span>
-
-            <div className="space-y-4">
-              {AI_RECOMMENDATIONS.map((rec, i) => (
-                <div key={i} className="p-4 rounded-[14px] border border-gray-150 bg-gray-50/50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13.5px] font-bold text-gray-950 font-sans">{rec.title}</span>
-                    <span className="text-[10px] font-mono font-bold text-red-650 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">{rec.match}</span>
-                  </div>
-                  <p className="text-[12px] text-gray-600 leading-relaxed font-normal">{rec.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Stats Summary */}
-          <div className="bg-gray-950 text-white rounded-[22px] p-5.5 shadow-xs border border-white/10 space-y-3">
-            <span className="text-[10px] font-mono font-bold text-primary block">❖ STYLE INSIGHT</span>
-            <p className="text-[13px] text-gray-300 leading-relaxed font-normal">
-              Wearing outfits featuring structured navy elements yields a statistical +5% elevation in visual authority scores compared to lighter neutral palettes.
-            </p>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Outfit Details Modal */}
-      {selectedOutfit && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-[26px] border border-gray-200 max-w-xl w-full p-6 sm:p-7 relative max-h-[90vh] overflow-y-auto space-y-5">
-            
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedOutfit(null)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
-            >
-              <X className="w-4.5 h-4.5" />
-            </button>
-
-            {/* Modal Header */}
-            <div className="flex items-start justify-between gap-4 pr-8">
-              <div className="space-y-1">
-                <span className="text-[10.5px] font-mono font-bold text-gray-400 uppercase tracking-widest block">{selectedOutfit.category}</span>
-                <h2 className="text-[22px] sm:text-[24px] font-bold text-gray-950 font-sans leading-tight">{selectedOutfit.name}</h2>
-              </div>
-              <div className="text-right">
-                <span className="text-[32px] font-extrabold font-sans text-gray-950 block leading-none">{selectedOutfit.score}</span>
-                <span className="text-[9.5px] font-mono font-bold text-gray-400 uppercase tracking-widest block">PRESENCE SCORE</span>
-              </div>
-            </div>
-
-            {/* Visual Image */}
-            <div className="w-full h-56 bg-gray-50 border border-gray-200 rounded-[16px] flex items-center justify-center relative overflow-hidden">
-              <Shirt className="w-16 h-16 text-gray-400" />
-              <button
-                onClick={(e) => toggleFavorite(selectedOutfit.id, e)}
-                className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-xs hover:scale-105 transition-all text-gray-400 hover:text-red-500"
-              >
-                <Heart className={`w-5 h-5 ${selectedOutfit.favorite ? 'fill-red-500 text-red-500' : ''}`} />
-              </button>
-            </div>
-
-            {/* Presence Score Details */}
-            <div className="space-y-3 pt-2">
-              <h3 className="text-[15px] font-bold text-gray-950 font-sans">AI Presence Heuristics</h3>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Authority', score: selectedOutfit.details.authority },
-                  { label: 'Trustworthiness', score: selectedOutfit.details.trustworthiness },
-                  { label: 'Composure', score: selectedOutfit.details.composure },
-                ].map((item) => (
-                  <div key={item.label} className="p-3 bg-gray-50 border border-gray-150 rounded-[12px] text-center">
-                    <span className="text-[10px] font-mono text-gray-400 uppercase block">{item.label}</span>
-                    <span className="text-[20px] font-extrabold font-sans text-gray-950 block mt-0.5">{item.score}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Insight Explanations */}
-            <div className="space-y-3 pt-2 border-t border-gray-100">
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-full bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
-                  <Activity className="w-4 h-4" />
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-[12px] font-mono font-bold text-gray-400 uppercase block">COLOR & CONTRAST FIT</span>
-                  <p className="text-[12.5px] text-gray-650 leading-relaxed font-normal">{selectedOutfit.details.colorNotes}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 pt-1">
-                <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
-                  <Volume2 className="w-4 h-4" />
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-[12px] font-mono font-bold text-gray-400 uppercase block">VOCAL PROJECTION ALIGNMENT</span>
-                  <p className="text-[12.5px] text-gray-650 leading-relaxed font-normal">{selectedOutfit.details.vocalNotes}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center space-x-3 pt-3 border-t border-gray-150">
-              <Link
-                href="/journey/virtual-try-on"
-                className="flex-1 h-11 bg-gray-950 hover:bg-gray-900 text-white text-[13px] font-bold rounded-[10px] flex items-center justify-center transition-colors"
-              >
-                Virtual Try-On
-              </Link>
-              <Link
-                href="/journey/choose-outfit"
-                className="flex-1 h-11 bg-white border border-gray-300 hover:border-gray-400 text-gray-800 text-[13px] font-bold rounded-[10px] flex items-center justify-center transition-colors border"
-              >
-                Use in Current Journey
-              </Link>
-            </div>
-
-          </div>
+      {error && (
+        <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0"/>{error}
         </div>
       )}
 
-    </div>
+      {showCreate && (
+        <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Add a wardrobe item</h2>
+          <p className="mt-1 text-sm text-gray-600">Create a basic clothing record. Photo uploads will be available once private media storage is ready.</p>
+          <form onSubmit={create} className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium text-gray-700">Name
+              <input required maxLength={255} value={name} onChange={event => setName(event.target.value)}
+                placeholder="e.g. Navy blazer" className="mt-2 block w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900"/>
+            </label>
+            <label className="text-sm font-medium text-gray-700">Category
+              <select value={category} onChange={event => setCategory(event.target.value)}
+                className="mt-2 block w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900">
+                {CATEGORY_CHOICES.map(choice => <option key={choice}>{choice}</option>)}
+              </select>
+            </label>
+            <label className="text-sm font-medium text-gray-700">Color (optional)
+              <input maxLength={50} value={color} onChange={event => setColor(event.target.value)}
+                placeholder="e.g. Navy" className="mt-2 block w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900"/>
+            </label>
+            <label className="text-sm font-medium text-gray-700">Dress level
+              <select value={formality} onChange={event => setFormality(event.target.value)}
+                className="mt-2 block w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900">
+                {['Casual','Smart Casual','Business Casual','Formal','Traditional'].map(choice => <option key={choice}>{choice}</option>)}
+              </select>
+            </label>
+            <div className="sm:col-span-2 flex justify-end">
+              <button type="submit" disabled={saving || !name.trim()}
+                className="min-h-11 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white disabled:opacity-50">
+                {saving ? 'Saving...' : 'Save to wardrobe'}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {loading ? (
+        <div role="status" className="rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-600">Loading your clothing...</div>
+      ) : items.length === 0 && !error ? (
+        <section className="rounded-3xl border border-gray-200 bg-white px-6 py-12 text-center">
+          <Shirt className="mx-auto h-10 w-10 text-gray-400"/>
+          <h2 className="mt-4 text-xl font-bold text-gray-950">Your wardrobe is empty</h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-gray-600">Add clothing you already own to build outfit combinations and access your collection when preparing for an event.</p>
+          <button type="button" onClick={() => setShowCreate(true)} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">
+            <Plus className="h-4 w-4"/> Add your first item
+          </button>
+        </section>
+      ) : items.length > 0 ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-gray-600">{items.length} {items.length === 1 ? 'item' : 'items'} in your collection · {items.filter(item => item.is_favorite).length} favorites</p>
+            <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2">
+              <Search className="h-4 w-4 text-gray-500"/>
+              <span className="sr-only">Search wardrobe</span>
+              <input type="search" value={query} onChange={event => setQuery(event.target.value)}
+                placeholder="Search items" className="w-44 bg-transparent text-sm text-gray-900 outline-none sm:w-64"/>
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-2" aria-label="Wardrobe filters">
+            {categories.map(choice => <button key={choice} type="button" onClick={() => setFilter(choice)} aria-pressed={filter === choice}
+              className={`rounded-full border px-4 py-2 text-xs font-semibold ${filter === choice ? 'border-gray-950 bg-gray-950 text-white' : 'border-gray-200 bg-white text-gray-700'}`}>
+              {choice}
+            </button>)}
+          </div>
+          {visible.length ? (
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {visible.map(item => (
+                <li key={item.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                  <div className="flex h-44 items-center justify-center bg-gray-50">
+                    {item.photo_url ? <img src={item.photo_url} alt={item.name} loading="lazy" className="h-full w-full object-contain"/> : <Shirt className="h-12 w-12 text-gray-300" aria-hidden="true"/>}
+                  </div>
+                  <div className="space-y-3 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-gray-500">{item.category}</p>
+                        <h2 className="mt-1 text-base font-semibold text-gray-950">{item.name}</h2>
+                      </div>
+                      <button type="button" onClick={() => void setFavorite(item)} disabled={pendingFavorite === item.id}
+                        aria-label={item.is_favorite ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
+                        aria-pressed={item.is_favorite} className="rounded-full border border-gray-200 p-2 text-gray-600 disabled:opacity-50">
+                        <Heart className={`h-4 w-4 ${item.is_favorite ? 'fill-red-600 text-red-600' : ''}`}/>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-600">{[item.color, item.formality].filter(Boolean).join(' · ') || 'No details added'}</p>
+                    {item.wear_count > 0 && <p className="text-xs text-gray-500">Worn {item.wear_count} {item.wear_count === 1 ? 'time' : 'times'}</p>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600">No clothing matches your search or filter.</p>
+          )}
+        </>
+      ) : null}
+
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gray-950 p-6 text-white">
+        <div>
+          <h2 className="text-lg font-semibold">Need help putting a look together?</h2>
+          <p className="mt-1 text-sm text-gray-300">Explore styles for your next occasion.</p>
+        </div>
+        <Link href="/wardrobe/style-me" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-gray-950">
+          Open AI Stylist <ArrowRight className="h-4 w-4"/>
+        </Link>
+      </section>
+    </main>
   );
 }

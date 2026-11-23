@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.errors import AppException, ErrorCode
@@ -146,4 +146,82 @@ async def upload_outfits(
         message=f"{len(outfit_records)} outfit image(s) uploaded successfully.",
         data=OutfitUploadListDTO(outfits=outfit_records),
         meta=meta,
+    )
+
+
+@router.get(
+    "/selfie/{journey_id}/preview",
+    response_model=StandardResponse[dict],
+    summary="Create a temporary access link for a user-owned selfie",
+)
+async def get_selfie_preview(
+    journey_id: UUID,
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    journey = await JourneyRepository(db).get_by_id(journey_id, current_user.id)
+    if not journey:
+        raise AppException(
+            code=ErrorCode.JOURNEY_001,
+            message="Journey not found or access denied.",
+            status_code=404,
+        )
+    selfie = await UploadRepository(db).get_selfie(journey_id)
+    if not selfie:
+        raise AppException(
+            code=ErrorCode.UPLOAD_001,
+            message="This journey has no saved photo.",
+            status_code=404,
+        )
+    signed_url = await StorageService().create_signed_download_url(selfie.storage_url)
+    response.headers["Cache-Control"] = "private, no-store"
+    meta = ResponseMeta(
+        request_id=getattr(request.state, "request_id", "req_selfie_preview"),
+        timestamp=datetime.now(timezone.utc).isoformat(),
+    )
+    return StandardResponse(
+        success=True, message="Temporary image access granted.",
+        data={"url": signed_url, "expires_in": 300}, meta=meta,
+    )
+
+
+@router.get(
+    "/outfits/{journey_id}/{upload_id}/preview",
+    response_model=StandardResponse[dict],
+    summary="Create a temporary access link for a user-owned outfit photo",
+)
+async def get_outfit_preview(
+    journey_id: UUID,
+    upload_id: UUID,
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    journey = await JourneyRepository(db).get_by_id(journey_id, current_user.id)
+    if not journey:
+        raise AppException(
+            code=ErrorCode.JOURNEY_001,
+            message="Journey not found or access denied.",
+            status_code=404,
+        )
+    outfits = await UploadRepository(db).get_outfits(journey_id)
+    selected = next((outfit for outfit in outfits if outfit.id == upload_id), None)
+    if not selected:
+        raise AppException(
+            code=ErrorCode.UPLOAD_001,
+            message="Outfit photo not found in this journey.",
+            status_code=404,
+        )
+    signed_url = await StorageService().create_signed_download_url(selected.storage_url)
+    response.headers["Cache-Control"] = "private, no-store"
+    meta = ResponseMeta(
+        request_id=getattr(request.state, "request_id", "req_outfit_preview"),
+        timestamp=datetime.now(timezone.utc).isoformat(),
+    )
+    return StandardResponse(
+        success=True, message="Temporary image access granted.",
+        data={"url": signed_url, "expires_in": 300}, meta=meta,
     )

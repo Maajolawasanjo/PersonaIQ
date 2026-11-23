@@ -79,9 +79,13 @@ class UploadRepository:
         return outfit
 
     async def get_selfie(self, journey_id: UUID) -> Optional[SelfieUpload]:
-        query = select(SelfieUpload).where(SelfieUpload.journey_id == journey_id)
+        query = (
+            select(SelfieUpload)
+            .where(SelfieUpload.journey_id == journey_id)
+            .order_by(SelfieUpload.uploaded_at.desc())
+        )
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        return result.scalars().first()
 
     async def get_outfits(self, journey_id: UUID) -> List[OutfitUpload]:
         query = (

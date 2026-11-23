@@ -52,6 +52,13 @@ async def get_current_user(
             status_code=401,
         )
 
+    if not user.is_verified:
+        raise AppException(
+            code=ErrorCode.AUTH_005,
+            message="Please verify your email before accessing your account.",
+            status_code=403,
+        )
+
     if not user.is_active:
         raise AppException(
             code=ErrorCode.AUTH_004,
